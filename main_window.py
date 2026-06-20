@@ -1,5 +1,8 @@
 # main_window.py
-from PyQt5.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QListWidget, QStackedWidget, QAction, QMessageBox
+from PyQt5.QtWidgets import (
+    QApplication, QMainWindow, QWidget, QHBoxLayout, QListWidget,
+    QStackedWidget, QAction, QMessageBox
+)
 from utils.ui_helpers import get_global_stylesheet
 
 # Import page modules
@@ -13,7 +16,7 @@ class APTKSimulationUI(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("APTK Optical Simulation & Defect Inspection System")
-        self.resize(1450, 950)
+        self.configure_window_size()
 
         # ---------------- Create Menu Bar (商业通用主菜单栏栏) ----------------
         self.init_menu_bar()
@@ -59,6 +62,24 @@ class APTKSimulationUI(QMainWindow):
 
         # Apply Global QSS Stylesheet
         self.setStyleSheet(get_global_stylesheet())
+
+    def configure_window_size(self):
+        """Scale and center the application window for Full HD and 2K displays."""
+        screen = QApplication.primaryScreen()
+        if screen is None:
+            self.resize(1450, 950)
+            return
+
+        available = screen.availableGeometry()
+        width = min(1920, max(1280, int(available.width() * 0.78)))
+        height = min(1180, max(800, int(available.height() * 0.84)))
+
+        self.setMinimumSize(1100, 700)
+        self.resize(width, height)
+        self.move(
+            available.x() + (available.width() - width) // 2,
+            available.y() + (available.height() - height) // 2
+        )
 
     def init_menu_bar(self):
         """Initializes standard EDA software menus with professional actions."""
