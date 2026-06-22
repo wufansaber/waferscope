@@ -26,12 +26,12 @@ class APTKSimulationUI(QMainWindow):
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         main_layout = QHBoxLayout(central_widget)
-        main_layout.setContentsMargins(10, 10, 10, 10)
-        main_layout.setSpacing(15)
+        main_layout.setContentsMargins(6, 6, 6, 6)
+        main_layout.setSpacing(8)
 
         # ---------------- Left Navigation Bar ----------------
         self.nav_list = QListWidget()
-        self.nav_list.setFixedWidth(220)
+        self.nav_list.setFixedWidth(180)
         nav_items = [
             "Basic Settings",
             "Bare Wafer & Pattern",
@@ -75,10 +75,15 @@ class APTKSimulationUI(QMainWindow):
             return
 
         available = screen.availableGeometry()
-        width = min(1920, max(1280, int(available.width() * 0.78)))
-        height = min(1180, max(800, int(available.height() * 0.84)))
+        width = min(1680, max(960, int(available.width() * 0.92)))
+        height = min(1050, max(620, int(available.height() * 0.90)))
+        width = min(width, available.width())
+        height = min(height, available.height())
 
-        self.setMinimumSize(1100, 700)
+        self.setMinimumSize(
+            min(900, available.width()),
+            min(600, available.height())
+        )
         self.resize(width, height)
         self.move(
             available.x() + (available.width() - width) // 2,

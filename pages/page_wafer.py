@@ -71,7 +71,7 @@ class WaferPatternPage(QWidget):
         render_viewport = QLabel(
             "3D Wafer & Defect Topology Render Viewport\n(Configure parameters on the left and click Generate)")
         render_viewport.setAlignment(Qt.AlignCenter)
-        render_viewport.setStyleSheet("background-color: #0d1117; color: #409EFF; font-size: 18px; border-radius: 4px;")
+        render_viewport.setStyleSheet("background-color: #0d1117; color: #409EFF; font-size: 13px; border-radius: 4px;")
         vbox_3d.addWidget(render_viewport)
         col2_layout.addWidget(group_3d)
 

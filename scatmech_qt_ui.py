@@ -10,7 +10,7 @@ import matplotlib.cm as cm
 import numpy as np
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.collections import LineCollection
-from matplotlib.colors import Normalize
+from matplotlib.colors import LinearSegmentedColormap, Normalize
 from matplotlib.figure import Figure
 from matplotlib.patches import Circle
 from mpl_toolkits.mplot3d.art3d import Line3DCollection
@@ -66,6 +66,18 @@ PARTICLE_MATERIALS = {
     "Gold (Au)": 1.48 + 1.86j,
     "Custom": 1.50 + 0.0j,
 }
+
+PARTICLE_INTENSITY_CMAP = LinearSegmentedColormap.from_list(
+    "particle_intensity",
+    [
+        (0.00, "#050b18"),
+        (0.08, "#151746"),
+        (0.18, "#d7191c"),
+        (0.48, "#ff6d00"),
+        (0.82, "#fff21a"),
+        (1.00, "#fffde8"),
+    ],
+)
 
 
 @dataclass(frozen=True)
@@ -258,6 +270,9 @@ class MaterialGroup(QGroupBox):
         super().__init__(title)
         self.materials = materials
         layout = QFormLayout(self)
+        layout.setContentsMargins(8, 10, 8, 6)
+        layout.setHorizontalSpacing(6)
+        layout.setVerticalSpacing(5)
         self.material_combo = QComboBox()
         self.material_combo.addItems(materials.keys())
         self.n_edit = QLineEdit()
@@ -304,12 +319,16 @@ class ScatmechSimulationWidget(QWidget):
     def _build_ui(self):
         root = QHBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
+        root.setSpacing(6)
 
         controls_scroll = QScrollArea()
         controls_scroll.setWidgetResizable(True)
-        controls_scroll.setFixedWidth(370)
+        controls_scroll.setMinimumWidth(285)
+        controls_scroll.setMaximumWidth(325)
         controls = QWidget()
         controls_layout = QVBoxLayout(controls)
+        controls_layout.setContentsMargins(5, 5, 5, 5)
+        controls_layout.setSpacing(6)
 
         self.wafer_group = MaterialGroup(
             "Wafer", WAFER_MATERIALS, include_thickness=True
@@ -322,6 +341,9 @@ class ScatmechSimulationWidget(QWidget):
 
         laser_group = QGroupBox("Laser and incidence")
         laser_layout = QFormLayout(laser_group)
+        laser_layout.setContentsMargins(8, 10, 8, 6)
+        laser_layout.setHorizontalSpacing(6)
+        laser_layout.setVerticalSpacing(5)
         self.wavelength = QDoubleSpinBox()
         self.wavelength.setRange(100.0, 2000.0)
         self.wavelength.setDecimals(3)
@@ -343,6 +365,9 @@ class ScatmechSimulationWidget(QWidget):
 
         numerical_group = QGroupBox("Numerical and display settings")
         numerical_layout = QFormLayout(numerical_group)
+        numerical_layout.setContentsMargins(8, 10, 8, 6)
+        numerical_layout.setHorizontalSpacing(6)
+        numerical_layout.setVerticalSpacing(5)
         self.angular_step = QDoubleSpinBox()
         self.angular_step.setRange(2.0, 15.0)
         self.angular_step.setDecimals(1)
@@ -358,7 +383,7 @@ class ScatmechSimulationWidget(QWidget):
         controls_layout.addWidget(numerical_group)
 
         self.run_button = QPushButton("Run far-field simulation")
-        self.run_button.setMinimumHeight(42)
+        self.run_button.setMinimumHeight(32)
         self.run_button.clicked.connect(self.start_simulation)
         self.export_button = QPushButton("Export figures and data")
         self.export_button.setEnabled(False)
@@ -378,10 +403,8 @@ class ScatmechSimulationWidget(QWidget):
         self.tabs = QTabWidget()
         self.canvases = {}
         for key, title in (
-            ("3d_intensity", "3-D intensity"),
-            ("3d_polarization", "3-D polarization"),
-            ("2d_intensity", "2-D intensity"),
-            ("2d_polarization", "2-D polarization"),
+            ("3d_intensity", "3-D intensity + polarization"),
+            ("2d_intensity", "2-D intensity + polarization"),
         ):
             canvas = PlotCanvas()
             self.canvases[key] = canvas
@@ -389,9 +412,10 @@ class ScatmechSimulationWidget(QWidget):
         root.addWidget(self.tabs, stretch=1)
 
         self.setStyleSheet(
-            "QGroupBox { font-weight: bold; margin-top: 8px; }"
-            "QGroupBox::title { subcontrol-origin: margin; left: 8px; }"
-            "QPushButton { padding: 8px; }"
+            "QGroupBox { font-weight: bold; margin-top: 6px; }"
+            "QGroupBox::title { subcontrol-origin: margin; left: 6px; }"
+            "QPushButton { padding: 5px; }"
+            "QLabel, QCheckBox { font-size: 11px; }"
         )
         if SCATMECH_IMPORT_ERROR is not None:
             self.run_button.setEnabled(False)
@@ -478,9 +502,7 @@ class ScatmechSimulationWidget(QWidget):
 
     def render_results(self, result):
         self._plot_3d_intensity(result)
-        self._plot_3d_polarization(result)
         self._plot_2d_intensity(result)
-        self._plot_2d_polarization(result)
 
     def _plot_3d_intensity(self, result):
         canvas = self.canvases["3d_intensity"]
@@ -493,23 +515,19 @@ class ScatmechSimulationWidget(QWidget):
             result["x"], result["y"], result["z"], facecolors=colors,
             linewidth=0, antialiased=True, shade=False,
         )
-        self._format_3d_axis(axis, "Far-field intensity on upper hemisphere")
+        self._add_3d_polarization_axes(axis, result)
+        self._draw_3d_incidence_geometry(axis, result)
+        self._format_3d_axis(
+            axis, "Far-field intensity with polarization directions"
+        )
         colorbar = canvas.figure.colorbar(
             cm.ScalarMappable(norm=norm, cmap=cm.turbo), ax=axis, shrink=0.70
         )
         colorbar.set_label("Relative DSC (dB)")
         canvas.draw_idle()
 
-    def _plot_3d_polarization(self, result):
-        canvas = self.canvases["3d_polarization"]
-        canvas.figure.clear()
-        axis = canvas.figure.add_subplot(111, projection="3d")
-        norm = Normalize(0.0, 1.0)
-        colors = cm.viridis(norm(result["dolp"]))
-        axis.plot_surface(
-            result["x"], result["y"], result["z"], facecolors=colors,
-            linewidth=0, antialiased=True, shade=False, alpha=0.92,
-        )
+    def _add_3d_polarization_axes(self, axis, result):
+        """Overlay Stokes polarization directions on the intensity surface."""
         index = self._sparse_indices(result)
         length = 0.12
         segments = []
@@ -527,36 +545,28 @@ class ScatmechSimulationWidget(QWidget):
         axis.add_collection3d(
             Line3DCollection(segments, colors="#1236b5", linewidths=1.4)
         )
-        self._format_3d_axis(axis, "3-D polarization axes; color = DOLP")
-        colorbar = canvas.figure.colorbar(
-            cm.ScalarMappable(norm=norm, cmap=cm.viridis), ax=axis, shrink=0.70
-        )
-        colorbar.set_label("Degree of linear polarization")
-        canvas.draw_idle()
 
     def _plot_2d_intensity(self, result):
         canvas = self.canvases["2d_intensity"]
         canvas.figure.clear()
         axis = canvas.figure.add_subplot(111)
-        floor = result["parameters"].display_floor_db
+        relative = result["intensity"] / np.max(result["intensity"])
+        display_intensity = np.clip(relative, 0.0, 1.0) ** 0.80
         image = axis.pcolormesh(
-            result["x"], result["y"], np.clip(result["intensity_db"], floor, 0),
-            cmap="turbo", vmin=floor, vmax=0.0, shading="gouraud",
+            result["x"], result["y"], display_intensity,
+            cmap=PARTICLE_INTENSITY_CMAP, vmin=0.0, vmax=1.0,
+            shading="gouraud",
         )
-        self._format_2d_axis(axis, "Projected far-field intensity")
+        self._add_2d_polarization_axes(axis, result)
+        self._format_2d_axis(
+            axis, "Particle Scattering\nIntensity with Polarization Directions"
+        )
         colorbar = canvas.figure.colorbar(image, ax=axis)
-        colorbar.set_label("Relative DSC (dB)")
+        colorbar.set_label("Normalized particle scattering intensity")
         canvas.draw_idle()
 
-    def _plot_2d_polarization(self, result):
-        canvas = self.canvases["2d_polarization"]
-        canvas.figure.clear()
-        axis = canvas.figure.add_subplot(111)
-        floor = result["parameters"].display_floor_db
-        image = axis.pcolormesh(
-            result["x"], result["y"], np.clip(result["intensity_db"], floor, 0),
-            cmap="inferno", vmin=floor, vmax=0.0, shading="gouraud",
-        )
+    def _add_2d_polarization_axes(self, axis, result):
+        """Overlay projected Stokes polarization axes on a pupil plot."""
         index = self._sparse_indices(result)
         px = result["x"][index].ravel()
         py = result["y"][index].ravel()
@@ -577,24 +587,118 @@ class ScatmechSimulationWidget(QWidget):
                  (x + half * vx, y + half * vy)]
             )
         polarization_lines = LineCollection(
-            segments, colors="#30a5ff", linewidths=1.5
+            segments, colors="#3157d5", linewidths=1.45
         )
         polarization_lines.set_clip_path(
             Circle((0.0, 0.0), 0.995, transform=axis.transData)
         )
         axis.add_collection(polarization_lines)
-        self._format_2d_axis(axis, "Projected intensity and polarization axes")
-        colorbar = canvas.figure.colorbar(image, ax=axis)
-        colorbar.set_label("Relative DSC (dB)")
-        canvas.draw_idle()
+
+    @staticmethod
+    def _draw_3d_incidence_geometry(axis, result):
+        """Draw wafer, surface normal, laser ray, and incidence-angle arc."""
+        incidence_deg = result["parameters"].incidence_deg
+        incidence = np.deg2rad(incidence_deg)
+        # All incidence geometry is anchored at the physical wafer origin.
+        diagram_y = 0.0
+
+        # A translucent wafer plane extending beyond the unit pupil.
+        plane_x, plane_y = np.meshgrid(
+            np.linspace(-1.45, 1.10, 2),
+            np.linspace(-1.10, 1.10, 2),
+        )
+        axis.plot_surface(
+            plane_x,
+            plane_y,
+            np.zeros_like(plane_x),
+            color="#8d9499",
+            alpha=0.16,
+            shade=False,
+            zorder=0,
+        )
+        axis.text(0.90, -0.95, 0.015, "wafer plane", color="#50565a")
+
+        # Outward surface normal.
+        axis.quiver(
+            0.0, diagram_y, 0.0,
+            0.0, 0.0, 0.72,
+            color="#666666",
+            linewidth=2.0,
+            arrow_length_ratio=0.10,
+            zorder=20,
+        )
+        axis.text(
+            0.03, diagram_y, 0.76, "surface normal",
+            color="#4f5559", zorder=20,
+        )
+
+        # Source lies above and to the left. The arrow points toward the wafer.
+        source_distance = 1.40
+        source_x = -source_distance * np.sin(incidence)
+        source_z = source_distance * np.cos(incidence)
+        axis.quiver(
+            source_x, diagram_y, source_z,
+            -source_x, 0.0, -source_z,
+            color="#133e9a",
+            linewidth=3.2,
+            arrow_length_ratio=0.10,
+            zorder=20,
+        )
+        axis.text(
+            source_x - 0.02,
+            diagram_y,
+            source_z + 0.07,
+            "incident laser",
+            color="#133e9a",
+            weight="bold",
+            ha="center",
+            zorder=20,
+        )
+        axis.scatter(
+            [0.0], [0.0], [0.0],
+            color="#133e9a", s=28, depthshade=False, zorder=21,
+        )
+        axis.text(
+            0.04, 0.02, 0.03, "incidence point (0, 0, 0)",
+            color="#133e9a", fontsize=8, zorder=21,
+        )
+
+        # Incidence angle is measured between the source ray and +z normal.
+        arc_angle = np.linspace(0.0, incidence, 80)
+        arc_radius = 0.30
+        arc_x = -arc_radius * np.sin(arc_angle)
+        arc_z = arc_radius * np.cos(arc_angle)
+        axis.plot(
+            arc_x,
+            np.full_like(arc_x, diagram_y),
+            arc_z,
+            color="#133e9a",
+            linewidth=1.8,
+            zorder=20,
+        )
+        label_angle = incidence * 0.52
+        axis.text(
+            -0.38 * np.sin(label_angle),
+            diagram_y,
+            0.38 * np.cos(label_angle),
+            "{:.1f} deg".format(incidence_deg),
+            color="#133e9a",
+            ha="center",
+            va="center",
+            zorder=20,
+        )
 
     @staticmethod
     def _format_3d_axis(axis, title):
         axis.set(
-            xlim=(-1.05, 1.05), ylim=(-1.05, 1.05), zlim=(0.0, 1.05),
+            xlim=(-1.50, 1.10), ylim=(-1.25, 1.10), zlim=(0.0, 1.12),
             xlabel=r"$k_x/k$", ylabel=r"$k_y/k$", zlabel=r"$k_z/k$",
-            title=title,
         )
+        axis.set_title(title, fontsize=11, pad=4)
+        axis.tick_params(labelsize=8, pad=1)
+        axis.xaxis.label.set_size(9)
+        axis.yaxis.label.set_size(9)
+        axis.zaxis.label.set_size(9)
         axis.set_box_aspect((1, 1, 0.7))
         axis.view_init(elev=28, azim=-55)
 
@@ -602,10 +706,29 @@ class ScatmechSimulationWidget(QWidget):
     def _format_2d_axis(axis, title):
         horizon = np.linspace(0.0, 2.0 * np.pi, 361)
         axis.plot(np.cos(horizon), np.sin(horizon), color="white", linewidth=1.0)
-        axis.set(
-            xlim=(-1.03, 1.03), ylim=(-1.03, 1.03), aspect="equal",
-            xlabel=r"$k_x/k$", ylabel=r"$k_y/k$", title=title,
+        axis.text(
+            -0.97, 0.94, "Particle", color="white", fontsize=13,
+            weight="bold", ha="left", va="top", zorder=20,
         )
+        axis.annotate(
+            "",
+            xy=(0.90, -1.20),
+            xytext=(-0.90, -1.20),
+            arrowprops=dict(arrowstyle="->", color="#123b91", lw=2.8),
+            annotation_clip=False,
+        )
+        axis.text(
+            0.0, -1.13, "Laser Incidence Direction",
+            color="#123b91", fontsize=10, weight="bold",
+            ha="center", va="bottom",
+        )
+        axis.set(
+            xlim=(-1.05, 1.05), ylim=(-1.30, 1.05), aspect="equal",
+            xlabel="", ylabel=r"$k_y/k$",
+        )
+        axis.set_title(title, fontsize=11, pad=4)
+        axis.tick_params(labelsize=8, pad=1)
+        axis.yaxis.label.set_size(9)
         axis.set_facecolor("#111111")
 
     def export_results(self):
@@ -616,10 +739,8 @@ class ScatmechSimulationWidget(QWidget):
             return
         directory = Path(directory)
         names = {
-            "3d_intensity": "far_field_3d_intensity.png",
-            "3d_polarization": "far_field_3d_polarization.png",
-            "2d_intensity": "far_field_2d_intensity.png",
-            "2d_polarization": "far_field_2d_polarization.png",
+            "3d_intensity": "far_field_3d_intensity_with_polarization.png",
+            "2d_intensity": "far_field_2d_intensity_with_polarization.png",
         }
         for key, filename in names.items():
             self.canvases[key].figure.savefig(

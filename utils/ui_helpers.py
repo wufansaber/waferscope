@@ -22,15 +22,16 @@ def create_input_widget(default_text, unit):
 def get_global_stylesheet():
     """Returns professional dark/light contrasting industrial QSS."""
     return """
+    QWidget { font-size: 12px; }
     QMainWindow { background-color: #F0F2F5; }
     QMenuBar {
         background-color: #FFFFFF;
         border-bottom: 1px solid #D9D9D9;
-        font-size: 13px;
+        font-size: 12px;
     }
     QMenuBar::item {
         background-color: transparent;
-        padding: 6px 12px;
+        padding: 4px 9px;
         color: #333333;
     }
     QMenuBar::item:selected {
@@ -43,8 +44,8 @@ def get_global_stylesheet():
         padding: 5px 0px;
     }
     QMenu::item {
-        padding: 6px 25px;
-        font-size: 13px;
+        padding: 4px 18px;
+        font-size: 12px;
     }
     QMenu::item:selected {
         background-color: #409EFF;
@@ -53,10 +54,10 @@ def get_global_stylesheet():
     QListWidget {
         background-color: #FFFFFF;
         border: 1px solid #D9D9D9;
-        font-size: 15px; padding: 5px; outline: 0;
+        font-size: 13px; padding: 3px; outline: 0;
     }
     QListWidget::item {
-        padding: 16px 12px;
+        padding: 10px 8px;
         border-bottom: 1px solid #F0F0F0;
         color: #555555;
     }
@@ -66,28 +67,31 @@ def get_global_stylesheet():
         border-left: 5px solid #409EFF;
     }
     QGroupBox {
-        font-size: 14px; font-weight: bold;
+        font-size: 12px; font-weight: bold;
         border: 1px solid #B0B0B0; border-radius: 4px;
-        margin-top: 15px; background-color: #FFFFFF;
+        margin-top: 10px; background-color: #FFFFFF;
     }
     QGroupBox::title {
         subcontrol-origin: margin; subcontrol-position: top left;
-        padding: 0 5px; left: 10px; color: #333333;
+        padding: 0 4px; left: 8px; color: #333333;
     }
-    QLineEdit, QComboBox, QSpinBox {
+    QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox {
         border: 1px solid #C0C4CC; border-radius: 3px;
-        padding: 5px 8px; background-color: #FAFAFA; font-weight: normal;
+        padding: 3px 6px; background-color: #FAFAFA; font-weight: normal;
+        min-height: 20px;
     }
     QTableWidget {
         border: 1px solid #C0C4CC; background-color: #FFFFFF; font-weight: normal;
     }
     QHeaderView::section {
         background-color: #F5F7FA; border: 1px solid #E4E7ED;
-        font-weight: bold; padding: 4px;
+        font-weight: bold; padding: 3px;
     }
     QPushButton {
-        font-weight: bold; border: none; border-radius: 3px; padding: 6px 12px;
+        font-weight: bold; border: none; border-radius: 3px; padding: 5px 9px;
     }
+    QCheckBox { spacing: 4px; font-size: 11px; }
+    QTabBar::tab { padding: 5px 10px; font-size: 11px; }
     QPushButton:hover { opacity: 0.85; }
     QScrollArea { border: none; background-color: transparent; }
     """
