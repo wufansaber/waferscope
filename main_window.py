@@ -10,7 +10,7 @@ from pages.page_basic import BasicSettingsPage
 from pages.page_wafer import WaferPatternPage
 from pages.page_advanced import AdvancedSettingsPage
 from pages.page_results import ResultsPage
-from scatmech_qt_ui import ScatmechSimulationWidget
+from scatmech_ui.widgets import ScatmechSimulationWidget
 
 
 class APTKSimulationUI(QMainWindow):

@@ -1,0 +1,58 @@
+"""Standalone application entry points for the SCATMECH interface."""
+
+import sys
+from pathlib import Path
+
+from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QApplication, QMainWindow
+
+from .backend import calculate_far_field
+from .parameters import SimulationParameters
+from .widgets import ScatmechSimulationWidget
+
+
+class ScatmechStandaloneWindow(QMainWindow):
+    """Standalone wrapper retained for direct execution."""
+
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("pySCATMECH Particle-on-Wafer Far-Field Simulator")
+        self.resize(1500, 920)
+        self.simulation_widget = ScatmechSimulationWidget()
+        self.setCentralWidget(self.simulation_widget)
+
+    def closeEvent(self, event):
+        self.simulation_widget.wait_for_shutdown()
+        super().closeEvent(event)
+
+
+def run_headless_test(output_directory):
+    parameters = SimulationParameters(angular_step_deg=12.0)
+    result = calculate_far_field(parameters)
+    app = QApplication.instance() or QApplication([])
+    window = ScatmechSimulationWidget()
+    window.result = result
+    window.render_results(result)
+    output_directory = Path(output_directory)
+    output_directory.mkdir(parents=True, exist_ok=True)
+    for key, canvas in window.canvases.items():
+        canvas.figure.savefig(str(output_directory / (key + ".png")), dpi=120)
+    print("Headless UI render test completed:", output_directory.resolve())
+
+
+def main():
+    if "--headless-test" in sys.argv:
+        index = sys.argv.index("--headless-test")
+        output = (
+            sys.argv[index + 1]
+            if index + 1 < len(sys.argv)
+            else "ui_test_results"
+        )
+        run_headless_test(output)
+        return
+    QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
+    QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
+    app = QApplication(sys.argv)
+    window = ScatmechStandaloneWindow()
+    window.show()
+    sys.exit(app.exec_())
