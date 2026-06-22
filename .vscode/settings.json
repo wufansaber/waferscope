@@ -3,7 +3,7 @@
     "python-envs.defaultPackageManager": "ms-python.python:conda",
     "python-envs.pythonProjects": [
         {
-            "path": "SCATMECH_project",
+            "path": "scatmech_qt_ui.py",
             "envManager": "ms-python.python:conda",
             "packageManager": "ms-python.python:conda"
         }

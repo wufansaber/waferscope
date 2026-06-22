@@ -10,6 +10,7 @@ from pages.page_basic import BasicSettingsPage
 from pages.page_wafer import WaferPatternPage
 from pages.page_advanced import AdvancedSettingsPage
 from pages.page_results import ResultsPage
+from scatmech_qt_ui import ScatmechSimulationWidget
 
 
 class APTKSimulationUI(QMainWindow):
@@ -35,7 +36,8 @@ class APTKSimulationUI(QMainWindow):
             "Basic Settings",
             "Bare Wafer & Pattern",
             "Advanced Settings",
-            "Simulation Results"
+            "Simulation Results",
+            "SCATMECH Far-Field"
         ]
         self.nav_list.addItems(nav_items)
         main_layout.addWidget(self.nav_list)
@@ -49,12 +51,14 @@ class APTKSimulationUI(QMainWindow):
         self.page_wafer = WaferPatternPage()
         self.page_advanced = AdvancedSettingsPage()
         self.page_results = ResultsPage()
+        self.page_scatmech = ScatmechSimulationWidget()
 
         # Add to stack
         self.stacked_widget.addWidget(self.page_basic)
         self.stacked_widget.addWidget(self.page_wafer)
         self.stacked_widget.addWidget(self.page_advanced)
         self.stacked_widget.addWidget(self.page_results)
+        self.stacked_widget.addWidget(self.page_scatmech)
 
         # Routing connections
         self.nav_list.currentRowChanged.connect(self.stacked_widget.setCurrentIndex)
@@ -127,3 +131,7 @@ class APTKSimulationUI(QMainWindow):
             "Version 1.7 (Modular Release)\n\n"
             "Beijing Opto-Tech Co., Ltd. All Rights Reserved."
         )
+
+    def closeEvent(self, event):
+        self.page_scatmech.wait_for_shutdown()
+        super().closeEvent(event)

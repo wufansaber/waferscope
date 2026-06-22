@@ -2,10 +2,11 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python Package: SCATMECH",
-            "type": "debugpy",
+            "name": "Run merged APTK + SCATMECH UI",
+            "type": "python",
             "request": "launch",
-            "module": "SCATMECH"
+            "program": "${workspaceFolder}\\main.py",
+            "console": "integratedTerminal"
         }
     ]
 }

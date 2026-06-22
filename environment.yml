@@ -1,0 +1,11 @@
+name: aptk-scatmech
+channels:
+  - defaults
+dependencies:
+  - python=3.8
+  - pip
+  - numpy=1.24
+  - matplotlib=3.4
+  - pyqt=5
+  - pip:
+      - pySCATMECH==0.1.9
