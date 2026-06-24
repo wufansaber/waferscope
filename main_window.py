@@ -37,7 +37,7 @@ class APTKSimulationUI(QMainWindow):
             "Bare Wafer & Pattern",
             "Advanced Settings",
             "Simulation Results",
-            "SCATMECH Far-Field"
+            "Far-Field"
         ]
         self.nav_list.addItems(nav_items)
         main_layout.addWidget(self.nav_list)
