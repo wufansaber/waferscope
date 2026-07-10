@@ -25,9 +25,9 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
-from .backend import SCATMECH_IMPORT_ERROR
+from .backend import SCATMECH_IMPORT_ERROR, calculate_objective_collection_example
 from .materials import PARTICLE_MATERIALS, WAFER_MATERIALS
-from .parameters import SimulationParameters
+from .parameters import ObjectiveCollectionParameters, SimulationParameters
 from .plotting import PlotCanvas, render_results
 from .worker import SimulationWorker
 
@@ -79,6 +79,7 @@ class ScatmechSimulationWidget(QWidget):
     def __init__(self):
         super().__init__()
         self.result = None
+        self.far_field_result = None
         self.thread = None
         self.worker = None
         self._build_ui()
@@ -149,9 +150,54 @@ class ScatmechSimulationWidget(QWidget):
         numerical_layout.addRow("Display range", self.dynamic_range)
         controls_layout.addWidget(numerical_group)
 
+        objective_group = QGroupBox("Objective collection example")
+        objective_layout = QFormLayout(objective_group)
+        objective_layout.setContentsMargins(8, 10, 8, 6)
+        objective_layout.setHorizontalSpacing(6)
+        objective_layout.setVerticalSpacing(5)
+        self.objective_na = QDoubleSpinBox()
+        self.objective_na.setRange(0.01, 0.99)
+        self.objective_na.setDecimals(3)
+        self.objective_na.setSingleStep(0.05)
+        self.objective_na.setValue(0.5)
+        self.objective_focal_length = QDoubleSpinBox()
+        self.objective_focal_length.setRange(0.1, 1000.0)
+        self.objective_focal_length.setDecimals(3)
+        self.objective_focal_length.setValue(20.0)
+        self.objective_focal_length.setSuffix(" mm")
+        self.objective_tilt_ch1 = QDoubleSpinBox()
+        self.objective_tilt_ch1.setRange(-89.9, 89.9)
+        self.objective_tilt_ch1.setDecimals(3)
+        self.objective_tilt_ch1.setSingleStep(5.0)
+        self.objective_tilt_ch1.setValue(45.0)
+        self.objective_tilt_ch1.setSuffix(" deg")
+        self.objective_tilt_ch2 = QDoubleSpinBox()
+        self.objective_tilt_ch2.setRange(-89.9, 89.9)
+        self.objective_tilt_ch2.setDecimals(3)
+        self.objective_tilt_ch2.setSingleStep(5.0)
+        self.objective_tilt_ch2.setValue(-45.0)
+        self.objective_tilt_ch2.setSuffix(" deg")
+        self.objective_tilt_ch3 = QDoubleSpinBox()
+        self.objective_tilt_ch3.setRange(-89.9, 89.9)
+        self.objective_tilt_ch3.setDecimals(3)
+        self.objective_tilt_ch3.setSingleStep(5.0)
+        self.objective_tilt_ch3.setValue(0.0)
+        self.objective_tilt_ch3.setSuffix(" deg")
+        objective_layout.addRow("Objective NA", self.objective_na)
+        objective_layout.addRow("Focal length", self.objective_focal_length)
+        objective_layout.addRow("Channel 1 tilt", self.objective_tilt_ch1)
+        objective_layout.addRow("Channel 2 tilt", self.objective_tilt_ch2)
+        objective_layout.addRow("Channel 3 tilt", self.objective_tilt_ch3)
+        controls_layout.addWidget(objective_group)
+
         self.run_button = QPushButton("Run far-field simulation")
         self.run_button.setMinimumHeight(32)
         self.run_button.clicked.connect(self.start_simulation)
+        self.objective_example_button = QPushButton("Run ideal objective example")
+        self.objective_example_button.setMinimumHeight(30)
+        self.objective_example_button.clicked.connect(
+            self.run_objective_collection_example
+        )
         self.export_button = QPushButton("Export figures and data")
         self.export_button.setEnabled(False)
         self.export_button.clicked.connect(self.export_results)
@@ -160,6 +206,7 @@ class ScatmechSimulationWidget(QWidget):
         self.status = QLabel("Ready")
         self.status.setWordWrap(True)
         controls_layout.addWidget(self.run_button)
+        controls_layout.addWidget(self.objective_example_button)
         controls_layout.addWidget(self.export_button)
         controls_layout.addWidget(self.progress)
         controls_layout.addWidget(self.status)
@@ -170,8 +217,8 @@ class ScatmechSimulationWidget(QWidget):
         self.tabs = QTabWidget()
         self.canvases = {}
         for key, title in (
-            ("3d_intensity", "3-D intensity + polarization"),
-            ("2d_intensity", "2-D intensity + polarization"),
+            ("3d_intensity", "3-D far-field / pupil"),
+            ("2d_intensity", "2-D far-field / pupil"),
         ):
             canvas = PlotCanvas()
             self.canvases[key] = canvas
@@ -188,7 +235,8 @@ class ScatmechSimulationWidget(QWidget):
             self.run_button.setEnabled(False)
             self.status.setText(
                 "pySCATMECH is not installed in the active interpreter. "
-                "The integrated UI is available, but simulation is disabled."
+                "The native particle simulation is disabled, but the ideal "
+                "objective example is available."
             )
 
     def parameters(self):
@@ -208,6 +256,18 @@ class ScatmechSimulationWidget(QWidget):
             display_floor_db=-self.dynamic_range.value(),
         )
 
+    def objective_collection_parameters(self):
+        return ObjectiveCollectionParameters(
+            numerical_aperture=self.objective_na.value(),
+            focal_length_mm=self.objective_focal_length.value(),
+            tilt_degrees=(
+                self.objective_tilt_ch1.value(),
+                self.objective_tilt_ch2.value(),
+                self.objective_tilt_ch3.value(),
+            ),
+            display_floor_db=-self.dynamic_range.value(),
+        )
+
     @pyqtSlot()
     def start_simulation(self):
         try:
@@ -218,6 +278,7 @@ class ScatmechSimulationWidget(QWidget):
             return
 
         self.run_button.setEnabled(False)
+        self.objective_example_button.setEnabled(False)
         self.export_button.setEnabled(False)
         self.progress.setValue(0)
         self.status.setText("Building SCATMECH model...")
@@ -239,10 +300,12 @@ class ScatmechSimulationWidget(QWidget):
     def _thread_finished(self):
         self.worker = None
         self.thread = None
+        self.objective_example_button.setEnabled(True)
 
     @pyqtSlot(object)
     def _simulation_completed(self, result):
         self.result = result
+        self.far_field_result = result
         self.render_results(result)
         self.run_button.setEnabled(True)
         self.export_button.setEnabled(True)
@@ -261,6 +324,40 @@ class ScatmechSimulationWidget(QWidget):
         self.progress.setValue(0)
         self.status.setText("Simulation failed.")
         QMessageBox.critical(self, "Simulation failed", details)
+
+    def run_objective_collection_example(self):
+        if self.thread is not None and self.thread.isRunning():
+            QMessageBox.information(
+                self,
+                "Simulation is running",
+                "Wait for the active far-field simulation to finish first.",
+            )
+            return
+
+        try:
+            parameters = self.objective_collection_parameters()
+            result = calculate_objective_collection_example(
+                parameters,
+                self.far_field_result,
+            )
+        except Exception as error:
+            QMessageBox.warning(self, "Invalid objective example", str(error))
+            return
+
+        self.result = result
+        self.render_results(result)
+        self.export_button.setEnabled(True)
+        self.progress.setValue(100)
+        if self.far_field_result is None:
+            source_status = "No SCATMECH far-field result is available; using the synthetic dark-field example."
+        else:
+            source_status = "Using the latest SCATMECH far-field result."
+        self.status.setText(
+            "Objective collection completed. {}\n{}".format(
+                source_status,
+                result["thickness_note"],
+            )
+        )
 
     def render_results(self, result):
         render_results(self.canvases, result)

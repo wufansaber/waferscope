@@ -32,3 +32,31 @@ class SimulationParameters:
             raise ValueError("Incidence angle must be in [0, 90) degrees.")
         if not 2.0 <= self.angular_step_deg <= 15.0:
             raise ValueError("Angular step must be between 2 and 15 degrees.")
+
+
+@dataclass(frozen=True)
+class ObjectiveCollectionParameters:
+    numerical_aperture: float = 0.5
+    focal_length_mm: float = 20.0
+    tilt_degrees: tuple = (45.0, -45.0, 0.0)
+    grid_size: int = 181
+    display_floor_db: float = -35.0
+
+    @property
+    def tilt_deg(self):
+        return self.tilt_degrees[0]
+
+    def validate(self):
+        if not 0.0 < self.numerical_aperture < 1.0:
+            raise ValueError("Objective NA must be in the open interval (0, 1).")
+        if self.focal_length_mm <= 0.0:
+            raise ValueError("Objective focal length must be positive.")
+        if len(self.tilt_degrees) != 3:
+            raise ValueError("Exactly three objective tilt angles are required.")
+        for tilt_deg in self.tilt_degrees:
+            if not -89.9 <= tilt_deg <= 89.9:
+                raise ValueError(
+                    "Objective tilt angles must be between -89.9 and 89.9 degrees."
+                )
+        if self.grid_size < 51:
+            raise ValueError("Objective example grid size must be at least 51.")

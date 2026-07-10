@@ -89,6 +89,8 @@ class BasicSettingsPage(QWidget):
         form_sensor.setVerticalSpacing(10)
         form_sensor.addRow("Pixel Physical Size", create_input_widget("5 x 5", "μm"))
         form_sensor.addRow("Array Resolution", create_input_widget("8028 x 256", ""))
+        self.input_scan_image_size = create_input_widget("1024 x 1024", "pixels")
+        form_sensor.addRow("Scan Image Size", self.input_scan_image_size)
         form_sensor.addRow("Line Rate", create_input_widget("1000", "kHz"))
         form_sensor.addRow("Integration Stages", create_input_widget("100", "Stages"))
         form_sensor.addRow("Quantum Efficiency", create_input_widget("55", "% @ 355nm"))
