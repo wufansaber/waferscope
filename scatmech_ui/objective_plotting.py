@@ -16,6 +16,7 @@ def plot_objective_collection_3d(canvas, result):
     _draw_far_field_surface(axis, result, norm, floor)
     _draw_collected_surface(axis, result, norm, floor)
     _draw_collection_cones(axis, result)
+    _draw_incident_ray(axis, result)
     _format_collection_3d_axis(axis, result)
 
     colorbar = canvas.figure.colorbar(
@@ -30,22 +31,31 @@ def plot_objective_collection_3d(canvas, result):
 def plot_objective_collection_2d(canvas, result):
     canvas.figure.clear()
     floor = result["parameters"].display_floor_db
-    radius = result["parameters"].focal_length_mm * result["parameters"].numerical_aperture
+    maximum_radius = max(
+        pupil["pupil_radius_mm"] for pupil in result["channel_pupils"]
+    )
+    if maximum_radius == 0.0:
+        maximum_radius = 1.0
     axes = canvas.figure.subplots(1, 3, sharex=True, sharey=True)
-    images = [
-        _plot_channel_pupil(axis, result, pupil, index, radius, floor)
+    [
+        _plot_channel_pupil(axis, result, pupil, index, maximum_radius, floor)
         for index, (axis, pupil) in enumerate(
             zip(axes, result["channel_pupils"]),
             start=1,
         )
     ]
     canvas.figure.suptitle(
-        "Three-channel collected pupil energy, union={:.2f}%".format(
-            100.0 * result["collection_fraction"]
+        "Three-channel collection: union volume={:.2f}%, energy={:.2f}%".format(
+            100.0 * result["geometric_collection_fraction"],
+            100.0 * result["energy_collection_fraction"],
         ),
         fontsize=11,
     )
-    colorbar = canvas.figure.colorbar(images[-1], ax=list(axes), shrink=0.82)
+    colorbar = canvas.figure.colorbar(
+        cm.ScalarMappable(norm=Normalize(floor, 0.0), cmap=cm.turbo),
+        ax=list(axes),
+        shrink=0.82,
+    )
     colorbar.set_label("Collected energy vs fixed reference (dB)")
     canvas.draw_idle()
 
@@ -85,10 +95,17 @@ def _draw_collected_surface(axis, result, norm, floor):
 
 def _draw_collection_cones(axis, result):
     channel_colors = ("#101820", "#2457c5", "#13795b")
-    for channel_index, (objective_axis, boundary, color) in enumerate(
-        zip(result["objective_axes"], result["cone_boundaries"], channel_colors),
+    for channel_index, (objective_axis, boundary, color, numerical_aperture) in enumerate(
+        zip(
+            result["objective_axes"],
+            result["cone_boundaries"],
+            channel_colors,
+            result["parameters"].channel_numerical_apertures,
+        ),
         start=1,
     ):
+        if numerical_aperture == 0.0:
+            continue
         _draw_cone_boundary(axis, boundary, color)
         _draw_objective_axis(axis, objective_axis, channel_index, color)
 
@@ -140,9 +157,43 @@ def _draw_objective_axis(axis, objective_axis, channel_index, color):
     )
 
 
+def _draw_incident_ray(axis, result):
+    source_direction = result.get("incident_source_direction")
+    if source_direction is None:
+        return
+    source = 1.34 * source_direction
+    projection = result.get("incident_projection_direction")
+    has_projection = projection is not None and np.hypot(
+        projection[0], projection[1]
+    ) > 1e-12
+    axis.quiver(
+        source[0],
+        source[1],
+        source[2],
+        -source[0],
+        -source[1],
+        -source[2],
+        color="#8f2d56",
+        linewidth=2.8,
+        arrow_length_ratio=0.09,
+    )
+    axis.text(
+        source[0],
+        source[1],
+        source[2] + 0.06,
+        "incident laser\nsource (-KX)"
+        if has_projection
+        else "incident laser\nnormal incidence",
+        color="#8f2d56",
+        weight="bold",
+        ha="center",
+        fontsize=8,
+    )
+
+
 def _format_collection_3d_axis(axis, result):
     axis.set(
-        xlim=(-1.05, 1.05),
+        xlim=(-1.42, 1.08),
         ylim=(-1.05, 1.05),
         zlim=(0.0, 1.08),
         xlabel=r"$k_x/k$",
@@ -151,14 +202,18 @@ def _format_collection_3d_axis(axis, result):
     )
     axis.set_title(
         "Three-channel far-field collection cones\n"
-        "NA={:.3g}, f={:.3g} mm, tilts={}, union collected={:.2f}%".format(
-            result["parameters"].numerical_aperture,
+        "NA={}, f={:.3g} mm, tilts={}, volume={:.2f}%, energy={:.2f}%".format(
+            "/".join(
+                "{:.3g}".format(value)
+                for value in result["parameters"].channel_numerical_apertures
+            ),
             result["parameters"].focal_length_mm,
             "/".join(
                 "{:.3g}".format(tilt)
                 for tilt in result["parameters"].tilt_degrees
             ),
-            100.0 * result["collection_fraction"],
+            100.0 * result["geometric_collection_fraction"],
+            100.0 * result["energy_collection_fraction"],
         ),
         fontsize=11,
         pad=4,
@@ -166,8 +221,9 @@ def _format_collection_3d_axis(axis, result):
     axis.text2D(
         0.03,
         0.93,
-        "Union cone / hemisphere energy: {:.2f}%".format(
-            100.0 * result["collection_fraction"]
+        "Union geometric volume: {:.2f}%\nUnion energy: {:.2f}%".format(
+            100.0 * result["geometric_collection_fraction"],
+            100.0 * result["energy_collection_fraction"],
         ),
         transform=axis.transAxes,
         color="#101820",
@@ -180,12 +236,36 @@ def _format_collection_3d_axis(axis, result):
             alpha=0.82,
         ),
     )
+    if "incident_direction" in result:
+        projection = result.get("incident_projection_direction")
+        has_projection = projection is not None and np.hypot(
+            projection[0], projection[1]
+        ) > 1e-12
+        axis.text2D(
+            0.98,
+            0.92,
+            "Illumination A convention\n"
+            "source -KX -> projection +KX\n"
+            "incidence plane KX-KZ"
+            if has_projection
+            else "Illumination: normal incidence\nNo in-plane projection",
+            transform=axis.transAxes,
+            color="#8f2d56",
+            fontsize=8.0,
+            weight="bold",
+            ha="right",
+        )
     axis.tick_params(labelsize=8, pad=1)
     axis.set_box_aspect((1, 1, 0.75))
     axis.view_init(elev=28, azim=-52)
 
 
-def _plot_channel_pupil(axis, result, pupil, index, radius, floor):
+def _plot_channel_pupil(axis, result, pupil, index, maximum_radius, floor):
+    pupil_radius = pupil["pupil_radius_mm"]
+    if pupil["numerical_aperture"] == 0.0:
+        _format_disabled_channel_axis(axis, index, maximum_radius)
+        return None
+
     display_intensity = np.ma.masked_invalid(
         np.clip(pupil["intensity_db"], floor, 0.0)
     )
@@ -198,10 +278,36 @@ def _plot_channel_pupil(axis, result, pupil, index, radius, floor):
         vmax=0.0,
         shading="gouraud",
     )
-    _draw_pupil_outline(axis, radius)
-    _add_objective_pupil_polarization(axis, pupil, radius)
-    _format_channel_axis(axis, result, pupil, index, radius)
+    _draw_pupil_outline(axis, pupil_radius)
+    _add_objective_pupil_polarization(axis, pupil, pupil_radius)
+    _format_channel_axis(axis, result, pupil, index, maximum_radius)
     return image
+
+
+def _format_disabled_channel_axis(axis, index, maximum_radius):
+    axis.set(
+        xlim=(-1.05 * maximum_radius, 1.05 * maximum_radius),
+        ylim=(-1.05 * maximum_radius, 1.05 * maximum_radius),
+        aspect="equal",
+        xlabel="Exit pupil x (mm)",
+    )
+    if index == 1:
+        axis.set_ylabel("Exit pupil y (mm)")
+    axis.set_title(
+        "CH{}  NA=0\nDisabled\nVolume 0.00% | Energy 0.00%".format(index),
+        fontsize=8.5,
+    )
+    axis.text(
+        0.0,
+        0.0,
+        "Disabled",
+        color="#dddddd",
+        fontsize=11,
+        ha="center",
+        va="center",
+    )
+    axis.tick_params(labelsize=7, pad=1)
+    axis.set_facecolor("#111111")
 
 
 def _draw_pupil_outline(axis, radius):
@@ -214,25 +320,29 @@ def _draw_pupil_outline(axis, radius):
     )
 
 
-def _format_channel_axis(axis, result, pupil, index, radius):
-    channel_fraction = result["channel_fractions"][index - 1]
+def _format_channel_axis(axis, result, pupil, index, maximum_radius):
+    energy_fraction = result["energy_channel_fractions"][index - 1]
+    geometric_fraction = result["geometric_channel_fractions"][index - 1]
     mean_dolp = 100.0 * np.nanmean(pupil["dolp"])
     axis.set(
-        xlim=(-1.05 * radius, 1.05 * radius),
-        ylim=(-1.05 * radius, 1.05 * radius),
+        xlim=(-1.05 * maximum_radius, 1.05 * maximum_radius),
+        ylim=(-1.05 * maximum_radius, 1.05 * maximum_radius),
         aspect="equal",
         xlabel="Exit pupil x (mm)",
     )
     if index == 1:
         axis.set_ylabel("Exit pupil y (mm)")
     axis.set_title(
-        "CH{} tilt={:.3g} deg\nenergy={:.2f}%, DoLP={:.1f}%".format(
+        "CH{}  NA={:.3g}  tilt={:+.3g} deg\n"
+        "Volume {:.2f}%\nEnergy {:.2f}% | DoLP {:.1f}%".format(
             index,
+            pupil["numerical_aperture"],
             pupil["tilt_deg"],
-            100.0 * channel_fraction,
+            100.0 * geometric_fraction,
+            100.0 * energy_fraction,
             mean_dolp,
         ),
-        fontsize=10,
+        fontsize=8.5,
         pad=4,
     )
     axis.tick_params(labelsize=7, pad=1)

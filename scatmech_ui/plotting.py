@@ -9,6 +9,7 @@ from .objective_plotting import (
     plot_objective_collection_2d,
     plot_objective_collection_3d,
 )
+from .size_sweep_plotting import plot_particle_size_sweep
 
 
 PARTICLE_INTENSITY_CMAP = LinearSegmentedColormap.from_list(
@@ -31,6 +32,9 @@ class PlotCanvas(FigureCanvasQTAgg):
 
 
 def render_results(canvases, result):
+    if result.get("plot_kind") == "particle_size_sweep":
+        plot_particle_size_sweep(canvases["size_sweep"], result)
+        return
     plot_3d_intensity(canvases["3d_intensity"], result)
     plot_2d_intensity(canvases["2d_intensity"], result)
 

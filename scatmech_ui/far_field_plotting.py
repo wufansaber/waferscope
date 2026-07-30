@@ -25,7 +25,11 @@ def plot_3d_far_field(canvas, result):
     )
     _add_3d_polarization_axes(axis, result)
     _draw_3d_incidence_geometry(axis, result)
-    _format_3d_axis(axis, "Far-field intensity with polarization directions")
+    _format_3d_axis(
+        axis,
+        result,
+        "Far-field intensity with polarization directions",
+    )
     colorbar = canvas.figure.colorbar(
         cm.ScalarMappable(norm=norm, cmap=cm.turbo),
         ax=axis,
@@ -50,7 +54,11 @@ def plot_2d_far_field(canvas, result, intensity_cmap):
         shading="gouraud",
     )
     _add_2d_polarization_axes(axis, result)
-    _format_2d_axis(axis, "Particle Scattering\nIntensity with Polarization Directions")
+    _format_2d_axis(
+        axis,
+        result,
+        "Particle Scattering\nIntensity with Polarization Directions",
+    )
     colorbar = canvas.figure.colorbar(image, ax=axis)
     colorbar.set_label("Normalized particle scattering intensity")
     canvas.draw_idle()
@@ -150,14 +158,21 @@ def _draw_3d_incidence_geometry(axis, result):
     axis.text(0.03, diagram_y, 0.76, "surface normal", color="#4f5559")
 
     source_distance = 1.40
-    source_x = -source_distance * np.sin(incidence)
-    source_z = source_distance * np.cos(incidence)
+    source_direction = result["incident_source_direction"]
+    source_x, source_y, source_z = source_distance * source_direction
+    projection = result["incident_projection_direction"]
+    projection_norm = np.hypot(projection[0], projection[1])
+    source_label = (
+        "incident laser\nsource (-KX side)"
+        if projection_norm > 1e-12
+        else "incident laser\nnormal incidence"
+    )
     axis.quiver(
         source_x,
-        diagram_y,
+        source_y,
         source_z,
         -source_x,
-        0.0,
+        -source_y,
         -source_z,
         color="#133e9a",
         linewidth=3.2,
@@ -165,9 +180,9 @@ def _draw_3d_incidence_geometry(axis, result):
     )
     axis.text(
         source_x - 0.02,
-        diagram_y,
+        source_y - 0.24,
         source_z + 0.07,
-        "incident laser",
+        source_label,
         color="#133e9a",
         weight="bold",
         ha="center",
@@ -191,9 +206,9 @@ def _draw_3d_incidence_geometry(axis, result):
     )
 
 
-def _format_3d_axis(axis, title):
+def _format_3d_axis(axis, result, title):
     axis.set(
-        xlim=(-1.50, 1.10),
+        xlim=(-1.55, 1.10),
         ylim=(-1.25, 1.10),
         zlim=(0.0, 1.12),
         xlabel=r"$k_x/k$",
@@ -201,12 +216,40 @@ def _format_3d_axis(axis, title):
         zlabel=r"$k_z/k$",
     )
     axis.set_title(title, fontsize=11, pad=4)
+    projection = result["incident_projection_direction"]
+    if np.hypot(projection[0], projection[1]) > 1e-12:
+        axis.annotate(
+            "",
+            xy=(0.34, 0.065),
+            xytext=(0.05, 0.065),
+            xycoords="axes fraction",
+            arrowprops=dict(arrowstyle="->", color="#a84e0d", lw=2.5),
+        )
+        axis.text2D(
+            0.05,
+            0.015,
+            "-KX source  |  propagation projection +KX  |  plane KX-KZ",
+            transform=axis.transAxes,
+            color="#a84e0d",
+            fontsize=8.5,
+            weight="bold",
+        )
+    else:
+        axis.text2D(
+            0.05,
+            0.02,
+            "Normal incidence: no in-plane projection",
+            transform=axis.transAxes,
+            color="#a84e0d",
+            fontsize=8.5,
+            weight="bold",
+        )
     axis.tick_params(labelsize=8, pad=1)
     axis.set_box_aspect((1, 1, 0.7))
     axis.view_init(elev=28, azim=-55)
 
 
-def _format_2d_axis(axis, title):
+def _format_2d_axis(axis, result, title):
     horizon = np.linspace(0.0, 2.0 * np.pi, 361)
     axis.plot(np.cos(horizon), np.sin(horizon), color="white", linewidth=1.0)
     axis.text(
@@ -220,28 +263,50 @@ def _format_2d_axis(axis, title):
         va="top",
         zorder=20,
     )
-    axis.annotate(
-        "",
-        xy=(0.90, -1.20),
-        xytext=(-0.90, -1.20),
-        arrowprops=dict(arrowstyle="->", color="#123b91", lw=2.8),
-        annotation_clip=False,
-    )
-    axis.text(
-        0.0,
-        -1.13,
-        "Laser Incidence Direction",
-        color="#123b91",
-        fontsize=10,
-        weight="bold",
-        ha="center",
-        va="bottom",
-    )
+    projection = result["incident_projection_direction"]
+    if np.hypot(projection[0], projection[1]) > 1e-12:
+        axis.annotate(
+            "",
+            xy=(0.90, -1.20),
+            xytext=(-0.90, -1.20),
+            arrowprops=dict(arrowstyle="->", color="#123b91", lw=2.8),
+            annotation_clip=False,
+        )
+        axis.text(
+            0.0,
+            -1.13,
+            "Incident propagation projection: +KX",
+            color="#123b91",
+            fontsize=10,
+            weight="bold",
+            ha="center",
+            va="bottom",
+        )
+        axis.text(
+            -1.02,
+            -1.25,
+            "source: -KX side",
+            color="#123b91",
+            fontsize=8.5,
+            ha="left",
+            va="center",
+        )
+    else:
+        axis.text(
+            0.0,
+            -1.18,
+            "Normal incidence: no in-plane projection",
+            color="#123b91",
+            fontsize=9.5,
+            weight="bold",
+            ha="center",
+            va="center",
+        )
     axis.set(
         xlim=(-1.05, 1.05),
         ylim=(-1.30, 1.05),
         aspect="equal",
-        xlabel="",
+        xlabel=r"$k_x/k$",
         ylabel=r"$k_y/k$",
     )
     axis.set_title(title, fontsize=11, pad=4)

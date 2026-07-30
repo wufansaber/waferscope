@@ -26,10 +26,19 @@ from PyQt5.QtWidgets import (
 )
 
 from .backend import SCATMECH_IMPORT_ERROR, calculate_objective_collection_example
+from .coordinate_geometry import (
+    incidence_metadata_from_result,
+    incidence_projection_text,
+)
 from .materials import PARTICLE_MATERIALS, WAFER_MATERIALS
-from .parameters import ObjectiveCollectionParameters, SimulationParameters
+from .parameters import (
+    ObjectiveCollectionParameters,
+    ParticleSizeSweepParameters,
+    SimulationParameters,
+)
 from .plotting import PlotCanvas, render_results
-from .worker import SimulationWorker
+from .size_sweep import export_particle_size_sweep
+from .worker import ParticleSizeSweepWorker, SimulationWorker
 
 
 class MaterialGroup(QGroupBox):
@@ -122,12 +131,22 @@ class ScatmechSimulationWidget(QWidget):
         self.incidence.setDecimals(3)
         self.incidence.setValue(75.0)
         self.incidence.setSuffix(" deg")
+        self.incidence_projection = QLabel(
+            incidence_projection_text(self.incidence.value())
+        )
+        self.incidence_projection.setWordWrap(True)
+        self.incidence_projection.setToolTip(
+            "Confirmed A convention: the incident propagation vector lies in "
+            "the KX-KZ plane and its wafer-plane projection points toward +KX."
+        )
+        self.incidence.valueChanged.connect(self._update_incidence_projection_label)
         self.polarization = QComboBox()
         self.polarization.addItem("P polarized", "p")
         self.polarization.addItem("S polarized", "s")
         self.polarization.addItem("Unpolarized", "unpolarized")
         laser_layout.addRow("Wavelength", self.wavelength)
         laser_layout.addRow("Incidence angle", self.incidence)
+        laser_layout.addRow("In-plane projection", self.incidence_projection)
         laser_layout.addRow("Polarization", self.polarization)
         controls_layout.addWidget(laser_group)
 
@@ -155,11 +174,6 @@ class ScatmechSimulationWidget(QWidget):
         objective_layout.setContentsMargins(8, 10, 8, 6)
         objective_layout.setHorizontalSpacing(6)
         objective_layout.setVerticalSpacing(5)
-        self.objective_na = QDoubleSpinBox()
-        self.objective_na.setRange(0.01, 0.99)
-        self.objective_na.setDecimals(3)
-        self.objective_na.setSingleStep(0.05)
-        self.objective_na.setValue(0.5)
         self.objective_focal_length = QDoubleSpinBox()
         self.objective_focal_length.setRange(0.1, 1000.0)
         self.objective_focal_length.setDecimals(3)
@@ -171,24 +185,46 @@ class ScatmechSimulationWidget(QWidget):
         self.objective_tilt_ch1.setSingleStep(5.0)
         self.objective_tilt_ch1.setValue(45.0)
         self.objective_tilt_ch1.setSuffix(" deg")
+        self.objective_na_ch1 = self._create_objective_na_spinbox()
         self.objective_tilt_ch2 = QDoubleSpinBox()
         self.objective_tilt_ch2.setRange(-89.9, 89.9)
         self.objective_tilt_ch2.setDecimals(3)
         self.objective_tilt_ch2.setSingleStep(5.0)
         self.objective_tilt_ch2.setValue(-45.0)
         self.objective_tilt_ch2.setSuffix(" deg")
+        self.objective_na_ch2 = self._create_objective_na_spinbox()
         self.objective_tilt_ch3 = QDoubleSpinBox()
         self.objective_tilt_ch3.setRange(-89.9, 89.9)
         self.objective_tilt_ch3.setDecimals(3)
         self.objective_tilt_ch3.setSingleStep(5.0)
         self.objective_tilt_ch3.setValue(0.0)
         self.objective_tilt_ch3.setSuffix(" deg")
-        objective_layout.addRow("Objective NA", self.objective_na)
+        self.objective_na_ch3 = self._create_objective_na_spinbox()
         objective_layout.addRow("Focal length", self.objective_focal_length)
+        objective_layout.addRow("Channel 1 NA", self.objective_na_ch1)
         objective_layout.addRow("Channel 1 tilt", self.objective_tilt_ch1)
+        objective_layout.addRow("Channel 2 NA", self.objective_na_ch2)
         objective_layout.addRow("Channel 2 tilt", self.objective_tilt_ch2)
+        objective_layout.addRow("Channel 3 NA", self.objective_na_ch3)
         objective_layout.addRow("Channel 3 tilt", self.objective_tilt_ch3)
         controls_layout.addWidget(objective_group)
+
+        sweep_group = QGroupBox("Particle-size sweep")
+        sweep_layout = QFormLayout(sweep_group)
+        sweep_layout.setContentsMargins(8, 10, 8, 6)
+        sweep_layout.setHorizontalSpacing(6)
+        sweep_layout.setVerticalSpacing(5)
+        self.sweep_start_diameter = self._create_sweep_spinbox(30.0)
+        self.sweep_end_diameter = self._create_sweep_spinbox(200.0)
+        self.sweep_step_diameter = self._create_sweep_spinbox(10.0)
+        sweep_layout.addRow("Start diameter", self.sweep_start_diameter)
+        sweep_layout.addRow("End diameter", self.sweep_end_diameter)
+        sweep_layout.addRow("Diameter step", self.sweep_step_diameter)
+        self.sweep_button = QPushButton("Run particle-size sweep")
+        self.sweep_button.setMinimumHeight(30)
+        self.sweep_button.clicked.connect(self.start_particle_size_sweep)
+        sweep_layout.addRow(self.sweep_button)
+        controls_layout.addWidget(sweep_group)
 
         self.run_button = QPushButton("Run far-field simulation")
         self.run_button.setMinimumHeight(32)
@@ -219,6 +255,7 @@ class ScatmechSimulationWidget(QWidget):
         for key, title in (
             ("3d_intensity", "3-D far-field / pupil"),
             ("2d_intensity", "2-D far-field / pupil"),
+            ("size_sweep", "Particle-size sweep"),
         ):
             canvas = PlotCanvas()
             self.canvases[key] = canvas
@@ -233,11 +270,33 @@ class ScatmechSimulationWidget(QWidget):
         )
         if SCATMECH_IMPORT_ERROR is not None:
             self.run_button.setEnabled(False)
+            self.sweep_button.setEnabled(False)
             self.status.setText(
                 "pySCATMECH is not installed in the active interpreter. "
                 "The native particle simulation is disabled, but the ideal "
                 "objective example is available."
             )
+
+    def _create_objective_na_spinbox(self):
+        spinbox = QDoubleSpinBox()
+        spinbox.setRange(0.0, 0.99)
+        spinbox.setDecimals(3)
+        spinbox.setSingleStep(0.05)
+        spinbox.setValue(0.5)
+        spinbox.setToolTip("Set NA to 0 to disable this collection channel.")
+        return spinbox
+
+    def _update_incidence_projection_label(self, incidence_deg):
+        self.incidence_projection.setText(incidence_projection_text(incidence_deg))
+
+    def _create_sweep_spinbox(self, value):
+        spinbox = QDoubleSpinBox()
+        spinbox.setRange(0.1, 10000.0)
+        spinbox.setDecimals(3)
+        spinbox.setSingleStep(10.0)
+        spinbox.setValue(value)
+        spinbox.setSuffix(" nm")
+        return spinbox
 
     def parameters(self):
         return SimulationParameters(
@@ -258,7 +317,11 @@ class ScatmechSimulationWidget(QWidget):
 
     def objective_collection_parameters(self):
         return ObjectiveCollectionParameters(
-            numerical_aperture=self.objective_na.value(),
+            channel_numerical_apertures=(
+                self.objective_na_ch1.value(),
+                self.objective_na_ch2.value(),
+                self.objective_na_ch3.value(),
+            ),
             focal_length_mm=self.objective_focal_length.value(),
             tilt_degrees=(
                 self.objective_tilt_ch1.value(),
@@ -266,6 +329,13 @@ class ScatmechSimulationWidget(QWidget):
                 self.objective_tilt_ch3.value(),
             ),
             display_floor_db=-self.dynamic_range.value(),
+        )
+
+    def particle_size_sweep_parameters(self):
+        return ParticleSizeSweepParameters(
+            start_diameter_nm=self.sweep_start_diameter.value(),
+            end_diameter_nm=self.sweep_end_diameter.value(),
+            step_diameter_nm=self.sweep_step_diameter.value(),
         )
 
     @pyqtSlot()
@@ -277,17 +347,46 @@ class ScatmechSimulationWidget(QWidget):
             QMessageBox.warning(self, "Invalid parameters", str(error))
             return
 
-        self.run_button.setEnabled(False)
-        self.objective_example_button.setEnabled(False)
+        self._start_worker(
+            SimulationWorker(parameters),
+            self._simulation_completed,
+            "Building SCATMECH model...",
+        )
+
+    @pyqtSlot()
+    def start_particle_size_sweep(self):
+        try:
+            simulation_parameters = self.parameters()
+            objective_parameters = self.objective_collection_parameters()
+            sweep_parameters = self.particle_size_sweep_parameters()
+            simulation_parameters.validate()
+            objective_parameters.validate()
+            sweep_parameters.validate()
+        except Exception as error:
+            QMessageBox.warning(self, "Invalid sweep parameters", str(error))
+            return
+
+        self._start_worker(
+            ParticleSizeSweepWorker(
+                simulation_parameters,
+                objective_parameters,
+                sweep_parameters,
+            ),
+            self._sweep_completed,
+            "Running particle-size sweep...",
+        )
+
+    def _start_worker(self, worker, completed_slot, status_text):
+        self._set_calculation_controls_enabled(False)
         self.export_button.setEnabled(False)
         self.progress.setValue(0)
-        self.status.setText("Building SCATMECH model...")
+        self.status.setText(status_text)
         self.thread = QThread(self)
-        self.worker = SimulationWorker(parameters)
+        self.worker = worker
         self.worker.moveToThread(self.thread)
         self.thread.started.connect(self.worker.run)
         self.worker.progress.connect(self.progress.setValue)
-        self.worker.completed.connect(self._simulation_completed)
+        self.worker.completed.connect(completed_slot)
         self.worker.failed.connect(self._simulation_failed)
         self.worker.completed.connect(self.thread.quit)
         self.worker.failed.connect(self.thread.quit)
@@ -296,18 +395,23 @@ class ScatmechSimulationWidget(QWidget):
         self.thread.finished.connect(self._thread_finished)
         self.thread.start()
 
+    def _set_calculation_controls_enabled(self, enabled):
+        native_enabled = enabled and SCATMECH_IMPORT_ERROR is None
+        self.run_button.setEnabled(native_enabled)
+        self.sweep_button.setEnabled(native_enabled)
+        self.objective_example_button.setEnabled(enabled)
+
     @pyqtSlot()
     def _thread_finished(self):
         self.worker = None
         self.thread = None
-        self.objective_example_button.setEnabled(True)
+        self._set_calculation_controls_enabled(True)
 
     @pyqtSlot(object)
     def _simulation_completed(self, result):
         self.result = result
         self.far_field_result = result
         self.render_results(result)
-        self.run_button.setEnabled(True)
         self.export_button.setEnabled(True)
         self.progress.setValue(100)
         self.status.setText(
@@ -320,10 +424,27 @@ class ScatmechSimulationWidget(QWidget):
 
     @pyqtSlot(str)
     def _simulation_failed(self, details):
-        self.run_button.setEnabled(True)
         self.progress.setValue(0)
         self.status.setText("Simulation failed.")
         QMessageBox.critical(self, "Simulation failed", details)
+
+    @pyqtSlot(object)
+    def _sweep_completed(self, result):
+        self.result = result
+        self.render_results(result)
+        self.export_button.setEnabled(True)
+        self.progress.setValue(100)
+        values = result["channel_collected_dsc_um2"]
+        self.status.setText(
+            "Particle-size sweep completed: {} points, {:.3g} to {:.3g} nm. "
+            "Collected DSC range: {:.3e} to {:.3e} um^2.".format(
+                len(result["diameters_nm"]),
+                result["diameters_nm"][0],
+                result["diameters_nm"][-1],
+                np.min(values),
+                np.max(values),
+            )
+        )
 
     def run_objective_collection_example(self):
         if self.thread is not None and self.thread.isRunning():
@@ -361,6 +482,10 @@ class ScatmechSimulationWidget(QWidget):
 
     def render_results(self, result):
         render_results(self.canvases, result)
+        if result.get("plot_kind") == "particle_size_sweep":
+            self.tabs.setCurrentWidget(self.canvases["size_sweep"])
+        else:
+            self.tabs.setCurrentWidget(self.canvases["3d_intensity"])
 
     def export_results(self):
         if self.result is None:
@@ -369,6 +494,14 @@ class ScatmechSimulationWidget(QWidget):
         if not directory:
             return
         directory = Path(directory)
+        if self.result.get("plot_kind") == "particle_size_sweep":
+            export_particle_size_sweep(
+                self.result,
+                directory,
+                self.canvases["size_sweep"].figure,
+            )
+            QMessageBox.information(self, "Export complete", str(directory))
+            return
         names = {
             "3d_intensity": "far_field_3d_intensity_with_polarization.png",
             "2d_intensity": "far_field_2d_intensity_with_polarization.png",
@@ -386,7 +519,11 @@ class ScatmechSimulationWidget(QWidget):
         with (directory / "simulation_parameters.json").open(
             "w", encoding="utf-8"
         ) as stream:
-            json.dump(asdict(self.result["parameters"]), stream, indent=2)
+            payload = asdict(self.result["parameters"])
+            coordinate_convention = incidence_metadata_from_result(self.result)
+            if coordinate_convention:
+                payload["coordinate_convention"] = coordinate_convention
+            json.dump(payload, stream, indent=2)
         QMessageBox.information(self, "Export complete", str(directory))
 
     def wait_for_shutdown(self):

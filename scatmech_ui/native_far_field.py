@@ -2,6 +2,14 @@
 
 import numpy as np
 
+from .coordinate_geometry import (
+    INCIDENCE_PLANE,
+    ILLUMINATION_ROTATION_DEG,
+    incident_projection_direction,
+    incident_propagation_direction,
+    incident_source_direction,
+)
+
 try:
     from pySCATMECH.fresnel import Film, FilmStack, OpticalFunction
     from pySCATMECH.local import Local_BRDF_Model
@@ -171,6 +179,7 @@ def _format_far_field_result(
     e_x = np.cos(alpha) * s_x + np.sin(alpha) * p_x
     e_y = np.cos(alpha) * s_y + np.sin(alpha) * p_y
     e_z = np.cos(alpha) * s_z + np.sin(alpha) * p_z
+    incident_direction = incident_propagation_direction(parameters.incidence_deg)
 
     return {
         "parameters": parameters,
@@ -190,4 +199,15 @@ def _format_far_field_result(
         "e_x": e_x,
         "e_y": e_y,
         "e_z": e_z,
+        "incidence_plane": INCIDENCE_PLANE,
+        "illumination_rotation_deg": ILLUMINATION_ROTATION_DEG,
+        "incident_direction": np.asarray(incident_direction, dtype=float),
+        "incident_source_direction": np.asarray(
+            incident_source_direction(parameters.incidence_deg),
+            dtype=float,
+        ),
+        "incident_projection_direction": np.asarray(
+            incident_projection_direction(parameters.incidence_deg),
+            dtype=float,
+        ),
     }
