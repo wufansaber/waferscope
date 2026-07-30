@@ -84,6 +84,8 @@ def _objective_channel_pupil(
             phi,
             kx,
             ky,
+            kz,
+            tilt_deg,
             aperture,
             q,
             u,
@@ -173,6 +175,7 @@ def _far_field_aliases(far_field):
     for key in (
         "incidence_plane",
         "illumination_rotation_deg",
+        "scatmech_azimuth_offset_deg",
         "incident_direction",
         "incident_source_direction",
         "incident_projection_direction",

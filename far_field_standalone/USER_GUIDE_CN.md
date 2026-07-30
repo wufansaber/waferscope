@@ -97,16 +97,17 @@ Custom 等预设值。
 
 ### In-plane projection
 
-软件采用已确认的 A 坐标约定：晶圆表面为 `KX-KY` 平面，表面法线为 `+KZ`，
-入射面为 `KX-KZ` 平面。绕法线的照明旋转角为 90 度时对应 `KX` 轴：
+软件采用以下坐标约定：晶圆表面为 `KX-KY` 平面，表面法线为 `+KZ`，
+入射面为 `KY-KZ` 平面，光源位于负 `KY` 方向：
 
-- 光源位于 `-KX` 一侧。
-- 斜入射传播矢量为 `(+sin(theta_i), 0, -cos(theta_i))`。
-- 入射光在晶圆平面上的传播投影指向 `+KX`。
+- 光源位于 `-KY` 一侧。
+- 斜入射传播矢量为 `(0, +sin(theta_i), -cos(theta_i))`。
+- 入射光在晶圆平面上的传播投影指向 `+KY`。
 - 法向入射时面内投影为零，但仍沿用同一坐标基准。
 
 pySCATMECH 使用相对于入射面的散射方位角，程序把其中的 `phi=0` 映射到
-全局 `+KX`。因此镜面方向位于 `+KX` 一侧，不需要再对计算后的远场图旋转。
+全局 `+KY`。计算结果的位置坐标和偏振基矢均绕 `+KZ` 旋转 90 度，物镜采样时
+执行对应的逆变换，因此远场图、偏振方向和收集能量使用同一全局坐标。
 
 ### Polarization
 
@@ -149,7 +150,7 @@ pySCATMECH 使用相对于入射面的散射方位角，程序把其中的 `phi=
 - 表面颜色表示相对 DSC，单位为 dB。
 - 短线表示局部线偏振方向，长度与线偏振度相关。
 - 图中同时显示晶圆平面、表面法线和激光入射方向。
-- 光源标在 `-KX` 一侧，橙色面内箭头指向 `+KX`。
+- 光源标在 `-KY` 一侧，橙色面内箭头指向 `+KY`。
 
 ### 二维远场图
 
@@ -159,7 +160,7 @@ pySCATMECH 使用相对于入射面的散射方位角，程序把其中的 `phi=
 - 中心对应晶圆表面法线方向。
 - 颜色表示用于观察分布形状的归一化散射强度。
 - 短线表示投影后的偏振方向。
-- 图下方箭头表示入射传播方向的面内投影 `+KX`。
+- 图左侧箭头表示入射传播方向的面内投影 `+KY`。
 
 二维远场颜色用于显示分布，不应直接当作绝对功率读数。物镜能量占比使用未被
 二维显示归一化修改的原始远场强度计算。
@@ -308,7 +309,7 @@ Collected DSC = 光锥内积分(DSC(theta, phi) sin(theta))
 | `far_field_3d_intensity_with_polarization.png` | 当前三维结果图 |
 | `far_field_2d_intensity_with_polarization.png` | 当前二维结果图 |
 | `far_field_data.npz` | NumPy 压缩数组数据 |
-| `simulation_parameters.json` | 本次仿真参数和 A 坐标方向约定 |
+| `simulation_parameters.json` | 本次仿真参数和入射坐标方向约定 |
 
 `NPZ` 文件可使用 NumPy 读取：
 
@@ -329,7 +330,7 @@ intensity = data["intensity"]
 | `particle_size_sweep.png` | 三路扫描曲线图 |
 | `particle_size_sweep.csv` | 每个粒径点的三路积分 DSC 和能量占比 |
 | `particle_size_sweep_data.npz` | NumPy 数组数据 |
-| `particle_size_sweep_parameters.json` | 仿真、物镜、扫描参数和 A 坐标方向约定 |
+| `particle_size_sweep_parameters.json` | 仿真、物镜、扫描参数和入射坐标方向约定 |
 
 ## 14. 常见问题
 

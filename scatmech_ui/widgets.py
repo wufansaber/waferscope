@@ -136,8 +136,8 @@ class ScatmechSimulationWidget(QWidget):
         )
         self.incidence_projection.setWordWrap(True)
         self.incidence_projection.setToolTip(
-            "Confirmed A convention: the incident propagation vector lies in "
-            "the KX-KZ plane and its wafer-plane projection points toward +KX."
+            "The laser source is on the -KY side. The incident propagation "
+            "vector lies in the KY-KZ plane and projects toward +KY."
         )
         self.incidence.valueChanged.connect(self._update_incidence_projection_label)
         self.polarization = QComboBox()

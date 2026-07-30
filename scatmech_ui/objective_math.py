@@ -2,6 +2,8 @@
 
 import numpy as np
 
+from .coordinate_geometry import global_to_scatmech_xy
+
 
 def reference_energy(parameters, source_far_field):
     if source_far_field is not None:
@@ -40,24 +42,54 @@ def relative_collected_power(pupil_energy_density, reference_value, aperture):
     return collected_power / max(reference_power, 1e-12)
 
 
-def pupil_polarization(intensity, far_field_per_sr, phi, kx, ky, aperture, q, u):
+def pupil_polarization(
+    intensity,
+    far_field_per_sr,
+    phi,
+    kx,
+    ky,
+    kz,
+    tilt_deg,
+    aperture,
+    q,
+    u,
+):
     if q is None or u is None:
         high_angle = np.clip(np.hypot(kx, ky), 0.0, 1.0)
         dolp = np.clip(0.20 + 0.70 * high_angle**2, 0.0, 0.95)
         aolp = phi + 0.5 * np.pi + 0.18 * np.sin(2.0 * phi)
+        pol_x = np.cos(aolp)
+        pol_y = np.sin(aolp)
         q = np.nan_to_num(intensity, nan=0.0) * dolp * np.cos(2.0 * aolp)
         u = np.nan_to_num(intensity, nan=0.0) * dolp * np.sin(2.0 * aolp)
     else:
         safe_far_field = np.maximum(far_field_per_sr, 1e-15)
         dolp = np.clip(np.sqrt(q**2 + u**2) / safe_far_field, 0.0, 1.0)
-        aolp = 0.5 * np.arctan2(u, q)
+        alpha = 0.5 * np.arctan2(u, q)
+        sin_theta = np.clip(np.hypot(kx, ky), 0.0, 1.0)
+        s_x = -np.sin(phi)
+        s_y = np.cos(phi)
+        p_x = kz * np.cos(phi)
+        p_y = kz * np.sin(phi)
+        p_z = -sin_theta
+        e_x = np.cos(alpha) * s_x + np.sin(alpha) * p_x
+        e_y = np.cos(alpha) * s_y + np.sin(alpha) * p_y
+        e_z = np.sin(alpha) * p_z
+
+        tilt = np.deg2rad(tilt_deg)
+        pol_x = np.cos(tilt) * e_x - np.sin(tilt) * e_z
+        pol_y = e_y
+        projected_norm = np.maximum(np.hypot(pol_x, pol_y), 1e-15)
+        pol_x = pol_x / projected_norm
+        pol_y = pol_y / projected_norm
+        aolp = np.arctan2(pol_y, pol_x)
 
     dolp[~aperture] = np.nan
     return {
         "dolp": dolp,
         "aolp": aolp,
-        "pol_x": np.cos(aolp),
-        "pol_y": np.sin(aolp),
+        "pol_x": pol_x,
+        "pol_y": pol_y,
         "q": q,
         "u": u,
     }
@@ -106,6 +138,7 @@ def scatmech_far_field(source_far_field):
     for key in (
         "incidence_plane",
         "illumination_rotation_deg",
+        "scatmech_azimuth_offset_deg",
         "incident_direction",
         "incident_source_direction",
         "incident_projection_direction",
@@ -280,9 +313,10 @@ def objective_axis_and_boundary(tilt_deg, numerical_aperture):
 
 def sample_far_field(source_far_field, kx, ky, kz):
     theta = np.arccos(np.clip(kz, -1.0, 1.0))
-    phi = np.mod(np.arctan2(ky, kx), 2.0 * np.pi)
+    local_kx, local_ky = global_to_scatmech_xy(kx, ky)
+    phi = np.mod(np.arctan2(local_ky, local_kx), 2.0 * np.pi)
     theta_axis = source_far_field["theta"][:, 0]
-    phi_axis = source_far_field["phi"][0, :]
+    phi_axis = source_far_field.get("scatmech_phi", source_far_field["phi"])[0, :]
     theta_flat = theta.ravel()
     phi_flat = phi.ravel()
 

@@ -181,7 +181,7 @@ def _draw_incident_ray(axis, result):
         source[0],
         source[1],
         source[2] + 0.06,
-        "incident laser\nsource (-KX)"
+        "incident laser\nsource (-KY)"
         if has_projection
         else "incident laser\nnormal incidence",
         color="#8f2d56",
@@ -193,8 +193,8 @@ def _draw_incident_ray(axis, result):
 
 def _format_collection_3d_axis(axis, result):
     axis.set(
-        xlim=(-1.42, 1.08),
-        ylim=(-1.05, 1.05),
+        xlim=(-1.05, 1.05),
+        ylim=(-1.42, 1.08),
         zlim=(0.0, 1.08),
         xlabel=r"$k_x/k$",
         ylabel=r"$k_y/k$",
@@ -244,9 +244,9 @@ def _format_collection_3d_axis(axis, result):
         axis.text2D(
             0.98,
             0.92,
-            "Illumination A convention\n"
-            "source -KX -> projection +KX\n"
-            "incidence plane KX-KZ"
+            "Illumination convention\n"
+            "source -KY -> projection +KY\n"
+            "incidence plane KY-KZ"
             if has_projection
             else "Illumination: normal incidence\nNo in-plane projection",
             transform=axis.transAxes,

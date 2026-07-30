@@ -5,9 +5,11 @@ import numpy as np
 from .coordinate_geometry import (
     INCIDENCE_PLANE,
     ILLUMINATION_ROTATION_DEG,
+    SCATMECH_AZIMUTH_OFFSET_DEG,
     incident_projection_direction,
     incident_propagation_direction,
     incident_source_direction,
+    scatmech_to_global_xy,
 )
 
 try:
@@ -159,8 +161,9 @@ def _format_far_field_result(
     cos_theta = np.cos(theta_grid)
     cos_phi = np.cos(phi_grid)
     sin_phi = np.sin(phi_grid)
-    x = sin_theta * cos_phi
-    y = sin_theta * sin_phi
+    local_x = sin_theta * cos_phi
+    local_y = sin_theta * sin_phi
+    x, y = scatmech_to_global_xy(local_x, local_y)
     z = cos_theta
 
     safe_intensity = np.maximum(intensity, np.nanmax(intensity) * 1e-15)
@@ -170,11 +173,13 @@ def _format_far_field_result(
     docp = np.clip(v / safe_intensity, -1.0, 1.0)
 
     alpha = 0.5 * np.arctan2(u, q)
-    s_x = -sin_phi
-    s_y = cos_phi
+    local_s_x = -sin_phi
+    local_s_y = cos_phi
+    s_x, s_y = scatmech_to_global_xy(local_s_x, local_s_y)
     s_z = np.zeros_like(s_x)
-    p_x = cos_theta * cos_phi
-    p_y = cos_theta * sin_phi
+    local_p_x = cos_theta * cos_phi
+    local_p_y = cos_theta * sin_phi
+    p_x, p_y = scatmech_to_global_xy(local_p_x, local_p_y)
     p_z = -sin_theta
     e_x = np.cos(alpha) * s_x + np.sin(alpha) * p_x
     e_y = np.cos(alpha) * s_y + np.sin(alpha) * p_y
@@ -186,6 +191,11 @@ def _format_far_field_result(
         "thickness_note": thickness_note,
         "theta": theta_grid,
         "phi": phi_grid,
+        "scatmech_phi": phi_grid,
+        "global_phi": np.mod(
+            phi_grid + np.deg2rad(SCATMECH_AZIMUTH_OFFSET_DEG),
+            2.0 * np.pi,
+        ),
         "x": x,
         "y": y,
         "z": z,
@@ -201,6 +211,7 @@ def _format_far_field_result(
         "e_z": e_z,
         "incidence_plane": INCIDENCE_PLANE,
         "illumination_rotation_deg": ILLUMINATION_ROTATION_DEG,
+        "scatmech_azimuth_offset_deg": SCATMECH_AZIMUTH_OFFSET_DEG,
         "incident_direction": np.asarray(incident_direction, dtype=float),
         "incident_source_direction": np.asarray(
             incident_source_direction(parameters.incidence_deg),

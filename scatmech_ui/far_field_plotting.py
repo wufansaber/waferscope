@@ -137,7 +137,6 @@ def _add_2d_polarization_axes(axis, result):
 def _draw_3d_incidence_geometry(axis, result):
     incidence_deg = result["parameters"].incidence_deg
     incidence = np.deg2rad(incidence_deg)
-    diagram_y = 0.0
 
     plane_x, plane_y = np.meshgrid(
         np.linspace(-1.45, 1.10, 2),
@@ -154,8 +153,8 @@ def _draw_3d_incidence_geometry(axis, result):
     )
     axis.text(0.90, -0.95, 0.015, "wafer plane", color="#50565a")
 
-    axis.quiver(0.0, diagram_y, 0.0, 0.0, 0.0, 0.72, color="#666666", linewidth=2.0)
-    axis.text(0.03, diagram_y, 0.76, "surface normal", color="#4f5559")
+    axis.quiver(0.0, 0.0, 0.0, 0.0, 0.0, 0.72, color="#666666", linewidth=2.0)
+    axis.text(0.03, 0.0, 0.76, "surface normal", color="#4f5559")
 
     source_distance = 1.40
     source_direction = result["incident_source_direction"]
@@ -163,7 +162,7 @@ def _draw_3d_incidence_geometry(axis, result):
     projection = result["incident_projection_direction"]
     projection_norm = np.hypot(projection[0], projection[1])
     source_label = (
-        "incident laser\nsource (-KX side)"
+        "incident laser\nsource (-KY side)"
         if projection_norm > 1e-12
         else "incident laser\nnormal incidence"
     )
@@ -180,7 +179,7 @@ def _draw_3d_incidence_geometry(axis, result):
     )
     axis.text(
         source_x - 0.02,
-        source_y - 0.24,
+        source_y - 0.10,
         source_z + 0.07,
         source_label,
         color="#133e9a",
@@ -191,13 +190,18 @@ def _draw_3d_incidence_geometry(axis, result):
 
     arc_angle = np.linspace(0.0, incidence, 80)
     arc_radius = 0.30
-    arc_x = -arc_radius * np.sin(arc_angle)
+    if projection_norm > 1e-12:
+        projection_xy = projection[:2] / projection_norm
+    else:
+        projection_xy = np.array([0.0, 1.0])
+    arc_x = -arc_radius * projection_xy[0] * np.sin(arc_angle)
+    arc_y = -arc_radius * projection_xy[1] * np.sin(arc_angle)
     arc_z = arc_radius * np.cos(arc_angle)
-    axis.plot(arc_x, np.full_like(arc_x, diagram_y), arc_z, color="#133e9a")
+    axis.plot(arc_x, arc_y, arc_z, color="#133e9a")
     label_angle = incidence * 0.52
     axis.text(
-        -0.38 * np.sin(label_angle),
-        diagram_y,
+        -0.38 * projection_xy[0] * np.sin(label_angle),
+        -0.38 * projection_xy[1] * np.sin(label_angle),
         0.38 * np.cos(label_angle),
         "{:.1f} deg".format(incidence_deg),
         color="#133e9a",
@@ -208,8 +212,8 @@ def _draw_3d_incidence_geometry(axis, result):
 
 def _format_3d_axis(axis, result, title):
     axis.set(
-        xlim=(-1.55, 1.10),
-        ylim=(-1.25, 1.10),
+        xlim=(-1.10, 1.10),
+        ylim=(-1.55, 1.10),
         zlim=(0.0, 1.12),
         xlabel=r"$k_x/k$",
         ylabel=r"$k_y/k$",
@@ -218,17 +222,10 @@ def _format_3d_axis(axis, result, title):
     axis.set_title(title, fontsize=11, pad=4)
     projection = result["incident_projection_direction"]
     if np.hypot(projection[0], projection[1]) > 1e-12:
-        axis.annotate(
-            "",
-            xy=(0.34, 0.065),
-            xytext=(0.05, 0.065),
-            xycoords="axes fraction",
-            arrowprops=dict(arrowstyle="->", color="#a84e0d", lw=2.5),
-        )
         axis.text2D(
             0.05,
             0.015,
-            "-KX source  |  propagation projection +KX  |  plane KX-KZ",
+            "-KY source  |  propagation projection +KY  |  plane KY-KZ",
             transform=axis.transAxes,
             color="#a84e0d",
             fontsize=8.5,
@@ -267,25 +264,26 @@ def _format_2d_axis(axis, result, title):
     if np.hypot(projection[0], projection[1]) > 1e-12:
         axis.annotate(
             "",
-            xy=(0.90, -1.20),
-            xytext=(-0.90, -1.20),
+            xy=(-1.20, 0.90),
+            xytext=(-1.20, -0.90),
             arrowprops=dict(arrowstyle="->", color="#123b91", lw=2.8),
             annotation_clip=False,
         )
         axis.text(
+            -1.12,
             0.0,
-            -1.13,
-            "Incident propagation projection: +KX",
+            "Incident propagation projection: +KY",
             color="#123b91",
             fontsize=10,
             weight="bold",
-            ha="center",
-            va="bottom",
+            ha="left",
+            va="center",
+            rotation=90,
         )
         axis.text(
-            -1.02,
             -1.25,
-            "source: -KX side",
+            -0.99,
+            "source: -KY side",
             color="#123b91",
             fontsize=8.5,
             ha="left",
@@ -303,8 +301,8 @@ def _format_2d_axis(axis, result, title):
             va="center",
         )
     axis.set(
-        xlim=(-1.05, 1.05),
-        ylim=(-1.30, 1.05),
+        xlim=(-1.30, 1.05),
+        ylim=(-1.05, 1.05),
         aspect="equal",
         xlabel=r"$k_x/k$",
         ylabel=r"$k_y/k$",
