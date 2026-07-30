@@ -1,0 +1,27 @@
+# Python caches and tool output
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Packaging output
+build/
+dist/
+*.egg-info/
+
+# Generated test and smoke-test results
+ui_test_results/
+smoke_test/
+
+# Local environments
+.env
+.venv/
+venv/
+env/
+
+# Local editor and OS metadata
+.idea/
+.vscode/extensions.json
+.DS_Store
+Thumbs.db
