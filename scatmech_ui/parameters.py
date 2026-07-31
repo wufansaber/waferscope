@@ -4,6 +4,34 @@ from dataclasses import dataclass
 from math import floor
 
 
+ROUGHNESS_INTERFACE_MODES = (
+    "top_interface",
+    "correlated_interfaces",
+    "uncorrelated_interfaces",
+)
+
+
+@dataclass(frozen=True)
+class CoatingLayerParameters:
+    material: str = "Fused silica (SiO2)"
+    n: float = 1.476
+    k: float = 0.0
+    thickness_nm: float = 100.0
+
+    def validate(self, layer_number=None):
+        prefix = (
+            "Coating layer {}: ".format(layer_number)
+            if layer_number is not None
+            else "Coating layer: "
+        )
+        if self.n <= 0.0:
+            raise ValueError(prefix + "refractive-index real part must be positive.")
+        if self.k < 0.0:
+            raise ValueError(prefix + "extinction coefficient cannot be negative.")
+        if self.thickness_nm <= 0.0:
+            raise ValueError(prefix + "thickness must be positive.")
+
+
 @dataclass(frozen=True)
 class SimulationParameters:
     wafer_material: str = "Silicon (Si)"
@@ -19,6 +47,21 @@ class SimulationParameters:
     polarization: str = "p"
     angular_step_deg: float = 4.0
     display_floor_db: float = -35.0
+    coating_layers: tuple = ()
+    roughness_enabled: bool = False
+    roughness_interface_mode: str = "top_interface"
+    roughness_rms_nm: float = 0.2
+    roughness_correlation_length_um: float = 0.2
+    roughness_exponent: float = 3.0
+    illumination_length_um: float = 10.0
+    illumination_width_um: float = 10.0
+
+    def __post_init__(self):
+        object.__setattr__(self, "coating_layers", tuple(self.coating_layers))
+
+    @property
+    def illuminated_area_um2(self):
+        return self.illumination_length_um * self.illumination_width_um
 
     def validate(self):
         if self.wafer_n <= 0 or self.particle_n <= 0:
@@ -33,6 +76,27 @@ class SimulationParameters:
             raise ValueError("Incidence angle must be in [0, 90) degrees.")
         if not 2.0 <= self.angular_step_deg <= 15.0:
             raise ValueError("Angular step must be between 2 and 15 degrees.")
+        if len(self.coating_layers) > 32:
+            raise ValueError("At most 32 coating layers are supported.")
+        for index, layer in enumerate(self.coating_layers, start=1):
+            if not isinstance(layer, CoatingLayerParameters):
+                raise TypeError(
+                    "Coating layers must use CoatingLayerParameters instances."
+                )
+            layer.validate(index)
+        if self.roughness_interface_mode not in ROUGHNESS_INTERFACE_MODES:
+            raise ValueError("Unknown roughness interface mode.")
+        if self.roughness_enabled:
+            if self.roughness_rms_nm <= 0.0:
+                raise ValueError("Roughness RMS must be positive when enabled.")
+            if self.roughness_correlation_length_um <= 0.0:
+                raise ValueError("Roughness correlation length must be positive.")
+            if self.roughness_exponent <= 2.0:
+                raise ValueError("ABC PSD exponent C must be greater than 2.")
+            if self.illumination_length_um <= 0.0:
+                raise ValueError("Illumination footprint length must be positive.")
+            if self.illumination_width_um <= 0.0:
+                raise ValueError("Illumination footprint width must be positive.")
 
 
 @dataclass(frozen=True)

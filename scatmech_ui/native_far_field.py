@@ -11,18 +11,11 @@ from .coordinate_geometry import (
     incident_source_direction,
     scatmech_to_global_xy,
 )
-
-try:
-    from pySCATMECH.fresnel import Film, FilmStack, OpticalFunction
-    from pySCATMECH.local import Local_BRDF_Model
-    from pySCATMECH.mueller import Polarization
-
-    SCATMECH_IMPORT_ERROR = None
-except ModuleNotFoundError as error:
-    if error.name not in ("pySCATMECH", "SCATPY"):
-        raise
-    Film = FilmStack = OpticalFunction = Local_BRDF_Model = Polarization = None
-    SCATMECH_IMPORT_ERROR = error
+from .surface_model import (
+    Polarization,
+    SCATMECH_IMPORT_ERROR,
+    build_scattering_model,
+)
 
 
 def calculate_far_field(parameters, progress_callback=None):
@@ -34,10 +27,10 @@ def calculate_far_field(parameters, progress_callback=None):
         ) from SCATMECH_IMPORT_ERROR
 
     parameters.validate()
-    model, thickness_note = _build_particle_model(parameters)
+    model_bundle = build_scattering_model(parameters)
     theta_grid, phi_grid = _angular_grid(parameters.angular_step_deg)
     intensity, q, u, v = _evaluate_mueller_grid(
-        model,
+        model_bundle,
         parameters,
         theta_grid,
         phi_grid,
@@ -45,49 +38,15 @@ def calculate_far_field(parameters, progress_callback=None):
     )
     return _format_far_field_result(
         parameters,
-        thickness_note,
+        model_bundle.thickness_note,
         theta_grid,
         phi_grid,
         intensity,
         q,
         u,
         v,
+        model_note=model_bundle.model_note,
     )
-
-
-def _build_particle_model(parameters):
-    wavelength_um = parameters.wavelength_nm / 1000.0
-    wafer_index = complex(parameters.wafer_n, parameters.wafer_k)
-    particle_index = complex(parameters.particle_n, parameters.particle_k)
-    thickness = parameters.wafer_thickness_um
-    optical_depth = 4.0 * np.pi * parameters.wafer_k * thickness / wavelength_um
-    coherent_limit = 100.0 * wavelength_um
-
-    model_parameters = {
-        "lambda": wavelength_um,
-        "radius": parameters.particle_diameter_nm / 2000.0,
-        "sphere": particle_index,
-        "type": 0,
-    }
-
-    if thickness <= coherent_limit and optical_depth < 60.0:
-        wafer_stack = FilmStack(
-            [Film(OpticalFunction(wafer_index), thickness=thickness)]
-        )
-        model_parameters["substrate"] = 1.0 + 0.0j
-        model_parameters["stack"] = wafer_stack
-        thickness_note = (
-            "Finite coherent wafer layer: {:.6g} um on air backing."
-        ).format(thickness)
-    else:
-        model_parameters["substrate"] = wafer_index
-        thickness_note = (
-            "Wafer is optically/geometrically thick at this wavelength; "
-            "the backside is negligible and the wafer is modeled as semi-infinite."
-        )
-
-    model = Local_BRDF_Model("Bobbert_Vlieger_BRDF_Model", model_parameters)
-    return model, thickness_note
 
 
 def _angular_grid(step_deg):
@@ -110,7 +69,7 @@ def _validate_angular_grid(theta_grid, phi_grid):
 
 
 def _evaluate_mueller_grid(
-    model,
+    model_bundle,
     parameters,
     theta_grid,
     phi_grid,
@@ -125,20 +84,36 @@ def _evaluate_mueller_grid(
         {"p": "p", "s": "s", "unpolarized": "u"}[parameters.polarization]
     )
     incidence = np.deg2rad(parameters.incidence_deg)
+    incidence_cosine = abs(np.cos(incidence))
 
     for row in range(shape[0]):
         for column in range(shape[1]):
-            mueller = model.MuellerDSC(
-                incidence,
-                theta_grid[row, column],
-                phi_grid[row, column],
-                coords="psps",
-            )
+            scattering_theta = theta_grid[row, column]
+            if model_bundle.output_kind == "dsc":
+                mueller = model_bundle.model.MuellerDSC(
+                    incidence,
+                    scattering_theta,
+                    phi_grid[row, column],
+                    coords="psps",
+                )
+                output_scale = 1.0
+            else:
+                mueller = model_bundle.model.MuellerBRDF(
+                    incidence,
+                    scattering_theta,
+                    phi_grid[row, column],
+                    coords="psps",
+                )
+                output_scale = (
+                    model_bundle.effective_area_um2
+                    * incidence_cosine
+                    * abs(np.cos(scattering_theta))
+                )
             output = mueller @ incident
-            intensity[row, column] = max(float(output[0]), 0.0)
-            q[row, column] = float(output[1])
-            u[row, column] = float(output[2])
-            v[row, column] = float(output[3])
+            intensity[row, column] = max(float(output[0]) * output_scale, 0.0)
+            q[row, column] = float(output[1]) * output_scale
+            u[row, column] = float(output[2]) * output_scale
+            v[row, column] = float(output[3]) * output_scale
         if progress_callback is not None:
             progress_callback(int(round(100.0 * (row + 1) / shape[0])))
 
@@ -156,6 +131,7 @@ def _format_far_field_result(
     q,
     u,
     v,
+    model_note="",
 ):
     sin_theta = np.sin(theta_grid)
     cos_theta = np.cos(theta_grid)
@@ -189,6 +165,7 @@ def _format_far_field_result(
     return {
         "parameters": parameters,
         "thickness_note": thickness_note,
+        "model_note": model_note,
         "theta": theta_grid,
         "phi": phi_grid,
         "scatmech_phi": phi_grid,

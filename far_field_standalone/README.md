@@ -5,6 +5,10 @@ for the particle-on-wafer far-field simulation UI.
 
 Chinese user documentation: [USER_GUIDE_CN.md](USER_GUIDE_CN.md)
 
+The simulator supports SCATMECH multilayer film stacks and optional
+Rayleigh-Rice microroughness backgrounds in addition to the
+Bobbert-Vlieger particle model.
+
 ## Run from source
 
 Use the NIST2 environment from the repository root:

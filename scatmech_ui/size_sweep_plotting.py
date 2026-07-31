@@ -93,11 +93,13 @@ def _format_sweep_axes(canvas, result, intensity_axis, fraction_axis, handles):
         fontsize=12,
     )
     intensity_axis.set_title(
-        "{} nm, {} particle, {} wafer, {:.3g} deg {} polarization, "
-        "illumination {}".format(
+        "{} nm, {} particle, {} wafer, {} coating layer(s), {}, "
+        "{:.3g} deg {} polarization, illumination {}".format(
             parameters.wavelength_nm,
             parameters.particle_material,
             parameters.wafer_material,
+            len(parameters.coating_layers),
+            "roughness on" if parameters.roughness_enabled else "roughness off",
             parameters.incidence_deg,
             parameters.polarization.upper(),
             incidence_projection_text(parameters.incidence_deg),
@@ -117,7 +119,11 @@ def _format_sweep_axes(canvas, result, intensity_axis, fraction_axis, handles):
             ha="center",
             va="center",
         )
-    intensity_axis.set_ylabel("Integrated collected DSC (um^2)")
+    intensity_axis.set_ylabel(
+        "Integrated collected effective DSC (um^2)"
+        if parameters.roughness_enabled
+        else "Integrated collected DSC (um^2)"
+    )
     fraction_axis.set_ylabel("Energy fraction (%)")
     fraction_axis.set_xlabel("Particle diameter (nm)")
     intensity_axis.legend(handles=handles, frameon=False, loc="upper left", fontsize=8)

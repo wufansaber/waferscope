@@ -5,7 +5,7 @@ from dataclasses import asdict
 from pathlib import Path
 
 import numpy as np
-from PyQt5.QtCore import QThread, pyqtSlot
+from PyQt5.QtCore import Qt, QThread, pyqtSlot
 from PyQt5.QtGui import QDoubleValidator
 from PyQt5.QtWidgets import (
     QComboBox,
@@ -20,6 +20,7 @@ from PyQt5.QtWidgets import (
     QProgressBar,
     QPushButton,
     QScrollArea,
+    QSplitter,
     QTabWidget,
     QVBoxLayout,
     QWidget,
@@ -38,6 +39,7 @@ from .parameters import (
 )
 from .plotting import PlotCanvas, render_results
 from .size_sweep import export_particle_size_sweep
+from .wafer_controls import CoatingStackGroup, RoughnessGroup
 from .worker import ParticleSizeSweepWorker, SimulationWorker
 
 
@@ -46,6 +48,7 @@ class MaterialGroup(QGroupBox):
         super().__init__(title)
         self.materials = materials
         layout = QFormLayout(self)
+        layout.setRowWrapPolicy(QFormLayout.WrapLongRows)
         layout.setContentsMargins(8, 10, 8, 6)
         layout.setHorizontalSpacing(6)
         layout.setVerticalSpacing(5)
@@ -82,6 +85,16 @@ class MaterialGroup(QGroupBox):
         self.k_edit.setText("{:.8g}".format(value.imag))
 
 
+class ControlsScrollArea(QScrollArea):
+    """Keep the controls panel fitted to the resizable sidebar viewport."""
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        panel = self.widget()
+        if panel is not None:
+            panel.setFixedWidth(max(0, self.viewport().width()))
+
+
 class ScatmechSimulationWidget(QWidget):
     """Embeddable SCATMECH simulation page used by the APTK main window."""
 
@@ -98,10 +111,16 @@ class ScatmechSimulationWidget(QWidget):
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(6)
 
-        controls_scroll = QScrollArea()
+        splitter = QSplitter(Qt.Horizontal)
+        splitter.setChildrenCollapsible(False)
+        splitter.setHandleWidth(5)
+        root.addWidget(splitter)
+
+        controls_scroll = ControlsScrollArea()
         controls_scroll.setWidgetResizable(True)
-        controls_scroll.setMinimumWidth(285)
-        controls_scroll.setMaximumWidth(325)
+        controls_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        controls_scroll.setMinimumWidth(430)
+        controls_scroll.setMaximumWidth(680)
         controls = QWidget()
         controls_layout = QVBoxLayout(controls)
         controls_layout.setContentsMargins(5, 5, 5, 5)
@@ -113,11 +132,16 @@ class ScatmechSimulationWidget(QWidget):
         self.particle_group = MaterialGroup(
             "Spherical particle", PARTICLE_MATERIALS, include_size=True
         )
+        self.coating_group = CoatingStackGroup()
+        self.roughness_group = RoughnessGroup()
         controls_layout.addWidget(self.wafer_group)
+        controls_layout.addWidget(self.coating_group)
+        controls_layout.addWidget(self.roughness_group)
         controls_layout.addWidget(self.particle_group)
 
         laser_group = QGroupBox("Laser and incidence")
         laser_layout = QFormLayout(laser_group)
+        laser_layout.setRowWrapPolicy(QFormLayout.WrapLongRows)
         laser_layout.setContentsMargins(8, 10, 8, 6)
         laser_layout.setHorizontalSpacing(6)
         laser_layout.setVerticalSpacing(5)
@@ -152,6 +176,7 @@ class ScatmechSimulationWidget(QWidget):
 
         numerical_group = QGroupBox("Numerical and display settings")
         numerical_layout = QFormLayout(numerical_group)
+        numerical_layout.setRowWrapPolicy(QFormLayout.WrapLongRows)
         numerical_layout.setContentsMargins(8, 10, 8, 6)
         numerical_layout.setHorizontalSpacing(6)
         numerical_layout.setVerticalSpacing(5)
@@ -171,6 +196,7 @@ class ScatmechSimulationWidget(QWidget):
 
         objective_group = QGroupBox("Objective collection example")
         objective_layout = QFormLayout(objective_group)
+        objective_layout.setRowWrapPolicy(QFormLayout.WrapLongRows)
         objective_layout.setContentsMargins(8, 10, 8, 6)
         objective_layout.setHorizontalSpacing(6)
         objective_layout.setVerticalSpacing(5)
@@ -211,6 +237,7 @@ class ScatmechSimulationWidget(QWidget):
 
         sweep_group = QGroupBox("Particle-size sweep")
         sweep_layout = QFormLayout(sweep_group)
+        sweep_layout.setRowWrapPolicy(QFormLayout.WrapLongRows)
         sweep_layout.setContentsMargins(8, 10, 8, 6)
         sweep_layout.setHorizontalSpacing(6)
         sweep_layout.setVerticalSpacing(5)
@@ -248,7 +275,7 @@ class ScatmechSimulationWidget(QWidget):
         controls_layout.addWidget(self.status)
         controls_layout.addStretch()
         controls_scroll.setWidget(controls)
-        root.addWidget(controls_scroll)
+        splitter.addWidget(controls_scroll)
 
         self.tabs = QTabWidget()
         self.canvases = {}
@@ -260,7 +287,13 @@ class ScatmechSimulationWidget(QWidget):
             canvas = PlotCanvas()
             self.canvases[key] = canvas
             self.tabs.addTab(canvas, title)
-        root.addWidget(self.tabs, stretch=1)
+        splitter.addWidget(self.tabs)
+        splitter.setStretchFactor(0, 0)
+        splitter.setStretchFactor(1, 1)
+        splitter.setSizes((540, 1100))
+        self.controls_scroll = controls_scroll
+        self.controls_panel = controls
+        self.main_splitter = splitter
 
         self.setStyleSheet(
             "QGroupBox { font-weight: bold; margin-top: 6px; }"
@@ -299,11 +332,13 @@ class ScatmechSimulationWidget(QWidget):
         return spinbox
 
     def parameters(self):
+        roughness_values = self.roughness_group.values()
         return SimulationParameters(
             wafer_material=self.wafer_group.material_combo.currentText(),
             wafer_n=float(self.wafer_group.n_edit.text()),
             wafer_k=float(self.wafer_group.k_edit.text()),
             wafer_thickness_um=self.wafer_group.thickness.value(),
+            coating_layers=self.coating_group.layers(),
             particle_material=self.particle_group.material_combo.currentText(),
             particle_n=float(self.particle_group.n_edit.text()),
             particle_k=float(self.particle_group.k_edit.text()),
@@ -313,6 +348,7 @@ class ScatmechSimulationWidget(QWidget):
             polarization=self.polarization.currentData(),
             angular_step_deg=self.angular_step.value(),
             display_floor_db=-self.dynamic_range.value(),
+            **roughness_values,
         )
 
     def objective_collection_parameters(self):
@@ -415,10 +451,11 @@ class ScatmechSimulationWidget(QWidget):
         self.export_button.setEnabled(True)
         self.progress.setValue(100)
         self.status.setText(
-            "Completed. DSC range: {:.3e} to {:.3e} um^2/sr\n{}".format(
+            "Completed. Effective DSC range: {:.3e} to {:.3e} um^2/sr\n{}\n{}".format(
                 np.min(result["intensity"]),
                 np.max(result["intensity"]),
                 result["thickness_note"],
+                result["model_note"],
             )
         )
 
@@ -437,12 +474,13 @@ class ScatmechSimulationWidget(QWidget):
         values = result["channel_collected_dsc_um2"]
         self.status.setText(
             "Particle-size sweep completed: {} points, {:.3g} to {:.3g} nm. "
-            "Collected DSC range: {:.3e} to {:.3e} um^2.".format(
+            "Collected effective DSC range: {:.3e} to {:.3e} um^2.\n{}".format(
                 len(result["diameters_nm"]),
                 result["diameters_nm"][0],
                 result["diameters_nm"][-1],
                 np.min(values),
                 np.max(values),
+                result["model_note"],
             )
         )
 
@@ -520,6 +558,12 @@ class ScatmechSimulationWidget(QWidget):
             "w", encoding="utf-8"
         ) as stream:
             payload = asdict(self.result["parameters"])
+            if hasattr(self.result["parameters"], "illuminated_area_um2"):
+                payload["illuminated_area_um2"] = self.result[
+                    "parameters"
+                ].illuminated_area_um2
+            payload["wafer_stack_note"] = self.result.get("thickness_note", "")
+            payload["scatmech_model_note"] = self.result.get("model_note", "")
             coordinate_convention = incidence_metadata_from_result(self.result)
             if coordinate_convention:
                 payload["coordinate_convention"] = coordinate_convention

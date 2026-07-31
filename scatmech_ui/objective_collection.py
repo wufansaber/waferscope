@@ -199,7 +199,7 @@ def _collection_note(parameters, far_field):
         "{:.3g}".format(parameters.focal_length_mm * value)
         for value in parameters.channel_numerical_apertures
     )
-    return (
+    collection_note = (
         "Ideal single-lens objective collection from {}: channel NA={}, "
         "f={:.3g} mm, tilts={}, exit-pupil radii={} mm, "
         "union geometric volume={:.2f}%, union energy={:.2f}%."
@@ -211,4 +211,11 @@ def _collection_note(parameters, far_field):
         radius_text,
         100.0 * far_field["geometric_collection_fraction"],
         100.0 * far_field["collection_fraction"],
+    )
+    source_notes = [
+        far_field.get("thickness_note", ""),
+        far_field.get("model_note", ""),
+    ]
+    return " ".join(
+        [collection_note] + [note for note in source_notes if note]
     )

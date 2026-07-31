@@ -23,6 +23,7 @@ def plot_objective_collection_3d(canvas, result):
         cm.ScalarMappable(norm=norm, cmap=cm.turbo),
         ax=axis,
         shrink=0.70,
+        pad=0.16,
     )
     colorbar.set_label("Far-field energy vs fixed reference (dB)")
     canvas.draw_idle()
@@ -192,10 +193,12 @@ def _draw_incident_ray(axis, result):
 
 
 def _format_collection_3d_axis(axis, result):
+    xy_limits = (-1.42, 1.08)
+    z_limits = (0.0, 1.08)
     axis.set(
-        xlim=(-1.05, 1.05),
-        ylim=(-1.42, 1.08),
-        zlim=(0.0, 1.08),
+        xlim=xy_limits,
+        ylim=xy_limits,
+        zlim=z_limits,
         xlabel=r"$k_x/k$",
         ylabel=r"$k_y/k$",
         zlabel=r"$k_z/k$",
@@ -243,7 +246,7 @@ def _format_collection_3d_axis(axis, result):
         ) > 1e-12
         axis.text2D(
             0.98,
-            0.92,
+            0.78,
             "Illumination convention\n"
             "source -KY -> projection +KY\n"
             "incidence plane KY-KZ"
@@ -256,7 +259,14 @@ def _format_collection_3d_axis(axis, result):
             ha="right",
         )
     axis.tick_params(labelsize=8, pad=1)
-    axis.set_box_aspect((1, 1, 0.75))
+    axis.set_box_aspect(
+        (
+            xy_limits[1] - xy_limits[0],
+            xy_limits[1] - xy_limits[0],
+            z_limits[1] - z_limits[0],
+        )
+    )
+    axis.set_proj_type("ortho")
     axis.view_init(elev=28, azim=-52)
 
 

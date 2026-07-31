@@ -3,10 +3,21 @@
     "configurations": [
         {
             "name": "Run merged APTK + SCATMECH UI",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}\\main.py",
-            "console": "integratedTerminal"
+            "python": "D:\\anaconda\\envs\\NIST2\\python.exe",
+            "cwd": "${workspaceFolder}",
+            "console": "internalConsole"
+        },
+        {
+            "name": "Run standalone Far-field UI",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}\\far_field_standalone\\main.py",
+            "python": "D:\\anaconda\\envs\\NIST2\\python.exe",
+            "cwd": "${workspaceFolder}",
+            "console": "internalConsole"
         }
     ]
 }

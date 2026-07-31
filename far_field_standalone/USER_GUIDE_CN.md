@@ -9,6 +9,9 @@ Far-field Simulation 是一个面向晶圆表面颗粒散射分析的独立桌�
 程序主要提供以下功能：
 
 - 设置晶圆和球形颗粒的复折射率、厚度及颗粒尺寸。
+- 设置从晶圆到表面的多层镀膜结构。
+- 使用 SCATMECH ABC PSD 模型加入表面或多层界面粗糙度。
+- 使用矩形照明区域的长和宽确定粗糙度背景的有效面积。
 - 设置激光波长、入射角和偏振态。
 - 显示远场强度、偏振方向及入射几何关系。
 - 分别设置三路物镜的 NA 和倾斜角度。
@@ -66,6 +69,65 @@ Gallium arsenide 和 Custom 等预设值。
 
 对于光学厚度很大的吸收晶圆，程序会自动使用半无限基底模型；对于满足条件的
 薄层，会使用有限厚度相干膜层模型。实际采用的方式会显示在运行状态中。
+
+### Wafer coating stack
+
+膜层表格用于设置晶圆表面的多层镀膜。表格顺序固定为：
+
+```text
+第 1 行：最靠近晶圆基底
+最后一行：最靠近空气的顶层
+```
+
+每一层可以设置材料名称、复折射率 `n + ik` 和厚度，厚度单位为 `nm`。
+`Add`、`Remove`、`Up`、`Down` 分别用于增加、删除和调整膜层顺序。
+
+所有膜层均通过 SCATMECH `FilmStack/Stack_StackModel` 传入
+`Bobbert_Vlieger_BRDF_Model`，不是使用程序自定义的薄膜近似。
+
+### Surface and interface roughness
+
+选中 `Include roughness background` 后，程序会把颗粒散射与粗糙度散射合并。
+界面模式包括：
+
+- `Top exposed interface`：只计算最外侧暴露表面的粗糙度。
+- `All interfaces correlated`：所有膜层界面具有相同且完全相关的粗糙度。
+- `All interfaces uncorrelated`：所有膜层界面的粗糙度互不相关。
+
+程序使用 SCATMECH Rayleigh-Rice 光滑表面微扰模型。粗糙度采用二维 ABC PSD：
+
+```text
+S2(f) = A / (1 + B^2 f^2)^(C/2)
+A = RMS^2 B^2 (C - 2) / (2 pi)
+```
+
+其中：
+
+- `RMS height`：积分均方根高度，单位为 `nm`。
+- `ABC length B`：PSD 转折长度参数，单位为 `um`。
+- `ABC exponent C`：高频衰减指数，必须大于 2。
+
+无膜层时使用 `Microroughness_BRDF_Model`；有膜层时根据界面模式使用
+`Roughness_Stack_BRDF_Model`、`Correlated_Roughness_Stack_BRDF_Model`
+或 `Uncorrelated_Roughness_Stack_BRDF_Model`。
+
+### Rectangular illumination footprint
+
+`Footprint length` 和 `Footprint width` 是晶圆表面上的矩形照明区域尺寸，
+单位为 `um`。程序自动计算：
+
+```text
+Effective area = Footprint length x Footprint width
+```
+
+当前组合模型假设该矩形照明区域内有一个指定 PSL 颗粒，因此 Bobbert-Vlieger
+颗粒面密度设置为 `1 / Effective area`。SCATMECH
+`Two_Source_BRDF_Model` 以 `correlation=0` 将颗粒与粗糙度 Mueller BRDF
+按非相干强度相加，再按同一面积和入射/散射余弦因子换算回有效 DSC。
+
+矩形长或宽增大时，颗粒本身的单颗粒 DSC 不变，但光斑覆盖的粗糙表面积增加，
+因此粗糙度背景会相应增加。关闭粗糙度后，长和宽不参与计算，结果保持原来的
+单颗粒 Bobbert-Vlieger DSC。
 
 ## 5. 颗粒参数
 
@@ -282,6 +344,10 @@ pySCATMECH 使用相对于入射面的散射方位角，程序把其中的 `phi=
 扫描不使用单个 `Sphere diameter` 的值，而是为扫描序列中的每个尺寸重新建立
 SCATMECH 模型。每个点都使用当前界面的其他参数，不需要先单独运行远场仿真。
 
+如果启用了粗糙度，扫描曲线表示“每个粒径的颗粒散射 + 同一矩形照明区域的
+粗糙度背景”。粗糙度背景不会随颗粒直径变化，因此小颗粒区域可能出现由表面
+背景决定的平台。关闭粗糙度可得到纯单颗粒尺寸响应。
+
 ### 结果曲线
 
 上图显示三路物镜分别收集的积分 DSC：
@@ -374,9 +440,24 @@ intensity = data["intensity"]
 ## 15. 模型适用范围
 
 - 当前原生模型针对位于平面晶圆表面的球形颗粒。
+- 颗粒、膜系、粗糙度及其 Mueller BRDF 合成均调用 SCATMECH 模型。
+- 多层镀膜按相干 `FilmStack` 计算，材料预设仅是参考值，实际计算使用表格中的
+  `n`、`k` 和厚度。
+- 粗糙度采用 Rayleigh-Rice 光滑表面一阶微扰模型。RMS 较大或表面斜率很大时，
+  应检查该模型的适用性；程序会在光滑表面参数明显偏大时给出运行状态警告。
+- 粗糙度与颗粒默认按非相干强度相加，不包含二者之间的相位相关或多重散射。
+- 矩形照明区域是晶圆表面 footprint，不是入射光束垂直截面。
 - 物镜模型为无像差理想单透镜，不包含实际镜头像差、遮挡、透过率和镀膜损耗。
 - 几何体积占比使用单位上半球内光锥体积作为基准，与绝对焦距和远场强度无关。
 - 能量占比以仿真得到的上半空间远场为分母，不包含下半空间传播能量。
 - 材料预设值是接近 355 nm 的参考值。波长变化较大时，应填写对应波长下的实际
   复折射率。
 - 最终工程设计应结合真实物镜透过率、偏振响应、机械遮挡和实验标定结果。
+
+SCATMECH 官方模型说明：
+
+- [Bobbert_Vlieger_BRDF_Model](https://pages.nist.gov/SCATMECH/docs/bobvlieg.htm)
+- [StackModel](https://pages.nist.gov/SCATMECH/docs/stackmodel.htm)
+- [Microroughness_BRDF_Model](https://pages.nist.gov/SCATMECH/docs/microroughbrdf.htm)
+- [Correlated_Roughness_Stack_BRDF_Model](https://pages.nist.gov/SCATMECH/docs/correlated_stack.htm)
+- [Two_Source_BRDF_Model](https://pages.nist.gov/SCATMECH/docs/two_source.htm)

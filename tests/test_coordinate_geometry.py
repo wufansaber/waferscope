@@ -1,4 +1,5 @@
 import unittest
+from types import SimpleNamespace
 
 import numpy as np
 
@@ -10,6 +11,7 @@ from scatmech_ui.coordinate_geometry import (
     incident_source_direction,
     scatmech_to_global_xy,
 )
+from scatmech_ui.native_far_field import _format_far_field_result
 from scatmech_ui.objective_math import pupil_polarization, sample_far_field
 
 
@@ -73,6 +75,28 @@ class CoordinateGeometryTests(unittest.TestCase):
 
         np.testing.assert_allclose(np.abs(result["pol_x"]), [1.0])
         np.testing.assert_allclose(result["pol_y"], [0.0], atol=1e-12)
+
+    def test_rotated_far_field_grid_remains_a_unit_hemisphere(self):
+        theta_axis = np.linspace(0.0, 0.5 * np.pi, 5)
+        phi_axis = np.linspace(0.0, 2.0 * np.pi, 9)
+        phi_grid, theta_grid = np.meshgrid(phi_axis, theta_axis)
+        values = np.ones_like(theta_grid)
+
+        result = _format_far_field_result(
+            SimpleNamespace(incidence_deg=75.0),
+            "test",
+            theta_grid,
+            phi_grid,
+            values,
+            values,
+            np.zeros_like(values),
+            np.zeros_like(values),
+        )
+
+        radius_squared = result["x"] ** 2 + result["y"] ** 2 + result["z"] ** 2
+        np.testing.assert_allclose(radius_squared, 1.0, atol=1e-12)
+        self.assertAlmostEqual(np.min(result["x"]), np.min(result["y"]))
+        self.assertAlmostEqual(np.max(result["x"]), np.max(result["y"]))
 
 
 if __name__ == "__main__":

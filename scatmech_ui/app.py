@@ -17,9 +17,20 @@ class ScatmechStandaloneWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("pySCATMECH Particle-on-Wafer Far-Field Simulator")
-        self.resize(1500, 920)
+        self.setMinimumSize(1200, 720)
+        self._resize_for_screen()
         self.simulation_widget = ScatmechSimulationWidget()
         self.setCentralWidget(self.simulation_widget)
+
+    def _resize_for_screen(self):
+        screen = QApplication.primaryScreen()
+        if screen is None:
+            self.resize(1680, 960)
+            return
+        available = screen.availableGeometry()
+        width = min(1680, max(1200, int(available.width() * 0.92)))
+        height = min(980, max(720, int(available.height() * 0.92)))
+        self.resize(width, height)
 
     def closeEvent(self, event):
         self.simulation_widget.wait_for_shutdown()

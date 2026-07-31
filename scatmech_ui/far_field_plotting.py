@@ -34,8 +34,9 @@ def plot_3d_far_field(canvas, result):
         cm.ScalarMappable(norm=norm, cmap=cm.turbo),
         ax=axis,
         shrink=0.70,
+        pad=0.16,
     )
-    colorbar.set_label("Relative DSC (dB)")
+    colorbar.set_label(_relative_dsc_label(result))
     canvas.draw_idle()
 
 
@@ -54,14 +55,26 @@ def plot_2d_far_field(canvas, result, intensity_cmap):
         shading="gouraud",
     )
     _add_2d_polarization_axes(axis, result)
-    _format_2d_axis(
-        axis,
-        result,
-        "Particle Scattering\nIntensity with Polarization Directions",
+    title = (
+        "Particle + Roughness Scattering\n"
+        "Intensity with Polarization Directions"
+        if result["parameters"].roughness_enabled
+        else "Particle Scattering\nIntensity with Polarization Directions"
     )
+    _format_2d_axis(axis, result, title)
     colorbar = canvas.figure.colorbar(image, ax=axis)
-    colorbar.set_label("Normalized particle scattering intensity")
+    colorbar.set_label(
+        "Normalized effective scattering intensity"
+        if result["parameters"].roughness_enabled
+        else "Normalized particle scattering intensity"
+    )
     canvas.draw_idle()
+
+
+def _relative_dsc_label(result):
+    if result["parameters"].roughness_enabled:
+        return "Relative effective DSC (dB)"
+    return "Relative DSC (dB)"
 
 
 def _sparse_indices(result):
@@ -211,10 +224,12 @@ def _draw_3d_incidence_geometry(axis, result):
 
 
 def _format_3d_axis(axis, result, title):
+    xy_limits = (-1.55, 1.10)
+    z_limits = (0.0, 1.12)
     axis.set(
-        xlim=(-1.10, 1.10),
-        ylim=(-1.55, 1.10),
-        zlim=(0.0, 1.12),
+        xlim=xy_limits,
+        ylim=xy_limits,
+        zlim=z_limits,
         xlabel=r"$k_x/k$",
         ylabel=r"$k_y/k$",
         zlabel=r"$k_z/k$",
@@ -242,7 +257,14 @@ def _format_3d_axis(axis, result, title):
             weight="bold",
         )
     axis.tick_params(labelsize=8, pad=1)
-    axis.set_box_aspect((1, 1, 0.7))
+    axis.set_box_aspect(
+        (
+            xy_limits[1] - xy_limits[0],
+            xy_limits[1] - xy_limits[0],
+            z_limits[1] - z_limits[0],
+        )
+    )
+    axis.set_proj_type("ortho")
     axis.view_init(elev=28, azim=-55)
 
 
@@ -252,7 +274,11 @@ def _format_2d_axis(axis, result, title):
     axis.text(
         -0.97,
         0.94,
-        "Particle",
+        (
+            "Particle + roughness"
+            if result["parameters"].roughness_enabled
+            else "Particle"
+        ),
         color="white",
         fontsize=13,
         weight="bold",

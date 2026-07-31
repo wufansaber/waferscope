@@ -26,6 +26,7 @@ def calculate_particle_size_sweep(
     channel_values = np.zeros((len(diameters), 3), dtype=float)
     hemisphere_values = np.zeros(len(diameters), dtype=float)
     thickness_note = ""
+    model_note = ""
 
     for index, diameter_nm in enumerate(diameters):
         parameters = replace(
@@ -56,6 +57,7 @@ def calculate_particle_size_sweep(
             sampling,
         )
         thickness_note = far_field["thickness_note"]
+        model_note = far_field["model_note"]
 
     if progress_callback is not None:
         progress_callback(100)
@@ -77,6 +79,7 @@ def calculate_particle_size_sweep(
         "hemisphere_dsc_um2": hemisphere_values,
         "channel_energy_fractions": energy_fractions,
         "thickness_note": thickness_note,
+        "model_note": model_note,
     }
 
 
@@ -142,6 +145,11 @@ def export_particle_size_sweep(result, directory, figure):
             result["simulation_parameters"].incidence_deg
         ),
     }
+    payload["simulation"]["illuminated_area_um2"] = result[
+        "simulation_parameters"
+    ].illuminated_area_um2
+    payload["wafer_stack_note"] = result.get("thickness_note", "")
+    payload["scatmech_model_note"] = result.get("model_note", "")
     with (directory / "particle_size_sweep_parameters.json").open(
         "w",
         encoding="utf-8",

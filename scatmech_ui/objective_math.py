@@ -136,6 +136,8 @@ def scatmech_far_field(source_far_field):
         intensity,
     )
     for key in (
+        "thickness_note",
+        "model_note",
         "incidence_plane",
         "illumination_rotation_deg",
         "scatmech_azimuth_offset_deg",
