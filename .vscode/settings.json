@@ -1,8 +1,9 @@
 {
-    "python.defaultInterpreterPath": "D:\\anaconda\\envs\\NIST2\\python.exe",
+    "python.defaultInterpreterPath": "C:\\Users\\admin\\anaconda3\\envs\\NIST2\\python.exe",
+    "python.condaPath": "C:\\Users\\admin\\anaconda3\\Scripts\\conda.exe",
     "python.useEnvironmentsExtension": false,
-    "python.terminal.activateEnvironment": false,
-    "python.terminal.activateEnvInCurrentTerminal": false,
+    "python.terminal.activateEnvironment": true,
+    "python.terminal.activateEnvInCurrentTerminal": true,
     "python.testing.unittestArgs": [
         "-v",
         "-s", "tests",
