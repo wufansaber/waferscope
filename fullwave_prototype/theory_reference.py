@@ -2,26 +2,35 @@
 import numpy as np
 from scipy.special import spherical_jn, spherical_yn
 
-from .planar import background_vectors
 
 
-def mie_fields(points, p):
-    from miepython.field import eh_near_cartesian
+def mie_fields(points, p, include_incident=True):
     if p.eps_substrate != 1:
         raise ValueError('Homogeneous Mie oracle requires an air substrate')
-    down, _, _, ein, _, _ = background_vectors(p)
+    from .illumination import illumination_rays
+    fields = [_mie_ray(points, p, ray, include_incident) for ray in illumination_rays(p)]
+    return tuple(sum(pair[i] for pair in fields) for i in (0, 1))
+
+
+def _mie_ray(points, p, ray, include_incident):
+    from miepython.field import eh_near_cartesian
+    down, _, _, ein, _, _ = ray
+    weight = np.linalg.norm(ein)
+    ein = ein/weight
     frame = np.column_stack((ein, np.cross(down, ein), down))
     center = np.array((0, 0, (p.diameter_nm/2+p.gap_nm)/1000))
     local = (np.asarray(points)-center) @ frame
     # miepython's lossy-index input is n-ik; its near-field output is exp(-i wt).
     e, h = eh_near_cartesian(p.wavelength_nm/1000, p.diameter_nm/1000,
-        complex(p.particle_n, -p.particle_k), 1., *local.T)
+        complex(p.particle_n, -p.particle_k), 1., *local.T, include_incident=include_incident)
     phase = np.exp(1j*p.k0*np.dot(down, center))
-    return e.T @ frame.T*phase, h.T @ frame.T*phase
+    return e.T @ frame.T*phase*weight, h.T @ frame.T*phase*weight
 
 
 def bessel_mie_cross_sections(p, terms=16):
     """Direct Riccati-Bessel formula, independently of SCATMECH/miepython recurrences."""
+    if p.beam_waist_um:
+        raise ValueError('Plane-wave Mie cross sections cannot benchmark a finite beam')
     x = p.k0*p.diameter_nm/2000
     m = complex(p.particle_n, p.particle_k)
     n = np.arange(1, terms+1)

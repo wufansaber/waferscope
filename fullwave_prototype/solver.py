@@ -2,7 +2,7 @@
 import time
 import numpy as np
 
-from .planar import background_vectors, background_fields
+from .planar import background_fields
 from .absorbing_boundary import set_boundary
 
 
@@ -39,11 +39,13 @@ def contrast_materials(p, particle_enabled=True):
 
 def background_coefficient(p):
     import ngsolve as ng
-    down, up, kt, ein, er, et = background_vectors(p)
+    from .illumination import illumination_rays
     pos = ng.CF((ng.x, ng.y, ng.z))
-    above = ng.CF(tuple(ein))*ng.exp(1j*p.k0*(ng.CF(tuple(down))*pos))
-    above += ng.CF(tuple(er))*ng.exp(1j*p.k0*(ng.CF(tuple(up))*pos))
-    below = ng.CF(tuple(et))*ng.exp(1j*p.k0*(ng.CF(tuple(kt))*pos))
+    above, below = ng.CF((0j, 0j, 0j)), ng.CF((0j, 0j, 0j))
+    for down, up, kt, ein, er, et in illumination_rays(p):
+        above += ng.CF(tuple(ein))*ng.exp(1j*p.k0*(ng.CF(tuple(down))*pos))
+        above += ng.CF(tuple(er))*ng.exp(1j*p.k0*(ng.CF(tuple(up))*pos))
+        below += ng.CF(tuple(et))*ng.exp(1j*p.k0*(ng.CF(tuple(kt))*pos))
     return ng.IfPos(ng.z, above, below)
 
 
@@ -51,6 +53,7 @@ def solve(p, mesh=None, particle_enabled=True):
     import ngsolve as ng
     p.validate()
     ng.SetNumThreads(p.threads)
+    print('NGSolve worker threads: {}'.format(p.threads), flush=True)
     start = time.perf_counter()
     if mesh is None:
         print('Generating curved particle/substrate mesh...', flush=True)
@@ -99,6 +102,7 @@ def solve(p, mesh=None, particle_enabled=True):
         raise RuntimeError('Linear solve failed the true algebraic residual/finite-field check: {}'.format(rel))
     volume = ng.Integrate(1, mesh, definedon=mesh.Materials('particle'))
     metadata = dict(elements=mesh.ne, dofs=space.ndof, algebraic_residual=float(rel),
+                    threads=p.threads,
                     assembly_seconds=assembly_seconds, factor_seconds=factor_seconds,
                     factored_dofs=sum(space.FreeDofs(coupling=p.static_condensation)),
                     static_condensation=p.static_condensation,

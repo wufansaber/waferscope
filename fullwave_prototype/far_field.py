@@ -20,7 +20,8 @@ def sphere_quadrature(p, radial_order=10):
     return points, w.ravel()
 
 
-def radiation_amplitude(points, polarization_weights, directions, p):
+def radiation_amplitude_scalar(points, polarization_weights, directions, p):
+    """Original scalar implementation retained as a numerical regression oracle."""
     points = np.asarray(points)
     above = points[:, 2] >= 0
     upper_points, lower_points = points[above], points[~above]
@@ -32,6 +33,8 @@ def radiation_amplitude(points, polarization_weights, directions, p):
         kd = np.array((k[0], k[1], -k[2]))
         pup, pdown = np.cross(k, s), np.cross(kd, s)
         rs, rp, q = fresnel(k[2], p.eps_substrate)
+        if p.eps_substrate == 1:
+            q = k[2]
         direct = np.exp(-1j*p.k0*(upper_points @ k)) @ upper_weights
         reflected = np.exp(-1j*p.k0*(upper_points @ kd)) @ upper_weights
         # Reflection maps downward s/p amplitudes to upward s/p amplitudes.
@@ -57,3 +60,8 @@ def angular_grid(step_deg=10):
     t, f = np.meshgrid(theta, phi, indexing='ij')
     directions = np.stack((np.sin(t)*np.cos(f), np.sin(t)*np.sin(f), np.cos(t)), axis=-1)
     return theta, phi, directions
+
+
+# The scalar path was faster on the release machine; retain the blocked variant
+# in radiation.py as a benchmark candidate, not an unmeasured default upgrade.
+radiation_amplitude = radiation_amplitude_scalar

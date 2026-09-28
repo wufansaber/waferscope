@@ -70,14 +70,15 @@ def free_sphere(p, output, python):
     return report
 
 
-def flat_pupil(p, output, python):
+def flat_pupil(p, output, python, pupil_samples=32):
     from optical_propagation import pupil_geometry
     from .imaging import ImagingSettings, image_from_amplitude
+    settings = ImagingSettings(pupil_samples=pupil_samples, padding=4)
+    settings.validate()
     mesh, field, info = solve(p)
     print('Extracting complex volume sources for the {} pupil benchmark...'.format(p.polarization), flush=True)
     points, sources, _ = polarization_sources(mesh, field, p, order=7)
-    settings = ImagingSettings(pupil_samples=32, padding=4)
-    geometries = [pupil_geometry(.5, tilt, 32) for tilt in settings.tilt_degrees]
+    geometries = [pupil_geometry(.5, tilt, pupil_samples) for tilt in settings.tilt_degrees]
     directions = np.concatenate([k[mask] for _, k, _, mask, _ in geometries])
     ref = reference(p, output, python, 'bv', directions, np.ones(len(directions)))['amplitude']
     print('Independent BV reference complete; evaluating FEM pupils...', flush=True)
@@ -102,7 +103,7 @@ def flat_pupil(p, output, python):
         arrays['ch{}_fem'.format(index+1)], arrays['ch{}_bv'.format(index+1)] = a['flux'], b['flux']
         arrays['axis_um'] = a['axis_um']
     np.savez_compressed(output/'images.npz', **arrays)
-    report = dict(parameters=asdict(p), solver=info, channels=results,
+    report = dict(parameters=asdict(p), imaging_settings=asdict(settings), solver=info, channels=results,
                   fitted_global_phase_rad=float(np.angle(phase)),
                   note='Known origin translation plus ONE constant unit phase for all channels; no amplitude scaling or spatial shift fitted. Imaging propagator is shared, so this checks the FEM pupil against BV, not independent lens theory.')
     (output/'report.json').write_text(json.dumps(report, indent=2), encoding='utf-8')
@@ -110,11 +111,11 @@ def flat_pupil(p, output, python):
 
 
 def rough_pml(output, order=2, pml_power=1, pml_mesh_scale=1., static_condensation=False,
-              direct_solver='umfpack', pml_strength=2., integration_bonus=0):
+              direct_solver='umfpack', pml_strength=2., integration_bonus=0, threads=2):
     import ngsolve as ng
     from .rough_surface import Roughness, build_rough_mesh
     from .absorbing_boundary import set_boundary
-    p = Parameters(gap_nm=10, order=order, pml_power=pml_power, pml_mesh_scale=pml_mesh_scale,
+    p = Parameters(gap_nm=10, order=order, threads=threads, pml_power=pml_power, pml_mesh_scale=pml_mesh_scale,
                    static_condensation=static_condensation, direct_solver=direct_solver,
                    integration_bonus=integration_bonus)
     p.validate()
@@ -153,6 +154,8 @@ def main():
     parser.add_argument('--reference-python', default='D:/anaconda/envs/NIST2/python.exe')
     parser.add_argument('--case', choices=('mie', 'flat', 'pml'), required=True)
     parser.add_argument('--order', type=int, choices=(1, 2, 3), default=2)
+    parser.add_argument('--threads', type=int, default=2)
+    parser.add_argument('--pupil-samples', type=int, choices=(32, 64, 96, 128), default=32)
     parser.add_argument('--pml-power', type=int, choices=(1, 2, 3), default=1)
     parser.add_argument('--pml-mesh-scale', type=float, default=1.)
     parser.add_argument('--pml-strength', type=float, default=2.)
@@ -164,7 +167,7 @@ def main():
     if args.case == 'pml' and args.pml_strength != 2:
         parser.error('The PML audit uses fixed strengths 1, 2, 3; omit --pml-strength for this case.')
     root = Path(args.output)
-    controls = dict(order=args.order, pml_power=args.pml_power, pml_mesh_scale=args.pml_mesh_scale,
+    controls = dict(order=args.order, threads=args.threads, pml_power=args.pml_power, pml_mesh_scale=args.pml_mesh_scale,
                     pml_strength=args.pml_strength, integration_bonus=args.integration_bonus,
                     static_condensation=args.static_condensation, direct_solver=args.direct_solver)
     if args.case == 'mie':
@@ -174,7 +177,7 @@ def main():
     elif args.case == 'flat':
         for pol in ('p', 's'):
             print(json.dumps(flat_pupil(Parameters(gap_nm=10, polarization=pol, **controls),
-                                       root/('flat_'+pol), args.reference_python), indent=2), flush=True)
+                                       root/('flat_'+pol), args.reference_python, args.pupil_samples), indent=2), flush=True)
     else:
         print(json.dumps(rough_pml(root/'rough_pml', **controls), indent=2), flush=True)
 

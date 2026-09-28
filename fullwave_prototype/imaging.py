@@ -1,10 +1,12 @@
 """Independent ideal objectives fed by complex FEM volume-source radiation."""
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 
 import numpy as np
 
 from optical_propagation import pupil_geometry, collimated_pupil, propagate_pupil
 from .far_field import radiation_amplitude
+from detector_model import DetectorParameters, calculate_detector
+from .wavefront import pupil_phase
 
 
 @dataclass(frozen=True)
@@ -19,8 +21,13 @@ class ImagingSettings:
     image_defocus_um: float = 0.
     pupil_samples: int = 64
     padding: int = 8
+    aberrations_nm: tuple = (0., 0., 0.)
+    detector: DetectorParameters = field(default_factory=DetectorParameters)
 
     def validate(self):
+        self.detector.validate()
+        if len(self.aberrations_nm) != 3 or not np.isfinite(self.aberrations_nm).all():
+            raise ValueError('Three finite Zernike coefficients in nm required.')
         if len(self.numerical_apertures) != 3 or len(self.tilt_degrees) != 3:
             raise ValueError('Exactly three NA and tilt values required')
         for value in (*self.numerical_apertures, *self.tilt_degrees, self.focal_length_mm,
@@ -57,6 +64,8 @@ def image_from_amplitude(amplitude, local, global_k, rotation, du, wavelength_um
         projection = np.einsum('c,...ci->...i', a, pupil)
         pupil = a[None, None, :, None]*projection[..., None, :]
     pupil *= np.sqrt(settings.transmission)
+    if any(settings.aberrations_nm):
+        pupil *= pupil_phase(local, du, wavelength_um, settings.aberrations_nm)[..., None, None]
     transmitted = float(np.sum(abs(pupil)**2)*du**2)
     axis, e, h = propagate_pupil(pupil, local, du, wavelength_um, settings)
     e, h = e[..., 0], h[..., 0]
@@ -68,16 +77,20 @@ def image_from_amplitude(amplitude, local, global_k, rotation, du, wavelength_um
                 image_integral_dsc_um2=integral, flux_relative_error=error)
 
 
-def calculate_channel(data, p, settings, index):
+def calculate_channel(data, p, settings, index, cache=None):
     na, tilt = settings.numerical_apertures[index], settings.tilt_degrees[index]
     local, k, rotation, mask, du = pupil_geometry(na, tilt, settings.pupil_samples)
     arrays = dict(pupil_mask=mask, global_k=k, pupil_u_axis=local[0, :, 0],
                   pupil_axis_mm=local[0, :, 0]*settings.focal_length_mm)
     metrics = dict(na=na, tilt_deg=tilt, enabled=na > 0)
+    saved = cache.load(na, tilt, settings.pupil_samples) if cache else None
+    metrics['pupil_cache_hit'] = saved is not None
     outputs = {}
     for name in ('with', 'without'):
         amplitude = np.zeros(mask.shape+(2,), complex)
-        if np.any(mask):
+        if saved is not None:
+            amplitude = saved[name]
+        elif np.any(mask):
             amplitude[mask] = radiation_amplitude(data['source_points_'+name],
                 data['source_polarization_weights_'+name], k[mask], p)
         result = image_from_amplitude(amplitude, local, k, rotation, du, p.wavelength_nm/1000, settings)
@@ -103,26 +116,44 @@ def calculate_channel(data, p, settings, index):
     border = max(1, len(flux)//10)
     edge[border:-border, border:-border] = False
     metrics['fft_edge_abs_flux_fraction'] = float(abs(flux[edge]).sum()/max(abs(flux).sum(), 1e-300))
-    specular = np.array((0., np.sin(np.deg2rad(p.incidence_deg)), np.cos(np.deg2rad(p.incidence_deg))))
-    metrics['admits_specular'] = bool(na > 0 and specular@rotation[:, 2] >= np.sqrt(1-na*na))
+    from .illumination import illumination_rays
+    metrics['admits_specular'] = bool(na > 0 and any(
+        ray[1]@rotation[:, 2] >= np.sqrt(1-na*na) for ray in illumination_rays(p)))
+    metrics['specular_test_scope'] = 'Sampled illumination rays only; finite-beam tails are not bounded by this flag.'
     if not all(np.isfinite(a).all() for a in arrays.values()):
         raise RuntimeError('Non-finite imaging result')
+    if cache and saved is None:
+        cache.save(na, tilt, settings.pupil_samples, {name: arrays['amplitude_'+name] for name in ('with', 'without')})
     return arrays, metrics
 
 
-def calculate_images(data, p, settings):
+def calculate_images(data, p, settings, retain_complex_fields=True, cache_directory=None):
     p.validate()
     settings.validate()
     arrays, summaries = {}, []
+    from .pupil_cache import PupilCache
+    cache = PupilCache(cache_directory, data, p) if cache_directory else None
+    seeds = np.random.SeedSequence(settings.detector.seed).spawn(3)
     for index in range(3):
         print('Computing direct FEM pupil and image for channel {}...'.format(index+1), flush=True)
-        channel, metrics = calculate_channel(data, p, settings, index)
+        channel, metrics = calculate_channel(data, p, settings, index, cache)
+        if settings.detector.enabled:
+            detector = calculate_detector(dict(image_axis_um=channel['image_axis_um'],
+                irradiance_w_um2=channel['image_with_w_um2'],
+                power_w=metrics['with']['image_power_w']), p.wavelength_nm, settings.detector,
+                rng=np.random.default_rng(seeds[index]))
+            metrics['detector'] = {k: v for k, v in detector.items() if not isinstance(v, np.ndarray)}
+            channel.update({'detector_'+k: v for k, v in detector.items() if isinstance(v, np.ndarray)})
+        if not retain_complex_fields:
+            for key in ('image_e_with', 'image_e_without', 'image_hz0_with', 'image_hz0_without'):
+                del channel[key]
         arrays.update({'ch{}_{}'.format(index+1, key): value for key, value in channel.items()})
         summaries.append(metrics)
     return arrays, dict(settings=asdict(settings), channels=summaries,
                        tube_focal_length_mm=settings.focal_length_mm*settings.magnification,
                        image_field_units='Flux normalized, not SI E/H; intensity W/um^2.',
                        focus='Object reference plane passes through (0,0,0), perpendicular to each objective axis.',
-                       scope='Independent ideal aplanatic air objectives; no summation of overlapping channels. '
-                             'Only scattered light; no specular leakage, aberrations, detector pixels or noise. '
+                       archive_mode='full' if retain_complex_fields else 'compact',
+                       scope='Independent aplanatic air objectives with optional Zernike phase and detector. '
+                             'Only scattered light; no specular leakage. Detector uses total scattered with-particle flux. '
                              'FEM validation limitations remain; FFT images are periodic.')

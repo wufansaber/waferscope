@@ -74,6 +74,9 @@ class FullwaveWidget(QWidget):
         self.start = QPushButton(self.style().standardIcon(QStyle.SP_MediaPlay), 'Calculate')
         self.cancel = QPushButton(self.style().standardIcon(QStyle.SP_MediaStop), 'Cancel')
         self.load_button = QPushButton(self.style().standardIcon(QStyle.SP_DirOpenIcon), 'Load result')
+        self.reimage_button = QPushButton(self.style().standardIcon(QStyle.SP_BrowserReload), 'Re-image source')
+        self.reimage_button.setToolTip('Reuse saved scattering; only imaging and camera controls apply.')
+        self.reimage_button.clicked.connect(self.choose_source)
         self.fit_button = QPushButton(self.style().standardIcon(QStyle.SP_TitleBarMaxButton), '')
         self.fit_button.setToolTip('Fit figure to view')
         self.fit_button.clicked.connect(self.results.fit_current)
@@ -82,7 +85,7 @@ class FullwaveWidget(QWidget):
         self.load_button.clicked.connect(self.choose_result)
         self.cancel.setEnabled(False)
         toolbar = QHBoxLayout()
-        for button in (self.start, self.cancel, self.load_button, self.fit_button):
+        for button in (self.start, self.cancel, self.load_button, self.reimage_button, self.fit_button):
             toolbar.addWidget(button)
         toolbar.addStretch()
         right = QWidget()
@@ -111,15 +114,30 @@ class FullwaveWidget(QWidget):
         self.runtime.setEnabled(not running)
         self.start.setEnabled(not running)
         self.load_button.setEnabled(not running)
+        self.reimage_button.setEnabled(not running)
         self.cancel.setEnabled(running)
         self.progress.setRange(0, 0 if running else 1)
         self.progress.setValue(0)
 
-    def start_job(self):
+    def choose_source(self):
+        directory = QFileDialog.getExistingDirectory(self, 'Reuse scattering folder (imaging settings only)', str(results_root(ROOT)))
+        if directory:
+            source = Path(directory)
+            if (source/'scattering').is_dir():
+                source = source/'scattering'
+            self.start_job(source=source)
+
+    def start_job(self, checked=False, source=None):
         if self.process.state() != QProcess.NotRunning:
             return
         try:
-            arguments = self.controls.arguments()
+            arguments = self.controls.arguments(imaging_only=source is not None)
+            arguments += ['--pupil-cache', str(results_root(ROOT)/'pupil_cache')]
+            if source is not None:
+                report = json.loads((Path(source)/'report.json').read_text(encoding='utf-8'))
+                if report.get('source_format_version') != 1 or not (Path(source)/'paired_fields.npz').is_file():
+                    raise ValueError('Select a complete reusable scattering source folder.')
+                arguments += ['--source', str(Path(source).resolve())]
             interpreter = Path(self.interpreter.text())
             if not interpreter.is_file():
                 raise ValueError('FEM Python is missing. Select the isolated NGSolve environment.')
@@ -142,6 +160,8 @@ class FullwaveWidget(QWidget):
             self.log.clear()
             self.set_running(True)
             self.status.setText('Calculating new result | '+str(self.output))
+            if source is not None:
+                self.status.setText('Re-imaging saved scattering (physical controls not applied) | '+str(source))
             self.process.start(str(interpreter), command)
         except (ValueError, OSError) as exc:
             QMessageBox.warning(self, 'Cannot start FEM', str(exc))

@@ -32,8 +32,10 @@ class FullwaveUiTests(unittest.TestCase):
         controls.fields['polarization'].setCurrentText('s')
         controls.fields['na2'].setValue(0)
         controls.fields['tilt1'].setValue(30)
+        controls.fields['threads'].setValue(1)
         args = build_parser().parse_args(controls.arguments())
         p, _ = scattering_settings(args)
+        self.assertEqual(p.threads, 1)
         self.assertEqual((args.accuracy, args.pupil_samples, p.order), ('balanced', 128, 3))
         self.assertEqual((p.pml_strength, p.pml_mesh_scale), (1., 1.25))
         self.assertEqual((p.pml_order, p.pml_inner_fraction), (0, .5))
@@ -74,6 +76,17 @@ class FullwaveUiTests(unittest.TestCase):
             (path/'imaging_report.json').write_text(json.dumps(report), encoding='utf-8')
             with self.assertRaisesRegex(ValueError, 'invalid image powers'):
                 tabs.load(path)
+
+    def test_reimage_forwards_only_imaging_controls(self):
+        controls = SimulationControls()
+        controls.fields['beam-waist-um'].setValue(.001)
+        controls.fields['coma-nm'].setValue(25)
+        controls.fields['detector'].setChecked(True)
+        arguments = controls.arguments(imaging_only=True)
+        self.assertNotIn('--beam-waist-um', arguments)
+        self.assertNotIn('--diameter-nm', arguments)
+        self.assertIn('--coma-nm', arguments)
+        self.assertIn('--detector', arguments)
 
     def test_process_command_and_cooperative_cancel(self):
         with tempfile.TemporaryDirectory() as directory:

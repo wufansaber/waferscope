@@ -18,7 +18,7 @@ class FullwaveImagingTests(unittest.TestCase):
                        ['--polarization', 's'], ['--roughness-seed', '9'],
                        ['--pml-strength', '1'], ['--integration-bonus', '4'],
                        ['--pml-order', '2'], ['--pml-inner-fraction', '.5'], ['--local-mesh-scale', '.8'],
-                       ['--near-diagnostics']):
+                       ['--threads', '4'], ['--near-diagnostics']):
             with patch('sys.argv', ['imaging_run', '--source', 'not-read']+option), patch('sys.stderr', new_callable=io.StringIO):
                 with self.assertRaises(SystemExit) as error:
                     main()
@@ -34,6 +34,16 @@ class FullwaveImagingTests(unittest.TestCase):
         self.assertEqual((p.wavelength_nm, p.diameter_nm, p.particle_n, p.particle_k), (266, 120, 1.7, .01))
         self.assertEqual((p.substrate_n, p.substrate_k, p.incidence_deg, p.polarization), (4.5, .2, 65, 's'))
         self.assertEqual((p.order, p.direct_solver, p.gap_nm, r.rms_nm, r.seed), (3, 'sparsecholesky', 20, 1, 8))
+
+    def test_thread_settings_are_validated(self):
+        from fullwave_prototype.imaging_run import build_parser, scattering_settings
+        parser = build_parser()
+        for count in (1, 2, 4):
+            p, _ = scattering_settings(parser.parse_args(['--threads', str(count)]))
+            self.assertEqual(p.threads, count)
+        for count in (0, -1):
+            with self.assertRaises(ValueError):
+                scattering_settings(parser.parse_args(['--threads', str(count)]))
 
     def setUp(self):
         self.p = Parameters(substrate_n=1, substrate_k=0)

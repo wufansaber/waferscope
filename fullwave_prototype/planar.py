@@ -33,11 +33,23 @@ def background_vectors(parameters):
 
 
 def background_fields(points, parameters):
-    down, up, kt, ein, er, et = background_vectors(parameters)
+    from .illumination import illumination_rays
     points = np.asarray(points)
-    pi = np.exp(1j*parameters.k0*(points @ down))
-    pr = np.exp(1j*parameters.k0*(points @ up))
-    pt = np.exp(1j*parameters.k0*(points @ kt))
+    e = np.zeros(points.shape, complex)
+    h = np.zeros(points.shape, complex)
+    for ray in illumination_rays(parameters):
+        de, dh = _ray_fields(points, parameters.k0, ray)
+        e += de
+        h += dh
+    return e, h
+
+
+def _ray_fields(points, k0, ray):
+    down, up, kt, ein, er, et = ray
+    points = np.asarray(points)
+    pi = np.exp(1j*k0*(points @ down))
+    pr = np.exp(1j*k0*(points @ up))
+    pt = np.exp(1j*k0*(points @ kt))
     eair = pi[..., None]*ein + pr[..., None]*er
     hair = pi[..., None]*np.cross(down, ein) + pr[..., None]*np.cross(up, er)
     esub = pt[..., None]*et

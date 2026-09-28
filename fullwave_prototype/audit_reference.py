@@ -12,6 +12,8 @@ def main():
     args = parser.parse_args()
     request = json.loads(Path(args.request).read_text(encoding='utf-8'))
     p = request['parameters']
+    if p.get('beam_waist_um', 0):
+        raise ValueError('This SCATMECH oracle is for plane-wave illumination only')
     with np.load(request['directions_file']) as data:
         directions, weights = data['directions'], data['weights']
     if request['kind'] == 'mie':
@@ -29,7 +31,7 @@ def main():
         model = Local_BRDF_Model('Bobbert_Vlieger_BRDF_Model', {'lambda': p['wavelength_nm']/1000,
             'radius': p['diameter_nm']/2000, 'sphere': complex(p['particle_n'], p['particle_k']),
             'substrate': complex(p['substrate_n'], p['substrate_k']), 'delta': p['gap_nm']/1000,
-            'type': 0, 'lmax': 14, 'order': -1, 'Norm_Inc_Approx': 0})
+            'type': 0, 'lmax': request.get('lmax', 14), 'order': -1, 'Norm_Inc_Approx': 0})
         column = 0 if p['polarization'] == 's' else 1
         amplitudes = np.array([model.JonesDSC(np.deg2rad(p['incidence_deg']),
             np.arccos(np.clip(k[2], -1, 1)), np.arctan2(k[1], k[0])-np.pi/2,

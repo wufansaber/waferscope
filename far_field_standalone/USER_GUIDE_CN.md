@@ -534,3 +534,15 @@ SCATMECH 官方模型说明：
 - [Microroughness_BRDF_Model](https://pages.nist.gov/SCATMECH/docs/microroughbrdf.htm)
 - [Correlated_Roughness_Stack_BRDF_Model](https://pages.nist.gov/SCATMECH/docs/correlated_stack.htm)
 - [Two_Source_BRDF_Model](https://pages.nist.gov/SCATMECH/docs/two_source.htm)
+
+## 16. 实验性全波页面
+
+`Full-wave FEM (experimental)` 页独立于上述 SCATMECH 模型，计算有限粗糙面与颗粒的相干耦合，
+显示近场、远场、三路像面和相干分解。此页当前仍采用均匀半空间晶圆，不继承 SCATMECH 页的膜层。
+三路 NA、倾角分别设置；线程数、内存限制和超时限制可调。
+
+新增 `Beam waist`（0 表示平面波）、角谱求积阶数、散光/彗差/球差以及 `Camera response`。
+相机页给出电子数图，不是按每路峰值归一化的图像。`Image archive` 默认 compact；full 额外保留复 E/H。
+计算结束后调整像差、离焦、相机参数，可用 `Re-image source` 选原始 scattering 目录重成像。
+这个入口不改变原始颗粒、粗糙度或光束；这些物理条件改变时必须重新 Calculate。
+完整单位和范围见 [模型扩展说明](../fullwave_prototype/MODEL_UPGRADE_CN.md)，发布包内对应 docs 目录。

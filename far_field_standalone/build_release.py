@@ -68,14 +68,30 @@ def build(args):
     for label, python in (('gui', args.gui_python), ('fem', args.fem_python)):
         subprocess.run([str(python), str(Path(__file__).resolve()), '--export-licenses',
                         str(app/'licenses'/label)], check=True)
-    example = ROOT/'build/near_pml_order/pipeline_outer'
+    example = ROOT/'build/release_upgrade/reimage_final'
+    if not (example/'imaging_report.json').is_file():
+        example = ROOT/'build/near_pml_order/pipeline_outer'
     if (example/'imaging_report.json').is_file():
         target = app/'examples/validated_355nm_100nm'
         target.mkdir(parents=True, exist_ok=True)
         for name in ('imaging_report.json', 'near_field.png', 'far_field.png', 'image_planes.png',
                      'image_decomposition.png', 'near_far_image.png'):
             shutil.copy2(example/name, target/name)
+    git = ['git', '-c', 'safe.directory='+ROOT.as_posix(), '-C', str(ROOT)]
+    commit = subprocess.check_output(git+['rev-parse', 'HEAD'], text=True).strip()
+    dirty = bool(subprocess.check_output(git+['status', '--porcelain'], text=True).strip())
+    evidence = app/'verification'
+    evidence.mkdir(exist_ok=True)
+    audit_root = ROOT/'build/release_upgrade'
+    for relative in ('sensitivity_summary.json', 'batch.json', 'beam/audit.json', 'beam_far/audit.json',
+                     'reimage_final/audit.json', 'native_tests.json', 'packaged/package_smoke.json'):
+        source = audit_root/relative
+        if source.is_file():
+            target = evidence/relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, target)
     (app/'build_manifest.json').write_text(json.dumps(dict(version=args.version,
+        source_commit=commit, source_dirty=dirty,
         platform='Windows x64', format='onedir', fem_status='experimental',
         source='https://github.com/wufansaber/aptk',
         note='No local environments, credentials or computed field archives included.'), indent=2), encoding='utf-8')

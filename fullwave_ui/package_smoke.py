@@ -24,6 +24,11 @@ def run(output):
     widget.controls.fields['accuracy'].setCurrentText('preview')
     widget.controls.fields['pupil-samples'].setCurrentText('32')
     widget.controls.fields['rms-nm'].setValue(0)
+    widget.controls.fields['threads'].setValue(4)
+    widget.controls.fields['beam-waist-um'].setValue(2)
+    widget.controls.fields['beam-order'].setCurrentText('3')
+    widget.controls.fields['coma-nm'].setValue(15)
+    widget.controls.fields['detector'].setChecked(True)
     widget.timeout.setValue(3)
     widget.process.finished.connect(app.quit)
     widget.process.errorOccurred.connect(app.quit)
@@ -42,11 +47,26 @@ def run(output):
         raise RuntimeError('Packaged worker exited abnormally')
     if 'Displayed result:' not in widget.loaded.text():
         raise RuntimeError('Packaged GUI did not load result')
+    original = widget.output
+    widget.controls.fields['coma-nm'].setValue(0)
+    QTimer.singleShot(0, lambda: widget.start_job(source=original/'scattering'))
+    app.exec_()
+    if not widget.wait_for_shutdown():
+        raise RuntimeError('Packaged re-imaging did not stop')
+    second = json.loads((widget.output/'resources.json').read_text(encoding='utf-8'))
+    report = json.loads((widget.output/'imaging_report.json').read_text(encoding='utf-8'))
+    if (second['status'] != 'completed' or second['surviving_owned_pids']
+            or widget.process.exitCode() != 0 or widget.process.exitStatus() != QProcess.NormalExit
+            or not all(c['pupil_cache_hit'] for c in report['channels'])):
+        raise RuntimeError('Packaged cache re-imaging failed')
+    if not (widget.output/'detector.png').is_file() or report['archive_mode'] != 'compact':
+        raise RuntimeError('Packaged detector or compact archive missing')
     widget.results.setCurrentIndex(2)
     app.processEvents()
     if not window.grab().save(str(output/'packaged_gui.png')):
         raise RuntimeError('Packaged GUI screenshot failed')
     (output/'package_smoke.json').write_text(json.dumps(dict(status='passed',
-        engine=widget.interpreter.text(), result=str(widget.output),
+        engine=widget.interpreter.text(), original_result=str(original), result=str(widget.output),
+        pupil_cache_hits=[c['pupil_cache_hit'] for c in report['channels']],
         displayed=widget.loaded.text()), indent=2), encoding='utf-8')
     window.close()

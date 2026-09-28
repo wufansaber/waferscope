@@ -57,6 +57,9 @@ class ResultsTabs(QTabWidget):
         self.parameters = QPlainTextEdit()
         self.parameters.setReadOnly(True)
         self.addTab(self.parameters, 'Result parameters')
+        self.detector_view = FigureView()
+        self.addTab(self.detector_view, 'Camera')
+        self.setTabEnabled(self.indexOf(self.detector_view), False)
         self.currentChanged.connect(self.fit_current)
 
     def fit_current(self, *_):
@@ -74,11 +77,20 @@ class ResultsTabs(QTabWidget):
         if not all(math.isfinite(power) and power >= 0 for power in powers):
             raise ValueError('Result contains invalid image powers')
         # Validate every image before replacing the current result.
+        detector = report.get('settings', {}).get('detector', {}).get('enabled', False)
+        if detector and QPixmap(str(directory/'detector.png')).isNull():
+            raise ValueError('Missing or invalid detector figure')
         for _, name in self.FIGURES:
             if QPixmap(str(directory/name)).isNull():
                 raise ValueError('Missing or invalid result figure: '+name)
         for view, (_, name) in zip(self.views, self.FIGURES):
             view.load(directory/name)
+        if detector:
+            self.detector_view.load(directory/'detector.png')
+        else:
+            self.detector_view.scene().clear()
+            self.detector_view.item = None
+        self.setTabEnabled(self.indexOf(self.detector_view), detector)
         self.parameters.setPlainText('Loaded result: '+str(directory.resolve())+'\n\n'+
                                      json.dumps(report, indent=2, ensure_ascii=False))
         return powers

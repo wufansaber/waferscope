@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import patch
 import numpy as np
 
 from fullwave_prototype.physical_audit import sphere_rule
@@ -6,6 +7,14 @@ from fullwave_prototype.audit_optics import airy_check
 
 
 class IndependentValidationTests(unittest.TestCase):
+    def test_invalid_pupil_sampling_rejected_before_fem(self):
+        from fullwave_prototype.physical_audit import flat_pupil
+        from fullwave_prototype.parameters import Parameters
+        with patch('fullwave_prototype.physical_audit.solve') as solve:
+            with self.assertRaises(ValueError):
+                flat_pupil(Parameters(), None, None, pupil_samples=31)
+            solve.assert_not_called()
+
     def test_spherical_measure_and_moments(self):
         d, w = sphere_rule(12)
         self.assertAlmostEqual(w.sum(), 4*np.pi, places=12)

@@ -88,7 +88,7 @@ def plot_pipeline(output, data, arrays, scattering, report):
     fig.colorbar(im, ax=image_axes, label='I (W / um^2), shared absolute scale', shrink=.9)
     p = scattering['parameters']
     fig.suptitle('FULL-WAVE DARK-FIELD PIPELINE | {} nm, particle {} nm | {}x, f_obj={} mm, f_tube={} mm\n'
-                 'Experimental FEM + ideal optics; independent channels; far field / images exclude specular beam'.format(
+                 'Experimental FEM + configured optics; independent channels; far field / images exclude specular beam'.format(
                      p['wavelength_nm'], p['diameter_nm'], settings['magnification'],
                      settings['focal_length_mm'], report['tube_focal_length_mm']), fontsize=12)
     fig.savefig(Path(output)/'near_far_image.png', dpi=160)

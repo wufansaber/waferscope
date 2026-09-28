@@ -113,9 +113,10 @@ S_interference = Re(dE x conj(H_without) + E_without x conj(dH))_z
 已完成部分 FEM 边界、近场、能量平衡及独立成像基准，结果不代表全部工况已经收敛。
 FFT 图像具有周期性；提高出瞳采样数扩大无混叠视场，增加 padding 仅使像面采样更密，
 不能替代出瞳采样收敛。硬边 NA 有衍射长尾，有限显示区域不会包含全部能量。
-目前不包含镜头像差、多层膜、有限照明光斑、相机像素和噪声。
+可选有限角谱光束、Zernike 像差、相机像素和噪声已经接入；默认关闭以保留原来的理想模型。
+FEM 仍不包含多层膜，也没有真实物镜或相机的实验标定。
 这是完整的理想光学计算链路，不是已经标定验证的真实仪器数字模型。
-源码 UI 已接入全波实验页；现有 EXE 尚未包含这一更新。
+源码 UI 和 2026-09-28 发布包已接入全波实验页；新增功能是否包含在 EXE 中以对应发布记录为准。
 
 ## 数值配置更新
 
@@ -129,3 +130,22 @@ FFT 图像具有周期性；提高出瞳采样数扩大无混叠视场，增加 
 1.25，并使用 sparsecholesky。它已完成本轮三阶粗糙面配对成像，仍需按目标工况做收敛检查。
 `--pml-strength`、`--pml-mesh-scale` 和 `--integration-bonus` 可显式覆盖数值控制；
 在 `--source` 模式下这些选项会被拒绝，以免旧源被误标为新数值配置。
+
+## 独立积分与线程控制
+
+新增 `--threads` 和源码 UI 的 `FEM threads`，显式设置 NGSolve 工作线程。
+资源保护保持 BLAS/OpenMP 单线程，内存与超时限制仍然生效。
+复用 `--source` 时无需进行 FEM 求解，因此拒绝附加新的 `--threads` 参数。
+同一 FEM 出瞳的直接矢量积分、独立 BV 极坐标成像及本机线程实测见
+[IMAGING_THREAD_AUDIT_CN.md](IMAGING_THREAD_AUDIT_CN.md)。
+
+## 新增光束、像差、相机与缓存
+
+详见 [MODEL_UPGRADE_CN.md](MODEL_UPGRADE_CN.md)。CLI 默认输出 compact 存档，省略像面
+E/H 四个大数组，但保留复出瞳、全部强度和相干分解。需要像面复场时选择 `--archive-mode full`。
+API `calculate_images` 默认仍保留复场，兼容原有分析脚本。
+
+`Re-image source` 选择含 `report.json` 与 `paired_fields.npz` 的 scattering 目录，
+或选择其上一级完整结果目录。此操作只应用成像和相机参数，物理参数继续使用原始散射源。
+改变颗粒、材料、粗糙度或照明请使用 `Calculate`，不能用重成像代替重新求解。
+界面自动使用按源内容校验的出瞳缓存，CLI 通过 `--pupil-cache DIRECTORY` 启用。

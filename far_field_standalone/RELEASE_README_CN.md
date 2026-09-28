@@ -11,7 +11,7 @@
 - `fem/FarField_FEM.exe`：主界面自动调用的求解器，通常不用手动启动。
 
 FEM 结果默认保存在 `%LOCALAPPDATA%\FarField_Simulation\results`。
-默认使用三阶 balanced、128 点光瞳；粗糙面算例内存需求较大，建议至少 16 GB RAM，
+默认使用三阶 balanced、128 点光瞳；粗糙面算例内存需求较大，本轮验收使用 32 GB RAM，
 并保留足够空闲内存。界面保留内存、时间限制和取消按钮；触发保护不是有效计算结果。
 
 ## 示例与说明
@@ -30,3 +30,12 @@ FEM 仍是实验模型，不是完备解析解：有限粗糙区域、几何尖�
 未经代码签名的程序可能受到 Windows SmartScreen 提示；请核对来源与发布的 SHA-256。
 
 第三方依赖的许可和版本见 `THIRD_PARTY_NOTICES.md` 与 `licenses` 文件夹。
+
+## 本次更新
+
+新增独立成像校验、FEM 线程设置、有限角谱光束、Zernike 像差与相机响应。
+`Re-image source` 复用已有散射源，只应用成像和相机设置；修改颗粒或材料需重新 `Calculate`。
+默认 compact 存档并自动缓存复出瞳；需要像面复 E/H 时选择 full。
+本机验收使用 32 GB RAM，默认保留 2 个 FEM 线程；提高线程数会增加内存需求。
+模型说明和未完成研究项见 [本次模型扩展](docs/fullwave_prototype/MODEL_UPGRADE_CN.md)。
+独立校验和线程实测见 [验收报告](docs/fullwave_prototype/IMAGING_THREAD_AUDIT_CN.md)。

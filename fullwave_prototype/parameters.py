@@ -30,8 +30,12 @@ class Parameters:
     integration_bonus: int = 0
     pml_order: int = 0
     pml_inner_fraction: float = 0.0
+    beam_waist_um: float = 0.0
+    beam_order: int = 5
 
     def validate(self):
+        if self.beam_waist_um < 0 or not isinstance(self.beam_order, int) or self.beam_order not in (3, 5, 7, 9):
+            raise ValueError('Beam waist must be nonnegative; quadrature order 3/5/7/9.')
         for key, value in asdict(self).items():
             if key not in ('polarization', 'direct_solver') and not math.isfinite(value):
                 raise ValueError(key + ' must be finite')
