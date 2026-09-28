@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QApplication, QMainWindow
+from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget
 
 from .backend import calculate_far_field
 from .parameters import SimulationParameters
@@ -20,7 +20,12 @@ class ScatmechStandaloneWindow(QMainWindow):
         self.setMinimumSize(1200, 720)
         self._resize_for_screen()
         self.simulation_widget = ScatmechSimulationWidget()
-        self.setCentralWidget(self.simulation_widget)
+        from fullwave_ui.widget import FullwaveWidget
+        self.fullwave_widget = FullwaveWidget()
+        self.tabs = QTabWidget()
+        self.tabs.addTab(self.simulation_widget, 'SCATMECH')
+        self.tabs.addTab(self.fullwave_widget, 'Full-wave FEM (experimental)')
+        self.setCentralWidget(self.tabs)
 
     def _resize_for_screen(self):
         screen = QApplication.primaryScreen()
@@ -33,6 +38,9 @@ class ScatmechStandaloneWindow(QMainWindow):
         self.resize(width, height)
 
     def closeEvent(self, event):
+        if not self.fullwave_widget.wait_for_shutdown():
+            event.ignore()
+            return
         self.simulation_widget.wait_for_shutdown()
         super().closeEvent(event)
 
@@ -52,6 +60,10 @@ def run_headless_test(output_directory):
 
 
 def main():
+    if '--fem-package-test' in sys.argv:
+        from fullwave_ui.package_smoke import run
+        run(sys.argv[sys.argv.index('--fem-package-test')+1])
+        return
     if "--headless-test" in sys.argv:
         index = sys.argv.index("--headless-test")
         output = (

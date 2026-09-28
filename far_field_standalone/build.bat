@@ -9,12 +9,10 @@ if not exist "%PYTHON_EXE%" (
 )
 
 cd /d "%~dp0"
-"%PYTHON_EXE%" -m PyInstaller FarField_Simulation.spec --clean --noconfirm
-if errorlevel 1 exit /b %errorlevel%
-copy /Y "USER_GUIDE_CN.md" "dist\FarField_Simulation\USER_GUIDE_CN.md" >nul
+"%PYTHON_EXE%" build_release.py
 if errorlevel 1 exit /b %errorlevel%
 
 echo.
 echo Build completed:
-echo %~dp0dist\FarField_Simulation\FarField_Simulation.exe
+echo %~dp0dist\YYYY-MM-DD\FarField_Simulation\FarField_Simulation.exe
 endlocal

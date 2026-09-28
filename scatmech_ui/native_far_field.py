@@ -29,14 +29,14 @@ def calculate_far_field(parameters, progress_callback=None):
     parameters.validate()
     model_bundle = build_scattering_model(parameters)
     theta_grid, phi_grid = _angular_grid(parameters.angular_step_deg)
-    intensity, q, u, v = _evaluate_mueller_grid(
+    intensity, q, u, v, jones = _evaluate_mueller_grid(
         model_bundle,
         parameters,
         theta_grid,
         phi_grid,
         progress_callback,
     )
-    return _format_far_field_result(
+    result = _format_far_field_result(
         parameters,
         model_bundle.thickness_note,
         theta_grid,
@@ -47,6 +47,9 @@ def calculate_far_field(parameters, progress_callback=None):
         v,
         model_note=model_bundle.model_note,
     )
+    if jones is not None:
+        result["jones_dsc_um"] = jones
+    return result
 
 
 def _angular_grid(step_deg):
@@ -80,6 +83,7 @@ def _evaluate_mueller_grid(
     q = np.empty(shape, dtype=float)
     u = np.empty(shape, dtype=float)
     v = np.empty(shape, dtype=float)
+    jones = np.empty(shape + (2, 2), dtype=complex) if model_bundle.output_kind == "dsc" else None
     incident = Polarization(
         {"p": "p", "s": "s", "unpolarized": "u"}[parameters.polarization]
     )
@@ -97,6 +101,8 @@ def _evaluate_mueller_grid(
                     coords="psps",
                 )
                 output_scale = 1.0
+                jones[row, column] = model_bundle.model.JonesDSC(
+                    incidence, scattering_theta, phi_grid[row, column], coords="psps")
             else:
                 mueller = model_bundle.model.MuellerBRDF(
                     incidence,
@@ -119,7 +125,9 @@ def _evaluate_mueller_grid(
 
     if not np.isfinite(intensity).all() or np.nanmax(intensity) <= 0:
         raise RuntimeError("SCATMECH returned invalid far-field intensity values.")
-    return intensity, q, u, v
+    if jones is not None and not np.isfinite(jones).all():
+        raise RuntimeError("SCATMECH returned non-finite Jones amplitudes.")
+    return intensity, q, u, v, jones
 
 
 def _format_far_field_result(

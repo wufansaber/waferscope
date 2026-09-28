@@ -1,7 +1,7 @@
 """Reusable Qt controls for the SCATMECH simulation page."""
 
 import json
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from pathlib import Path
 
 import numpy as np
@@ -37,10 +37,14 @@ from .parameters import (
     ParticleSizeSweepParameters,
     SimulationParameters,
 )
-from .plotting import PlotCanvas, render_results
+from .plotting import DetectorCanvas, ImagingCanvas, PlotCanvas, render_results
 from .size_sweep import export_particle_size_sweep
 from .wafer_controls import CoatingStackGroup, RoughnessGroup
 from .worker import ParticleSizeSweepWorker, SimulationWorker
+from .worker import ImagingWorker
+from .imaging_controls import ImagingGroup
+from .imaging import export_imaging
+from .detector_controls import DetectorGroup
 
 
 class MaterialGroup(QGroupBox):
@@ -235,6 +239,12 @@ class ScatmechSimulationWidget(QWidget):
         objective_layout.addRow("Channel 3 tilt", self.objective_tilt_ch3)
         controls_layout.addWidget(objective_group)
 
+        self.imaging_group = ImagingGroup(self.objective_focal_length)
+        self.imaging_group.run_button.clicked.connect(self.start_imaging)
+        controls_layout.addWidget(self.imaging_group)
+        self.detector_group = DetectorGroup()
+        controls_layout.addWidget(self.detector_group)
+
         sweep_group = QGroupBox("Particle-size sweep")
         sweep_layout = QFormLayout(sweep_group)
         sweep_layout.setRowWrapPolicy(QFormLayout.WrapLongRows)
@@ -283,8 +293,11 @@ class ScatmechSimulationWidget(QWidget):
             ("3d_intensity", "3-D far-field / pupil"),
             ("2d_intensity", "2-D far-field / pupil"),
             ("size_sweep", "Particle-size sweep"),
+            ("image_planes", "Three image planes"),
+            ("detectors", "Detectors"),
         ):
-            canvas = PlotCanvas()
+            canvas_type = {"image_planes": ImagingCanvas, "detectors": DetectorCanvas}.get(key, PlotCanvas)
+            canvas = canvas_type()
             self.canvases[key] = canvas
             self.tabs.addTab(canvas, title)
         splitter.addWidget(self.tabs)
@@ -304,6 +317,7 @@ class ScatmechSimulationWidget(QWidget):
         if SCATMECH_IMPORT_ERROR is not None:
             self.run_button.setEnabled(False)
             self.sweep_button.setEnabled(False)
+            self.imaging_group.run_button.setEnabled(False)
             self.status.setText(
                 "pySCATMECH is not installed in the active interpreter. "
                 "The native particle simulation is disabled, but the ideal "
@@ -412,6 +426,45 @@ class ScatmechSimulationWidget(QWidget):
             "Running particle-size sweep...",
         )
 
+    @pyqtSlot()
+    def start_imaging(self):
+        try:
+            simulation = self.parameters()
+            objective = self.objective_collection_parameters()
+            imaging = replace(self.imaging_group.parameters(), detector=self.detector_group.parameters())
+            simulation.validate()
+            objective.validate()
+            imaging.validate()
+            if simulation.roughness_enabled:
+                raise ValueError("Disable roughness for coherent particle imaging. "
+                                 "Statistical BRDF alone does not define a complex field.")
+        except Exception as error:
+            QMessageBox.warning(self, "Invalid imaging parameters", str(error))
+            return
+        self._start_worker(ImagingWorker(simulation, objective, imaging),
+                           self._imaging_completed, "Sampling complex Jones pupils...")
+
+    @pyqtSlot(object)
+    def _imaging_completed(self, result):
+        self.result = result
+        self.render_results(result)
+        self.export_button.setEnabled(True)
+        self.progress.setValue(100)
+        powers = "/".join("{:.4g}".format(c["power_w"]) for c in result["channels"])
+        warning = ""
+        if any(c["admits_specular"] for c in result["channels"]):
+            warning += " WARNING: a collection cone admits specular reflection; a dark-field stop is required."
+        if any(c["edge_fraction"] > 0.02 for c in result["channels"]):
+            warning += " Image edge energy is high; increase pupil samples to enlarge the field."
+        if result["imaging_parameters"].detector.enabled:
+            counts = "/".join("{:.4g}".format(c["detector"]["signal_e"]) for c in result["channels"])
+            warning += " Expected particle signal: {} e-.".format(counts)
+            if any(c["detector"]["saturated_pixels"] or c["detector"]["expected_overfull_pixels"]
+                   for c in result["channels"]):
+                warning += " WARNING: detector saturation; reported SNR is pre-saturation only."
+        self.status.setText("Particle-only image powers: {} W. Ideal aplanatic optics; "
+                            "near-field and background leakage are not included.{}".format(powers, warning))
+
     def _start_worker(self, worker, completed_slot, status_text):
         self._set_calculation_controls_enabled(False)
         self.export_button.setEnabled(False)
@@ -435,6 +488,7 @@ class ScatmechSimulationWidget(QWidget):
         native_enabled = enabled and SCATMECH_IMPORT_ERROR is None
         self.run_button.setEnabled(native_enabled)
         self.sweep_button.setEnabled(native_enabled)
+        self.imaging_group.run_button.setEnabled(native_enabled)
         self.objective_example_button.setEnabled(enabled)
 
     @pyqtSlot()
@@ -520,7 +574,9 @@ class ScatmechSimulationWidget(QWidget):
 
     def render_results(self, result):
         render_results(self.canvases, result)
-        if result.get("plot_kind") == "particle_size_sweep":
+        if result.get("plot_kind") == "coherent_imaging":
+            self.tabs.setCurrentWidget(self.canvases["image_planes"])
+        elif result.get("plot_kind") == "particle_size_sweep":
             self.tabs.setCurrentWidget(self.canvases["size_sweep"])
         else:
             self.tabs.setCurrentWidget(self.canvases["3d_intensity"])
@@ -532,6 +588,11 @@ class ScatmechSimulationWidget(QWidget):
         if not directory:
             return
         directory = Path(directory)
+        if self.result.get("plot_kind") == "coherent_imaging":
+            export_imaging(self.result, directory, self.canvases["image_planes"].figure,
+                           self.canvases["detectors"].figure)
+            QMessageBox.information(self, "Export complete", str(directory))
+            return
         if self.result.get("plot_kind") == "particle_size_sweep":
             export_particle_size_sweep(
                 self.result,

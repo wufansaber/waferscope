@@ -23,6 +23,7 @@ env/
 offline_wheels/
 
 # Local editor and OS metadata
+.codex/
 .idea/
 .vscode/extensions.json
 .DS_Store

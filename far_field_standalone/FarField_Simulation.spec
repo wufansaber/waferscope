@@ -14,7 +14,8 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=["pages", "main_window"],
+    excludes=["pages", "main_window", "ngsolve", "netgen", "pyngcore", "ngsolve_openblas",
+              "numba", "llvmlite", "miepython"],
     noarchive=False,
     optimize=0,
 )

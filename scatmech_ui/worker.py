@@ -6,6 +6,7 @@ from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot
 
 from .backend import calculate_far_field
 from .size_sweep import calculate_particle_size_sweep
+from .imaging import calculate_imaging
 
 
 class SimulationWorker(QObject):
@@ -47,5 +48,25 @@ class ParticleSizeSweepWorker(QObject):
                 self.progress.emit,
             )
             self.completed.emit(result)
+        except Exception:
+            self.failed.emit(traceback.format_exc())
+
+
+class ImagingWorker(QObject):
+    progress = pyqtSignal(int)
+    completed = pyqtSignal(object)
+    failed = pyqtSignal(str)
+
+    def __init__(self, simulation, objective, imaging):
+        super().__init__()
+        self.simulation = simulation
+        self.objective = objective
+        self.imaging = imaging
+
+    @pyqtSlot()
+    def run(self):
+        try:
+            self.completed.emit(calculate_imaging(
+                self.simulation, self.objective, self.imaging, self.progress.emit))
         except Exception:
             self.failed.emit(traceback.format_exc())

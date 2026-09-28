@@ -1,0 +1,27 @@
+"""Frozen solver retaining the source Python -m subprocess protocol."""
+import multiprocessing
+import os
+from pathlib import Path
+import sys
+
+
+def main():
+    multiprocessing.freeze_support()
+    if not getattr(sys, 'frozen', False):
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    if len(sys.argv) < 3 or sys.argv[1] != '-m':
+        raise SystemExit('Use -m fullwave_prototype.guarded_run or -m fullwave_prototype.imaging_run')
+    module = sys.argv[2]
+    sys.argv = [sys.argv[0]]+sys.argv[3:]
+    os.environ.setdefault('MPLBACKEND', 'Agg')
+    if module == 'fullwave_prototype.guarded_run':
+        from fullwave_prototype.guarded_run import main as run
+    elif module == 'fullwave_prototype.imaging_run':
+        from fullwave_prototype.imaging_run import main as run
+    else:
+        raise SystemExit('Unsupported packaged module: '+module)
+    run()
+
+
+if __name__ == '__main__':
+    main()

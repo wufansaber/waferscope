@@ -1,5 +1,78 @@
 # Far-field 远场仿真程序用户使用指南
 
+## 全波 FEM 实验页
+
+运行本目录 `main.py` 后，顶部新增 `Full-wave FEM (experimental)`，
+可查看近场、远场、三路独立像面及相干干涉分解。原有功能仍在 `SCATMECH` 页。
+该页使用单独的 NGSolve 环境，默认三阶 `balanced` 与 128 点光瞳，
+可切换二阶 `preview`；带取消、内存/时间保护与结果载入。
+新增 `PML order (0=same)`、`PML full-order fraction` 和 `Local mesh scale`。
+默认 PML order=0，保持原来的同阶吸收层；局部尺寸倍率默认 1。
+选择 PML order=2 时，full-order fraction=0.5 让吸收层内半部保持物理区阶数，
+只降低外半部单元的阶数；局部倍率 0.9 将颗粒及粗糙区目标单元尺寸减少 10%。
+这是可选的内存/精度折中，不是默认高精度方案。整个 PML 均降为二阶的试验
+在独立 Mie 校验中产生约 2.88% 消光误差，不推荐用于高精度结果。
+保留内半部后该基准误差约 0.77%，仍大于原全三阶的约 0.18%。
+详见 [低内存三阶加密报告](../fullwave_prototype/LOW_MEMORY_REFINEMENT_CN.md)。
+详细参数、已完成基准与限制见
+[后续验证与实验界面说明](../fullwave_prototype/FOLLOWUP_VALIDATION_CN.md)。
+最新公式与数值结果见 [理论模型](../fullwave_prototype/THEORETICAL_MODEL_CN.md)、
+[理论交叉校验结果](../fullwave_prototype/THEORY_VALIDATION_CN.md)。
+2026-09-28 分文件发行版已包含 FEM 界面和独立求解器，无需安装 Anaconda。
+完整解压后启动 `FarField_Simulation.exe`，保留同级 `fem` 和 `_internal` 目录。
+发行版 FEM 结果默认位于 `%LOCALAPPDATA%\FarField_Simulation\results`。
+
+## 三路独立 20× 成像
+
+在左侧 `Independent image planes` 中设置成像参数，点击
+`Calculate three image planes`，在 `Three image planes` 页查看三路独立像面。
+默认物镜焦距为 20 mm、倍率为 20×，管镜焦距自动计算为 400 mm。
+三路沿用各自的 NA 和倾角；NA=0 时该路关闭。
+
+`Incident irradiance` 是垂直于入射光束截面的照度，单位 mW/μm²。
+`Image defocus` 是探测器相对于理想像面的轴向离焦，单位 μm。
+`Power transmission` 是功率透过率；`Pupil analyzer` 作用于各路准直光瞳的局部偏振。
+以上成像设置共同应用于三路，但三路复场和图像分别计算，不进行相干合束。
+
+图像显示绝对照度 W/μm²，各路使用独立色标，颜色采用幂律拉伸以显示弱信号，
+截线为线性强度。总功率单位为 W，不做峰值归一化。
+`Pupil samples / axis` 控制光瞳采样，`Multipole order` 控制球谐展开阶数。
+应逐步增加两者检查收敛；图中很小的 `Flux error` 仅表示离散传播的功率守恒，
+不代表物理模型已经具有同等精度。
+
+该模式目前计算平滑多层晶圆上的单颗粒散射像，采用理想无像差物镜和管镜。
+不包含完整近场、粗糙度散斑和镜面泄漏，因此运行时需关闭粗糙度。
+当收集光锥包含镜面反射方向时会提示需要暗场挡光，但不会自动模拟实际挡光器。
+颗粒和膜层材料仍使用界面中的 n、k；更改波长不会自动更新材料色散。
+
+导出包括三路图像 PNG、保存复 Jones 光瞳及像面 E/H 模态的 NPZ 和完整参数 JSON。
+详细公式、场单位和模型边界见 [IMAGING_MODEL.md](IMAGING_MODEL.md)。
+
+### 三路探测器
+
+勾选 `Detectors (three independent ROIs)` 后，点击同一个成像计算按钮，
+在 `Detectors` 页查看三路的预期颗粒电子数和带噪声读出图。相机参数共同应用于三路，
+但每路按自己的像场独立积分，噪声也独立生成，不相干叠加三路光场。
+
+- `Pixel pitch`：像素边长；`ROI columns/rows`：以像面原点为中心的矩形像素区域。
+- `Exposure`：曝光时间；`Quantum efficiency`：量子效率，需填写激光波长处的实际值。
+- `Read noise`：读出噪声 RMS，单位电子；`Dark current / pixel`：单像素暗电流。
+- `Background / pixel`：额外均匀背景电子率，不代表已计算了晶圆粗糙度或镜面泄漏。
+- `Full well / pixel`：满阱电子数；`Noise seed`：固定后可复现同一参数下的随机读出。
+
+程序先按像素实际面积积分照度，再根据光子能量和量子效率换算电子数；
+对信号、暗电流和背景生成泊松噪声，按满阱截断后再加入高斯读出噪声。
+读出可能出现负值或略高于满阱值，这是读出噪声的结果，不是负光子数。
+默认相机参数仅为示例，不对应具体型号。
+
+图中 `ROI` 表示该矩形像素区域接收到的功率占本路计算像面总功率的比例，
+不是相对于半球的收集率。`Ideal SNR` 是背景均值已知时、饱和前的理论信噪比。
+出现 `saturated` 提示时应缩短曝光或降低照度，不能直接把此 SNR 当作实际读出性能。
+NA=0 时颗粒信号为零，但开启的探测器仍有暗电流和读出噪声。
+
+ROI 超出计算像场会报错，请增加 `Pupil samples / axis` 或减小 ROI/像素尺寸。
+导出新增探测器图、各像素光子数/电子数、随机读出、饱和掩码和参数。
+
 ## 1. 软件介绍
 
 Far-field Simulation 是一个面向晶圆表面颗粒散射分析的独立桌面程序。
