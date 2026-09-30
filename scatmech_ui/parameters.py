@@ -49,6 +49,8 @@ class SimulationParameters:
     display_floor_db: float = -35.0
     coating_layers: tuple = ()
     roughness_enabled: bool = False
+    haze_only: bool = False
+    roughness_psd: str = "abc"
     roughness_interface_mode: str = "top_interface"
     roughness_rms_nm: float = 0.2
     roughness_correlation_length_um: float = 0.2
@@ -86,12 +88,16 @@ class SimulationParameters:
             layer.validate(index)
         if self.roughness_interface_mode not in ROUGHNESS_INTERFACE_MODES:
             raise ValueError("Unknown roughness interface mode.")
+        if self.roughness_psd not in ("abc", "gaussian"):
+            raise ValueError("Unknown roughness PSD model.")
+        if self.haze_only and not self.roughness_enabled:
+            raise ValueError("Haze-only mode requires roughness background.")
         if self.roughness_enabled:
             if self.roughness_rms_nm <= 0.0:
                 raise ValueError("Roughness RMS must be positive when enabled.")
             if self.roughness_correlation_length_um <= 0.0:
                 raise ValueError("Roughness correlation length must be positive.")
-            if self.roughness_exponent <= 2.0:
+            if self.roughness_psd == "abc" and self.roughness_exponent <= 2.0:
                 raise ValueError("ABC PSD exponent C must be greater than 2.")
             if self.illumination_length_um <= 0.0:
                 raise ValueError("Illumination footprint length must be positive.")

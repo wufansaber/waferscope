@@ -1,5 +1,8 @@
 """Backend-independent checks for the FEM-to-image adapter."""
 from dataclasses import replace
+import json
+from pathlib import Path
+import tempfile
 import unittest
 from unittest.mock import patch
 import io
@@ -18,6 +21,8 @@ class FullwaveImagingTests(unittest.TestCase):
                        ['--polarization', 's'], ['--roughness-seed', '9'],
                        ['--pml-strength', '1'], ['--integration-bonus', '4'],
                        ['--pml-order', '2'], ['--pml-inner-fraction', '.5'], ['--local-mesh-scale', '.8'],
+                       ['--particle-mesh-um', '.0015'], ['--quadrature-order', '7'],
+                       ['--particle-mesh-um', '.0015'], ['--quadrature-order', '7'],
                        ['--threads', '4'], ['--near-diagnostics']):
             with patch('sys.argv', ['imaging_run', '--source', 'not-read']+option), patch('sys.stderr', new_callable=io.StringIO):
                 with self.assertRaises(SystemExit) as error:
@@ -44,6 +49,38 @@ class FullwaveImagingTests(unittest.TestCase):
         for count in (0, -1):
             with self.assertRaises(ValueError):
                 scattering_settings(parser.parse_args(['--threads', str(count)]))
+
+    def test_illumination_footprint_sets_irradiance(self):
+        from fullwave_prototype.imaging_run import build_parser
+        from fullwave_prototype.imaging_options import imaging_settings
+        parser = build_parser()
+        default = imaging_settings(parser.parse_args([]))
+        self.assertEqual((default.illumination_power_w, default.illumination_length_um,
+                          default.illumination_width_um), (1, 2, 2))
+        self.assertAlmostEqual(default.irradiance_w_um2,
+                               1/(4*np.cos(np.deg2rad(75))))
+        oblique = imaging_settings(parser.parse_args(['--incidence-deg', '60']))
+        self.assertAlmostEqual(oblique.irradiance_w_um2, .5)
+        legacy = imaging_settings(parser.parse_args(['--irradiance-w-um2', '1e-6']))
+        self.assertEqual(legacy.irradiance_w_um2, 1e-6)
+        self.assertIsNone(legacy.illumination_power_w)
+        with self.assertRaisesRegex(ValueError, 'together'):
+            imaging_settings(parser.parse_args(['--illumination-power-w', '1']))
+        with self.assertRaisesRegex(ValueError, 'conflicts'):
+            imaging_settings(parser.parse_args(['--illumination-power-w', '1',
+                '--illumination-length-um', '2', '--illumination-width-um', '2',
+                '--irradiance-w-um2', '1e-6']))
+
+    def test_reimage_default_uses_saved_incidence(self):
+        from fullwave_prototype.imaging_run import main
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory)
+            (source/'report.json').write_text(json.dumps(dict(parameters=dict(
+                incidence_deg=60))), encoding='utf-8')
+            with patch('sys.argv', ['imaging_run', '--source', str(source)]), patch(
+                    'fullwave_prototype.imaging_run.image_saved_sources') as reimage:
+                main()
+            self.assertAlmostEqual(reimage.call_args.args[2].irradiance_w_um2, .5)
 
     def setUp(self):
         self.p = Parameters(substrate_n=1, substrate_k=0)

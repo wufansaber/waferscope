@@ -16,6 +16,10 @@ class ImagingSettings:
     focal_length_mm: float = 20.
     magnification: float = 20.
     irradiance_w_um2: float = 1e-6
+    illumination_power_w: float = None
+    illumination_length_um: float = None
+    illumination_width_um: float = None
+    illumination_incidence_deg: float = None
     transmission: float = 1.
     analyzer: str = 'none'
     image_defocus_um: float = 0.
@@ -40,6 +44,17 @@ class ImagingSettings:
             raise ValueError('Tilt must be in [-89.9,89.9] degrees')
         if self.magnification < 1 or self.focal_length_mm <= 0 or self.irradiance_w_um2 <= 0:
             raise ValueError('Positive focal length/irradiance and magnification >= 1 required')
+        footprint = (self.illumination_power_w, self.illumination_length_um,
+                     self.illumination_width_um, self.illumination_incidence_deg)
+        if any(value is not None for value in footprint):
+            if any(value is None or not np.isfinite(value) for value in footprint):
+                raise ValueError('Illumination power, footprint and incidence must be finite and complete')
+            power, length, width, incidence = footprint
+            if min(power, length, width) <= 0 or not 0 <= incidence < 90:
+                raise ValueError('Positive illumination power/footprint and incidence in [0,90) required')
+            expected = power/(length*width*np.cos(np.deg2rad(incidence)))
+            if not np.isclose(self.irradiance_w_um2, expected, rtol=1e-10, atol=0):
+                raise ValueError('Irradiance must equal power / (wafer footprint area x cos incidence)')
         if not 0 <= self.transmission <= 1:
             raise ValueError('Power transmission must be in [0,1]')
         if self.pupil_samples not in (32, 64, 96, 128) or self.padding not in (2, 4, 8):

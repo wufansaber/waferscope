@@ -43,35 +43,52 @@ def plot_3d_far_field(canvas, result):
 def plot_2d_far_field(canvas, result, intensity_cmap):
     canvas.figure.clear()
     axis = canvas.figure.add_subplot(111)
-    relative = result["intensity"] / np.max(result["intensity"])
-    display_intensity = np.clip(relative, 0.0, 1.0) ** 0.80
+    haze_only = result["parameters"].haze_only
+    if haze_only:
+        display_intensity = result["intensity"]
+        color_map = "viridis"
+        color_max = float(np.max(display_intensity))
+        theta = result["theta"][:, 0]
+        hemisphere = 2*np.pi*np.trapz(
+            np.mean(display_intensity[:, :-1], axis=1)*np.sin(theta), theta)
+        title = ("Haze only | hemisphere DSC ~ {:.3e} um^2\n"
+                 "Intensity with Polarization Directions".format(hemisphere))
+        color_label = "Haze DSC (um^2/sr)"
+    else:
+        relative = result["intensity"] / np.max(result["intensity"])
+        display_intensity = np.clip(relative, 0.0, 1.0) ** 0.80
+        color_map = intensity_cmap
+        color_max = 1.0
+        title = (
+            "Particle + Roughness Scattering\n"
+            "Intensity with Polarization Directions"
+            if result["parameters"].roughness_enabled
+            else "Particle Scattering\nIntensity with Polarization Directions"
+        )
+        color_label = (
+            "Normalized effective scattering intensity"
+            if result["parameters"].roughness_enabled
+            else "Normalized particle scattering intensity"
+        )
     image = axis.pcolormesh(
         result["x"],
         result["y"],
         display_intensity,
-        cmap=intensity_cmap,
+        cmap=color_map,
         vmin=0.0,
-        vmax=1.0,
+        vmax=color_max,
         shading="gouraud",
     )
     _add_2d_polarization_axes(axis, result)
-    title = (
-        "Particle + Roughness Scattering\n"
-        "Intensity with Polarization Directions"
-        if result["parameters"].roughness_enabled
-        else "Particle Scattering\nIntensity with Polarization Directions"
-    )
     _format_2d_axis(axis, result, title)
     colorbar = canvas.figure.colorbar(image, ax=axis)
-    colorbar.set_label(
-        "Normalized effective scattering intensity"
-        if result["parameters"].roughness_enabled
-        else "Normalized particle scattering intensity"
-    )
+    colorbar.set_label(color_label)
     canvas.draw_idle()
 
 
 def _relative_dsc_label(result):
+    if result["parameters"].haze_only:
+        return "Relative haze DSC (dB)"
     if result["parameters"].roughness_enabled:
         return "Relative effective DSC (dB)"
     return "Relative DSC (dB)"
@@ -275,9 +292,9 @@ def _format_2d_axis(axis, result, title):
         -0.97,
         0.94,
         (
-            "Particle + roughness"
-            if result["parameters"].roughness_enabled
-            else "Particle"
+            "Haze only" if result["parameters"].haze_only else
+            "Particle + roughness" if result["parameters"].roughness_enabled else
+            "Particle"
         ),
         color="white",
         fontsize=13,

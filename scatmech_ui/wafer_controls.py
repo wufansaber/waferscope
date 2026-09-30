@@ -179,6 +179,12 @@ class RoughnessGroup(QGroupBox):
 
         self.enabled = QCheckBox("Include roughness background")
         layout.addWidget(self.enabled)
+        self.match_fem_button = QPushButton("Match displayed FEM haze result")
+        self.match_fem_button.setToolTip(
+            "Copy parameters from the displayed FEM result. Gaussian FEM roughness "
+            "is required; a legacy surface has no equivalent Gaussian L.")
+        self.match_fem_button.hide()
+        layout.addWidget(self.match_fem_button)
 
         form = QWidget()
         form_layout = QFormLayout(form)
@@ -189,6 +195,12 @@ class RoughnessGroup(QGroupBox):
         self.mode = _labeled_combo(form_layout, "Interfaces")
         for label, value in ROUGHNESS_MODE_LABELS:
             self.mode.addItem(label, value)
+        self.haze_only = QCheckBox("Haze only (no particle)")
+        form_layout.addRow(self.haze_only)
+        self.psd = _labeled_combo(form_layout, "PSD model")
+        self.psd.addItem("ABC", "abc")
+        self.psd.addItem("Gaussian", "gaussian")
+        self.psd.setCurrentIndex(self.psd.findData("gaussian"))
         self.rms_nm = _labeled_spinbox(
             form_layout,
             "RMS height",
@@ -200,7 +212,7 @@ class RoughnessGroup(QGroupBox):
         )
         self.correlation_length_um = _labeled_spinbox(
             form_layout,
-            "ABC length B",
+            "PSD length B / L",
             0.001,
             10000.0,
             0.2,
@@ -218,7 +230,7 @@ class RoughnessGroup(QGroupBox):
         )
         self.footprint_length_um = _labeled_spinbox(
             form_layout,
-            "Footprint length",
+            "Scattering area length",
             0.001,
             1_000_000.0,
             10.0,
@@ -227,7 +239,7 @@ class RoughnessGroup(QGroupBox):
         )
         self.footprint_width_um = _labeled_spinbox(
             form_layout,
-            "Footprint width",
+            "Scattering area width",
             0.001,
             1_000_000.0,
             10.0,
@@ -241,30 +253,38 @@ class RoughnessGroup(QGroupBox):
 
         self._parameter_form = form
         self.enabled.toggled.connect(form.setEnabled)
+        self.enabled.toggled.connect(self._roughness_toggled)
+        self.psd.currentIndexChanged.connect(self._update_psd_controls)
         self.footprint_length_um.valueChanged.connect(self._update_area)
         self.footprint_width_um.valueChanged.connect(self._update_area)
         form.setEnabled(False)
+        self._update_psd_controls()
         self._update_area()
 
         self.mode.setToolTip(
             "Top uses the exposed interface only. Correlated and uncorrelated "
             "modes include every interface in the SCATMECH film stack."
         )
-        self.rms_nm.setToolTip("Integrated RMS height represented by the ABC PSD.")
+        self.rms_nm.setToolTip("Stationary RMS height before FEM patch edge taper.")
         self.correlation_length_um.setToolTip(
-            "ABC PSD roll-off length B; spatial frequency is expressed in 1/um."
+            "Gaussian: correlation length L in C(r)=RMS^2 exp[-(r/L)^2]. "
+            "ABC: PSD roll-off parameter B; B and L are not equivalent."
         )
         self.exponent.setToolTip("ABC PSD exponent C must be greater than 2.")
         self.footprint_length_um.setToolTip(
-            "Rectangle length on the wafer surface."
+            "Modeled wafer area length. FEM haze matching uses its finite rough patch, "
+            "not the larger laser power-normalization spot."
         )
         self.footprint_width_um.setToolTip(
-            "Rectangle width on the wafer surface."
+            "Modeled wafer area width. FEM haze matching uses its finite rough patch, "
+            "not the larger laser power-normalization spot."
         )
 
     def values(self):
         return {
             "roughness_enabled": self.enabled.isChecked(),
+            "haze_only": self.haze_only.isChecked(),
+            "roughness_psd": self.psd.currentData(),
             "roughness_interface_mode": self.mode.currentData(),
             "roughness_rms_nm": self.rms_nm.value(),
             "roughness_correlation_length_um": self.correlation_length_um.value(),
@@ -276,6 +296,13 @@ class RoughnessGroup(QGroupBox):
     def _update_area(self):
         area = self.footprint_length_um.value() * self.footprint_width_um.value()
         self.area_label.setText("{:.6g} um^2".format(area))
+
+    def _roughness_toggled(self, enabled):
+        if not enabled:
+            self.haze_only.setChecked(False)
+
+    def _update_psd_controls(self, *_):
+        self.exponent.setEnabled(self.psd.currentData() == "abc")
 
 
 def _labeled_combo(layout, label):

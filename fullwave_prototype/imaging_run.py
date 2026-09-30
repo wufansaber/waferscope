@@ -11,6 +11,7 @@ from .rough_surface import Roughness
 from .imaging import calculate_images
 from .numerical_settings import numerical_parameters
 from .imaging_options import add_options, imaging_settings
+from .near_planes import saved_planes
 
 
 def image_saved_sources(source, output, settings, archive_mode='full', cache_directory=None):
@@ -27,6 +28,8 @@ def image_saved_sources(source, output, settings, archive_mode='full', cache_dir
     arrays, report = calculate_images(data, p, settings, retain_complex_fields=archive_mode == 'full',
                                       cache_directory=cache_directory)
     report.update(scattering_parameters=asdict(p), roughness=scattering['roughness'],
+                  image_channel_figures=[1, 2, 3],
+                  near_field_planes=[plane.metadata() for plane in saved_planes(data)],
                   source_directory=str(source.resolve()),
                   status='experimental full pipeline; selected Mie/BV/Airy benchmarks tested separately; '
                          'this rough-surface result is not a certified convergence result')
@@ -53,7 +56,10 @@ def build_parser():
     parser.add_argument('--tilts', type=float, nargs=3, default=(45, -45, 0))
     parser.add_argument('--magnification', type=float, default=20)
     parser.add_argument('--objective-focal-mm', type=float, default=20)
-    parser.add_argument('--irradiance-w-um2', type=float, default=1e-6)
+    parser.add_argument('--irradiance-w-um2', type=float)
+    parser.add_argument('--illumination-power-w', type=float)
+    parser.add_argument('--illumination-length-um', type=float)
+    parser.add_argument('--illumination-width-um', type=float)
     parser.add_argument('--defocus-um', type=float, default=0)
     parser.add_argument('--transmission', type=float, default=1)
     parser.add_argument('--analyzer', choices=('none', 'x', 'y', '45', '135'), default='none')
@@ -71,9 +77,17 @@ def build_parser():
     parser.add_argument('--pml-order', type=int)
     parser.add_argument('--pml-inner-fraction', type=float)
     parser.add_argument('--local-mesh-scale', type=float)
+    parser.add_argument('--particle-mesh-um', type=float,
+                        help='Particle-region mesh size in um; 0 or omitted uses the profile value')
+    parser.add_argument('--quadrature-order', type=int, choices=(5, 7),
+                        help='Volume-source quadrature order; default follows FEM order')
     parser.add_argument('--direct-solver', choices=('umfpack', 'sparsecholesky'))
     parser.add_argument('--mesh-scale', type=float)
     parser.add_argument('--rms-nm', type=float)
+    parser.add_argument('--roughness-model', choices=('legacy', 'gaussian'), default='legacy')
+    parser.add_argument('--correlation-length-um', type=float, default=.05)
+    parser.add_argument('--rough-width-um', type=float, default=.2)
+    parser.add_argument('--rough-grid-points', type=int, default=5)
     parser.add_argument('--gap-nm', type=float)
     for name in ('wavelength-nm', 'diameter-nm', 'particle-n', 'particle-k', 'substrate-n',
                  'substrate-k', 'incidence-deg', 'domain-radius-um'):
@@ -88,6 +102,11 @@ def scattering_settings(args):
     local = args.local_mesh_scale if args.local_mesh_scale is not None else 1
     if not np.isfinite(local) or not .4 <= local <= 1:
         raise ValueError('local_mesh_scale must be in [0.4, 1]')
+    particle_mesh = args.particle_mesh_um
+    if particle_mesh is not None and (not np.isfinite(particle_mesh) or particle_mesh < 0):
+        raise ValueError('particle_mesh_um must be nonnegative (0 = automatic)')
+    if not particle_mesh:
+        particle_mesh = .015*scale*local
     physical = {key: getattr(args, key) for key in ('wavelength_nm', 'diameter_nm', 'particle_n',
                 'particle_k', 'substrate_n', 'substrate_k', 'incidence_deg', 'domain_radius_um', 'polarization',
                 'beam_waist_um', 'beam_order')}
@@ -96,11 +115,13 @@ def scattering_settings(args):
         pml_power=args.pml_power, pml_mesh_scale=args.pml_mesh_scale,
         pml_strength=args.pml_strength, integration_bonus=args.integration_bonus,
         pml_order=args.pml_order, pml_inner_fraction=args.pml_inner_fraction,
-        particle_mesh_um=.015*scale*local,
+        particle_mesh_um=particle_mesh,
         direct_solver=args.direct_solver, **physical)
     roughness = Roughness(rms_nm=args.rms_nm if args.rms_nm is not None else 2,
                          seed=args.roughness_seed if args.roughness_seed is not None else 7,
-                         mesh_um=.025*scale*local)
+                         mesh_um=.025*scale*local, model=args.roughness_model,
+                         correlation_length_um=args.correlation_length_um,
+                         width_um=args.rough_width_um, grid_points=args.rough_grid_points)
     roughness.validate(p)
     from .illumination import illumination_rays
     illumination_rays(p)
@@ -116,19 +137,25 @@ def main():
                                                   args.accuracy, args.pml_power, args.pml_mesh_scale,
                                                   args.pml_strength, args.integration_bonus,
                                                   args.pml_order, args.pml_inner_fraction, args.local_mesh_scale,
+                                                  args.particle_mesh_um, args.quadrature_order,
                                                   args.direct_solver, args.wavelength_nm, args.diameter_nm,
                                                   args.particle_n, args.particle_k, args.substrate_n,
                                                   args.substrate_k, args.incidence_deg, args.domain_radius_um,
                                                   args.polarization, args.roughness_seed,
                                                   args.beam_waist_um, args.beam_order)):
         parser.error('FEM parameters cannot change with --source; omit --source to recompute scattering.')
-    settings = imaging_settings(args)
     output = Path(args.output)
     source = Path(args.source) if args.source else output/'scattering'
+    if args.source:
+        source_report = json.loads((source/'report.json').read_text(encoding='utf-8'))
+        p = Parameters(**source_report['parameters'])
+    else:
+        p, roughness = scattering_settings(args)
+    settings = imaging_settings(args, incidence_deg=p.incidence_deg)
     if not args.source:
         from .rough_run import run
-        p, roughness = scattering_settings(args)
-        run(p, roughness, source, angular_step=5, quadrature_order=7 if p.order >= 3 else 5,
+        run(p, roughness, source, angular_step=5,
+            quadrature_order=args.quadrature_order or (7 if p.order >= 3 else 5),
             near_diagnostics=args.near_diagnostics)
     image_saved_sources(source, output, settings, args.archive_mode, args.pupil_cache)
 

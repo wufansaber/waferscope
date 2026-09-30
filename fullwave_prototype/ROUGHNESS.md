@@ -1,6 +1,6 @@
 # 粗糙表面与颗粒的相干全波原型
 
-这是独立的实验模块，没有替换正式 UI，没有修改 NIST2，也没有打包 EXE。
+这是独立的实验 FEM 模块，已接入程序的 FEM 页；没有修改 NIST2，也没有重新打包 EXE。
 它是有限元数值解，不是任意粗糙几何的闭式解析解。
 
 ## 本次实现
@@ -20,14 +20,16 @@
 ```
 
 参数入口在 `rough_run.py`。可设置 `--rms-nm`、`--width-um`、`--seed`、
-`--grid-points`、`--smoothing-cells`、`--gap-nm`、`--polarization`、
+`--grid-points`、`--smoothing-cells`、`--model gaussian`、
+`--correlation-length-um`、`--gap-nm`、`--polarization`、
 `--order`、`--mesh-scale`、`--pml-thickness`、`--angular-step`。
 其他光学参数可以通过 Python 调用 `run(Parameters(...), Roughness(...), output)` 设置。
 
 默认验证示例是 355 nm、100 nm 球、n=1.59/k=0、基底 n=5.57/k=0.387、
 75 度 p 偏振，入射从负 KY 侧朝正 KY/负 Z 传播。
 粗糙区域为 200 x 200 nm，RMS=2 nm，5 x 5 高度节点，随机种子 7。
-球底位于平均面上方 10 nm，不是距局部表面恒定 10 nm。
+球底位于 z=0 参考平面上方 10 nm，不是距局部表面恒定 10 nm；
+旧模式的样本平均面正好在 z=0，高斯模式的单次样本平均面则可能偏移。
 这些粗糙度和间隙是本模块的测试条件，**不是正式 UI 的默认粗糙度/接触条件**。
 材料常数是参数，不是可直接用于任意波长的色散数据库。
 
@@ -37,12 +39,43 @@
 
 ## 粗糙面的定义
 
-随机高度经过网格尺度的高斯平滑，再用边缘为零的窗口截断。
-按照实际分片线性三角形的投影面积积分，将均值设为零，RMS 设为指定值。
-因此不是简单对节点高度求标准差。正负高度体积应相等，用作几何检查。
+默认 `legacy` 模式保持旧结果含义：随机高度按网格单元平滑、边缘渐隐，
+并按照分片线性三角形的投影面积将**每块样本**均值设为零、RMS 设为指定值。
+这会抑制有限样本的低空间频率，不能当作有指定 PSD 的晶圆统计模型。
+
+可选 `gaussian` 模式以 RMS `sigma` 和横向相关长度 `L` 定义未截断高度场：
+
+```text
+C(r) = sigma^2 exp[-(r/L)^2]
+S(fx,fy) = pi sigma^2 L^2 exp[-(pi L)^2(fx^2+fy^2)]
+```
+
+程序按该协方差生成相关高斯高度，然后在有限斑块边缘渐隐以接回平面晶圆。
+输入 RMS 是**渐隐前平稳随机表面**的统计 RMS，不强制每块样本均值为零，
+因此单个 FEM 斑块的平均高度、RMS 和低频起伏会自然变化，实际 RMS 通常低于输入值。
+边缘渐隐改变了
+最终有限斑块的 PSD；它不是无限平稳表面的精确 PSD 实现。要得到可置信的
+统计 haze，需要多随机种子平均并做斑块大小、表面采样和 FEM 收敛检查。
+
+例如使用 200 nm 宽斑块、50 nm 相关长度、每轴 9 个高度节点：
+
+```powershell
+& '.\build\ngsolve_env\Scripts\python.exe' -m fullwave_prototype.rough_run --model gaussian --correlation-length-um 0.05 --grid-points 9 --output build/fem_roughness/gaussian
+```
+
+GUI 中选择 `Rough surface model = gaussian` 会把默认高度节点数提高到 9，
+并明确把 FEM 档位设为 `preview`、阶次设为 `1`，以适配当前电脑的内存。
+这只是可运行的预览计算，不代表一阶网格已达到物理收敛；用户可手动提高阶次并重新校验资源与结果。
+至少要求每个相关长度有两个网格间隔；更多节点会显著提高 FEM 耗时和内存。
+`report.json` 的 `surface_statistics` 记录目标模型、采样间距和该次样本的实际均值/RMS。
+`metrics.haze_angular_diagnostics` 另记录纯粗糙面散射峰值与中心光线反射方向
+`(theta=入射角, phi=90 度)` 的偏离和强度比；它不把镜面反射加入 haze。
+高斯 PSD 的定义与 NIST SCATMECH 的
+[Gaussian_PSD_Function](https://pages.nist.gov/SCATMECH/docs/psd.htm) 一致，
+但这里是 FEM 有限斑块的形貌生成器，不是直接调用 SCATMECH 的 Rayleigh-Rice BRDF。
 
 `smoothing_cells` 是生成器的平滑尺度，不是经过标定的物理相关长度。
-该表面是有限区域的一次实现，不是无限平稳粗糙面，也不匹配现有 SCATMECH
+旧模式是有限区域的一次实现，不是无限平稳粗糙面，也不匹配现有 SCATMECH
 ABC PSD 的统计模型。只有 RMS 相同不足以比较两种粗糙面的散射结果。
 粗糙区域宽度不是有效照明宽度，当前激励仍为无限平面波。
 
@@ -119,4 +152,4 @@ DSC 单位 um^2/sr，半球积分单位 um^2，后者不是能量百分比。
 当前不包含薄膜、多层基底、大面积统计平均或有限光斑。
 近场界面值、尖角峰值、PML/域大小、总能量平衡和独立粗糙面基准仍需验证。
 三路独立理想物镜与 20x 成像链路现已作为实验扩展接入，见 [IMAGING.md](IMAGING.md)。
-该扩展不代表上述物理收敛检查已经完成，也没有替换正式 UI。
+该扩展不代表上述物理收敛检查已经完成。

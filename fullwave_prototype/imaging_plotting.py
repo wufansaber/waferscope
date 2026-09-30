@@ -4,6 +4,9 @@ from pathlib import Path
 
 import numpy as np
 
+from .angular_plotting import angular_disk_edges, format_angular_disk
+from .plot_directions import mark_illumination_source_xy
+
 
 def _pyplot():
     os.environ.setdefault('MPLCONFIGDIR', str(Path('build/fem_validation/.matplotlib').resolve()))
@@ -14,28 +17,20 @@ def _pyplot():
 
 
 def _near(ax, data, report, fig):
-    from matplotlib.colors import PowerNorm
-    from matplotlib.patches import Circle
-    value = np.sum(abs(data['near_e_with'])**2, axis=-1)
-    im = ax.pcolormesh(data['near_y_um']*1000, data['near_z_um']*1000, value,
-                       norm=PowerNorm(.5, vmin=0), cmap='magma', shading='auto')
-    p = report['parameters']
-    ax.add_patch(Circle((0, p['diameter_nm']/2+p['gap_nm']), p['diameter_nm']/2,
-                        fill=False, edgecolor='cyan', linewidth=1))
-    vertices = data['surface_vertices_um']
-    j = np.argmin(abs(vertices[:, 0, 0]))
-    ax.plot(vertices[j, :, 1]*1000, vertices[j, :, 2]*1000, color='cyan', linewidth=1)
-    ax.set(title='1  NEAR FIELD | Total E, YZ section', xlabel='Y (nm)', ylabel='Z (nm)', aspect='equal')
-    fig.colorbar(im, ax=ax, label='|E / E_inc|^2', shrink=.9)
+    from .near_planes import saved_planes
+    from .near_plotting import draw_plane, shared_norm
+    planes = saved_planes(data)
+    plane = next(p for p in planes if p.name == 'yz')
+    im = draw_plane(ax, data, report, plane, shared_norm(data, planes))
+    ax.set_title('1  NEAR FIELD | Total E, YZ (X = 0 nm)')
+    fig.colorbar(im, ax=ax, label='|E / E_inc|^2 (sqrt colors)', shrink=.9)
 
 
-def _far(ax, data, settings, fig):
+def _far(ax, data, settings, fig, incidence_deg):
     from matplotlib.colors import PowerNorm
     theta, phi = data['theta'], data['phi']
-    theta_edges = np.r_[0, (theta[:-1]+theta[1:])/2, np.pi/2]
-    dphi = phi[1]-phi[0]
-    phi_edges = np.r_[phi-dphi/2, phi[-1]+dphi/2]
-    im = ax.pcolormesh(phi_edges, np.sin(theta_edges), data['dsc_total'],
+    x_edges, y_edges = angular_disk_edges(theta, phi)
+    im = ax.pcolormesh(x_edges, y_edges, data['dsc_total'],
                        norm=PowerNorm(.5, vmin=0), cmap='viridis', shading='flat')
     for index, (na, tilt) in enumerate(zip(settings['numerical_apertures'], settings['tilt_degrees']), 1):
         if na == 0:
@@ -45,16 +40,14 @@ def _far(ax, data, settings, fig):
         axis = np.array((np.sin(t), 0, np.cos(t)))
         u, v = np.array((np.cos(t), 0, -np.sin(t))), np.array((0, 1, 0))
         ring = np.sqrt(1-na*na)*axis+na*(np.cos(angle)[:, None]*u+np.sin(angle)[:, None]*v)
-        azimuth, radius = np.arctan2(ring[:, 1], ring[:, 0]), np.hypot(ring[:, 0], ring[:, 1])
-        radius[ring[:, 2] < 0] = np.nan
-        ax.plot(azimuth, radius, color=('#202020', '#ff7b54', '#efcb49')[index-1],
+        ring[ring[:, 2] < 0, :2] = np.nan
+        ax.plot(ring[:, 0], ring[:, 1], color=('#202020', '#ff7b54', '#efcb49')[index-1],
                 linewidth=1.6, label='Ch{}: {:+g} deg, NA {:g}'.format(index, tilt, na))
-    ax.set(ylim=(0, 1), title='2  FAR FIELD | Upper hemisphere DSC')
-    ax.set_yticks([.5, 1], labels=['0.5', '1'])
-    ax.set_rlabel_position(70)
-    ax.grid(alpha=.3)
-    ax.legend(loc='upper left', bbox_to_anchor=(1.13, .3), fontsize=8)
-    fig.colorbar(im, ax=ax, label='um^2 / sr; radial coordinate = sin(theta)', pad=.16, shrink=.9)
+    format_angular_disk(ax)
+    ax.set_title('2  FAR FIELD | Upper hemisphere DSC')
+    mark_illumination_source_xy(ax, incidence_deg)
+    ax.legend(loc='upper left', bbox_to_anchor=(1.08, .3), fontsize=8)
+    fig.colorbar(im, ax=ax, label='DSC (um^2 / sr)', pad=.12, shrink=.9)
 
 
 def _image(ax, arrays, index, key, limit, norm, cmap):
@@ -77,7 +70,8 @@ def plot_pipeline(output, data, arrays, scattering, report):
     fig = plt.figure(figsize=(16, 10), layout='constrained')
     gs = fig.add_gridspec(2, 6)
     _near(fig.add_subplot(gs[0, :3]), data, scattering, fig)
-    _far(fig.add_subplot(gs[0, 3:], projection='polar'), data, settings, fig)
+    _far(fig.add_subplot(gs[0, 3:]), data, settings, fig,
+         scattering['parameters']['incidence_deg'])
     image_axes = []
     for index, info in enumerate(report['channels'], 1):
         ax = fig.add_subplot(gs[1, (index-1)*2:index*2])
@@ -116,12 +110,11 @@ def plot_stages(output, data, arrays, scattering, report):
     from matplotlib.colors import PowerNorm
     plt = _pyplot()
     settings = report['settings']
-    fig, ax = plt.subplots(figsize=(9, 7), layout='constrained')
-    _near(ax, data, scattering, fig)
-    fig.savefig(Path(output)/'near_field.png', dpi=150)
-    plt.close(fig)
+    from .near_plotting import plot_near_planes
+    plot_near_planes(output, data, scattering)
     fig = plt.figure(figsize=(10, 7), layout='constrained')
-    _far(fig.add_subplot(projection='polar'), data, settings, fig)
+    _far(fig.add_subplot(), data, settings, fig,
+         scattering['parameters']['incidence_deg'])
     fig.savefig(Path(output)/'far_field.png', dpi=150)
     plt.close(fig)
     fig, axes = plt.subplots(1, 3, figsize=(15, 5), layout='constrained')
@@ -134,3 +127,20 @@ def plot_stages(output, data, arrays, scattering, report):
     fig.colorbar(im, ax=axes.tolist(), label='W / um^2; shared absolute scale', shrink=.8)
     fig.savefig(Path(output)/'image_planes.png', dpi=150)
     plt.close(fig)
+    plot_image_channels(output, arrays, report, norm)
+
+
+def plot_image_channels(output, arrays, report, norm):
+    """Export independent channels without renormalizing their relative powers."""
+    plt = _pyplot()
+    settings = report['settings']
+    for index, channel in enumerate(report['channels'], 1):
+        fig, ax = plt.subplots(figsize=(8, 7), layout='constrained')
+        im = _image(ax, arrays, index, 'with', 15*settings['magnification']/20, norm, 'magma')
+        ax.set_title('Ch{} | {:+g} deg | NA {:g} | {}x\nFull-plane power: {:.4g} pW'.format(
+            index, channel['tilt_deg'], channel['na'], settings['magnification'],
+            channel['with']['image_power_w']*1e12))
+        fig.colorbar(im, ax=ax, label='W / um^2; shared scale (sqrt colors)', shrink=.85)
+        fig.suptitle('IMAGE PLANE | Total scattered light with particle')
+        fig.savefig(Path(output)/('image_channel_{}.png'.format(index)), dpi=150)
+        plt.close(fig)

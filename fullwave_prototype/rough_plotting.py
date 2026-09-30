@@ -55,8 +55,9 @@ def plot_pair(output, data, report):
     ax.set_xticks(range(4), ['With\nparticle', 'Without\nparticle', 'Field\nchange', 'Interference'])
     ax.axhline(0, color='black', linewidth=.5)
     ax.set(title='Upper-hemisphere integral', ylabel='Integrated DSC (um^2)')
-    fig.suptitle('EXPERIMENTAL | {} nm, sphere {} nm, rough RMS {} nm, sphere bottom z={} nm\n'
+    sample_rms = report['surface_statistics']['triangle_rms_nm']
+    fig.suptitle('EXPERIMENTAL | {} nm, sphere {} nm, rough sample RMS {:.3g} nm, sphere bottom z={} nm\n'
                  'Same geometry and phase reference; total = background + change-field power + interference'.format(
-                     p['wavelength_nm'], p['diameter_nm'], report['roughness']['rms_nm'], p['gap_nm']), fontsize=12)
+                     p['wavelength_nm'], p['diameter_nm'], sample_rms, p['gap_nm']), fontsize=12)
     fig.savefig(Path(output)/'rough_comparison.png', dpi=150)
     plt.close(fig)

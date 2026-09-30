@@ -1,10 +1,11 @@
 """Standalone application entry points for the SCATMECH interface."""
 
+import json
 import sys
 from pathlib import Path
 
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget
+from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox, QTabWidget
 
 from .backend import calculate_far_field
 from .parameters import SimulationParameters
@@ -26,6 +27,86 @@ class ScatmechStandaloneWindow(QMainWindow):
         self.tabs.addTab(self.simulation_widget, 'SCATMECH')
         self.tabs.addTab(self.fullwave_widget, 'Full-wave FEM (experimental)')
         self.setCentralWidget(self.tabs)
+        self.simulation_widget.roughness_group.match_fem_button.clicked.connect(
+            self.use_fem_haze_inputs)
+        self.simulation_widget.roughness_group.match_fem_button.show()
+
+    def use_fem_haze_inputs(self):
+        """Match a completed Gaussian FEM result, not editable form values."""
+        target = self.simulation_widget
+        source_dir = self.fullwave_widget.loaded_source
+        result_dir = self.fullwave_widget.loaded_result
+        if source_dir is None or result_dir is None:
+            QMessageBox.warning(self, 'Cannot match haze inputs',
+                'Run or load a complete FEM result first. Form values may differ from a saved result.')
+            return
+        if target.coating_group.layers():
+            QMessageBox.warning(self, 'Cannot match haze inputs',
+                'Remove SCATMECH coating layers first. FEM currently uses a homogeneous wafer.')
+            return
+        try:
+            report = json.loads((source_dir/'report.json').read_text(encoding='utf-8'))
+            image_report = json.loads((result_dir/'imaging_report.json').read_text(encoding='utf-8'))
+            physical = report['parameters']
+            roughness = report['roughness']
+            imaging = image_report['settings']
+        except (OSError, ValueError, KeyError, TypeError) as error:
+            QMessageBox.warning(self, 'Cannot match haze inputs',
+                'The displayed FEM result is incomplete: {}'.format(error))
+            return
+        if roughness['model'] != 'gaussian':
+            QMessageBox.warning(self, 'Cannot match haze inputs',
+                'The displayed FEM result uses {} roughness. Its L is not a Gaussian '
+                'correlation length. Select Gaussian on the FEM page and calculate '
+                'a new result before matching NIST Gaussian PSD.'.format(roughness['model']))
+            return
+        if roughness['rms_nm'] <= 0 or physical['beam_waist_um'] != 0:
+            QMessageBox.warning(self, 'Cannot match haze inputs',
+                'This comparison requires nonzero roughness and plane-wave FEM illumination.')
+            return
+        irradiance = 1000*imaging['irradiance_w_um2']
+        irradiance_control = target.imaging_group.irradiance
+        if not irradiance_control.minimum() <= irradiance <= irradiance_control.maximum():
+            QMessageBox.warning(self, 'Cannot match haze inputs',
+                'FEM beam-normal irradiance is outside the SCATMECH input range.')
+            return
+        target.wavelength.setValue(physical['wavelength_nm'])
+        target.incidence.setValue(physical['incidence_deg'])
+        target.polarization.setCurrentIndex(target.polarization.findData(
+            physical['polarization']))
+        target.wafer_group.n_edit.setText(str(physical['substrate_n']))
+        target.wafer_group.k_edit.setText(str(physical['substrate_k']))
+        rough = target.roughness_group
+        rough.enabled.setChecked(True)
+        rough.haze_only.setChecked(True)
+        rough.psd.setCurrentIndex(rough.psd.findData('gaussian'))
+        rough.mode.setCurrentIndex(rough.mode.findData('top_interface'))
+        rough.rms_nm.setValue(roughness['rms_nm'])
+        rough.correlation_length_um.setValue(roughness['correlation_length_um'])
+        patch_width = roughness['width_um']
+        rough.footprint_length_um.setValue(patch_width)
+        rough.footprint_width_um.setValue(patch_width)
+        target.angular_step.setValue(report['angular_step_deg'])
+        target.objective_focal_length.setValue(imaging['focal_length_mm'])
+        target.imaging_group.magnification.setValue(imaging['magnification'])
+        for index in (1, 2, 3):
+            getattr(target, 'objective_na_ch'+str(index)).setValue(
+                imaging['numerical_apertures'][index-1])
+            getattr(target, 'objective_tilt_ch'+str(index)).setValue(
+                imaging['tilt_degrees'][index-1])
+        irradiance_control.setValue(irradiance)
+        target.result = None
+        target.far_field_result = None
+        target.export_button.setEnabled(False)
+        for key in ('3d_intensity', '2d_intensity'):
+            canvas = target.canvases[key]
+            canvas.figure.clear()
+            canvas.draw_idle()
+        target.status.setText(
+            'Matched displayed Gaussian FEM result ({}) on nominal inputs and '
+            'rough area {:.6g} um^2. Run SCATMECH far-field now. Gaussian ensemble '
+            'PSD and one FEM height realization can still differ in angular shape.'.format(
+                result_dir.name, patch_width**2))
 
     def _resize_for_screen(self):
         screen = QApplication.primaryScreen()

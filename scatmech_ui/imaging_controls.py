@@ -19,7 +19,7 @@ class ImagingGroup(QGroupBox):
         self.magnification.valueChanged.connect(update_tube)
         objective_focal_length.valueChanged.connect(update_tube)
         update_tube()
-        self.irradiance = self._spin(form, "Incident irradiance", 0.000001, 100, 0.001,
+        self.irradiance = self._spin(form, "Incident irradiance", 0.000001, 1e9, 0.001,
                                      " mW/um^2", 6)
         self.irradiance.setToolTip("Incident power per area normal to the beam; uniform plane wave.")
         self.defocus = self._spin(form, "Image defocus", -10000, 10000, 0, " um")

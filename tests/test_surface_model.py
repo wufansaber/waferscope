@@ -55,6 +55,11 @@ class SurfaceParameterTests(unittest.TestCase):
                 roughness_enabled=True,
                 roughness_exponent=2.0,
             ).validate()
+        SimulationParameters(
+            roughness_enabled=True, roughness_psd="gaussian",
+            roughness_exponent=2.0).validate()
+        with self.assertRaisesRegex(ValueError, "requires roughness"):
+            SimulationParameters(haze_only=True).validate()
 
 
 @unittest.skipIf(
@@ -62,6 +67,26 @@ class SurfaceParameterTests(unittest.TestCase):
     "pySCATMECH is unavailable",
 )
 class ScatmechSurfaceModelTests(unittest.TestCase):
+    def test_haze_only_gaussian_uses_no_particle_source(self):
+        from scatmech_ui.native_far_field import calculate_far_field
+
+        parameters = SimulationParameters(
+            roughness_enabled=True, haze_only=True, roughness_psd="gaussian",
+            roughness_rms_nm=2.0, roughness_correlation_length_um=.05,
+            illumination_length_um=.2, illumination_width_um=.2,
+            wavelength_nm=266, angular_step_deg=15)
+        bundle = build_scattering_model(parameters)
+        model_parameters = bundle.model.getParameters()
+        self.assertEqual(bundle.model.getModelName(), "Microroughness_BRDF_Model")
+        self.assertEqual(bundle.output_kind, "brdf_to_dsc")
+        self.assertAlmostEqual(bundle.effective_area_um2, .04)
+        self.assertEqual(model_parameters["psd"], "Gaussian_PSD_Function")
+        self.assertNotIn("Bobbert", bundle.model_note)
+        result = calculate_far_field(parameters)
+        self.assertIsNone(result.get("jones_dsc_um"))
+        self.assertTrue(np.isfinite(result["intensity"]).all())
+        self.assertGreater(result["intensity"].max(), 0)
+
     def test_particle_only_model_preserves_local_dsc_path(self):
         bundle = build_scattering_model(SimulationParameters())
 

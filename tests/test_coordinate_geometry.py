@@ -3,6 +3,7 @@ from types import SimpleNamespace
 
 import numpy as np
 
+from fullwave_prototype.angular_plotting import angular_disk_edges
 from scatmech_ui.coordinate_geometry import (
     INCIDENCE_PLANE,
     ILLUMINATION_ROTATION_DEG,
@@ -16,6 +17,18 @@ from scatmech_ui.objective_math import pupil_polarization, sample_far_field
 
 
 class CoordinateGeometryTests(unittest.TestCase):
+    def test_fem_angular_disk_matches_global_scatmech_axes(self):
+        theta = np.array([0, np.pi/2])
+        phi = np.deg2rad([45, 135, 225, 315])
+        x_edges, y_edges = angular_disk_edges(theta, phi)
+        np.testing.assert_allclose(x_edges[-1], [1, 0, -1, 0, 1], atol=1e-12)
+        np.testing.assert_allclose(y_edges[-1], [0, 1, 0, -1, 0], atol=1e-12)
+        local_azimuth = np.deg2rad(270-90)
+        local_x, local_y = np.cos(local_azimuth), np.sin(local_azimuth)
+        global_x, global_y = scatmech_to_global_xy(local_x, local_y)
+        self.assertAlmostEqual(global_x, 0)
+        self.assertAlmostEqual(global_y, -1)
+
     def test_incident_ray_comes_from_negative_ky(self):
         root_half = np.sqrt(0.5)
 

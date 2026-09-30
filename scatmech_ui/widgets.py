@@ -326,8 +326,8 @@ class ScatmechSimulationWidget(QWidget):
 
     def _create_objective_na_spinbox(self):
         spinbox = QDoubleSpinBox()
-        spinbox.setRange(0.0, 0.99)
-        spinbox.setDecimals(3)
+        spinbox.setRange(0.0, 0.9999)
+        spinbox.setDecimals(4)
         spinbox.setSingleStep(0.05)
         spinbox.setValue(0.5)
         spinbox.setToolTip("Set NA to 0 to disable this collection channel.")
@@ -412,6 +412,8 @@ class ScatmechSimulationWidget(QWidget):
             simulation_parameters.validate()
             objective_parameters.validate()
             sweep_parameters.validate()
+            if simulation_parameters.haze_only:
+                raise ValueError("Particle-size sweep is unavailable in haze-only mode.")
         except Exception as error:
             QMessageBox.warning(self, "Invalid sweep parameters", str(error))
             return

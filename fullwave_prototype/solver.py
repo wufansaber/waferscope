@@ -65,7 +65,9 @@ def solve(p, mesh=None, particle_enabled=True):
     space = make_space(mesh, p)
     print('Elements: {}; degrees of freedom: {}'.format(mesh.ne, space.ndof), flush=True)
     if space.ndof > p.max_dofs:
-        raise ValueError('FEM size exceeds max_dofs; coarsen the mesh or explicitly raise the limit.')
+        raise ValueError('FEM has {} DOFs, above the limit of {}. Use first-order preview or '
+                         'coarsen the mesh; raising the limit also raises memory demand.'.format(
+                             space.ndof, p.max_dofs))
     e_bg = background_coefficient(p)
     u, v = space.TnT()
     a = ng.BilinearForm(space, symmetric=True, condense=p.static_condensation)

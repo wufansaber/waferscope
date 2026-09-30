@@ -4,8 +4,9 @@
 
 运行本目录 `main.py` 后，顶部新增 `Full-wave FEM (experimental)`，
 可查看近场、远场、三路独立像面及相干干涉分解。原有功能仍在 `SCATMECH` 页。
-该页使用单独的 NGSolve 环境，默认三阶 `balanced` 与 128 点光瞳，
-可切换二阶 `preview`；带取消、内存/时间保护与结果载入。
+该页使用单独的 NGSolve 环境，界面默认 Gaussian PSD 粗糙面、
+一阶 `preview` 与 128 点光瞳；可手动切换三阶 `balanced`，
+并带取消、内存/时间保护与结果载入。
 新增 `PML order (0=same)`、`PML full-order fraction` 和 `Local mesh scale`。
 默认 PML order=0，保持原来的同阶吸收层；局部尺寸倍率默认 1。
 选择 PML order=2 时，full-order fraction=0.5 让吸收层内半部保持物理区阶数，
@@ -83,7 +84,7 @@ Far-field Simulation 是一个面向晶圆表面颗粒散射分析的独立桌�
 
 - 设置晶圆和球形颗粒的复折射率、厚度及颗粒尺寸。
 - 设置从晶圆到表面的多层镀膜结构。
-- 使用 SCATMECH ABC PSD 模型加入表面或多层界面粗糙度。
+- 使用 SCATMECH Gaussian 或 ABC PSD 模型加入表面或多层界面粗糙度。
 - 使用矩形照明区域的长和宽确定粗糙度背景的有效面积。
 - 设置激光波长、入射角和偏振态。
 - 显示远场强度、偏振方向及入射几何关系。
@@ -161,13 +162,24 @@ Gallium arsenide 和 Custom 等预设值。
 ### Surface and interface roughness
 
 选中 `Include roughness background` 后，程序会把颗粒散射与粗糙度散射合并。
+选中 `Haze only (no particle)` 时只计算粗糙面散射，不建立颗粒模型。
+`PSD model` 可选 Gaussian（界面默认）或 ABC；高斯模式中的 `L` 定义为
+`C(r) = RMS^2 exp[-(r/L)^2]`，不等同于 ABC 模式的 `B`。
+`Match displayed FEM haze result` 只读取已完成并显示的 FEM 结果，不读取可能已被修改的
+表单值。要求该 FEM 结果使用 Gaussian 粗糙面；旧版 `legacy` 高度生成器没有对应的高斯
+相关长度，必须先重新运行 FEM。此按钮一次性复制波长、晶圆 n/k、入射角、偏振、
+RMS、L、粗糙斑块面积及三路 NA/倾角，选择纯 haze、高斯 PSD，并清除 SCATMECH
+旧图。点击 `Run far-field simulation` 后才会显示新结果。复制后两页仍可分别编辑，
+修改参数需再次点击此按钮才能重新对齐。
+FEM 的有限斑块是单次生成、带边缘渐消的表面；NIST Gaussian PSD 是统计模型。
+相同名义输入不保证两者的实际表面 RMS 或远场积分完全相同。
 界面模式包括：
 
 - `Top exposed interface`：只计算最外侧暴露表面的粗糙度。
 - `All interfaces correlated`：所有膜层界面具有相同且完全相关的粗糙度。
 - `All interfaces uncorrelated`：所有膜层界面的粗糙度互不相关。
 
-程序使用 SCATMECH Rayleigh-Rice 光滑表面微扰模型。粗糙度采用二维 ABC PSD：
+程序使用 SCATMECH Rayleigh-Rice 光滑表面微扰模型。ABC 模式采用二维 PSD：
 
 ```text
 S2(f) = A / (1 + B^2 f^2)^(C/2)
@@ -177,7 +189,7 @@ A = RMS^2 B^2 (C - 2) / (2 pi)
 其中：
 
 - `RMS height`：积分均方根高度，单位为 `nm`。
-- `ABC length B`：PSD 转折长度参数，单位为 `um`。
+- `PSD length B / L`：ABC 模式为转折参数 B；Gaussian 模式为相关长度 L，单位 `um`。
 - `ABC exponent C`：高频衰减指数，必须大于 2。
 
 无膜层时使用 `Microroughness_BRDF_Model`；有膜层时根据界面模式使用
@@ -186,12 +198,15 @@ A = RMS^2 B^2 (C - 2) / (2 pi)
 
 ### Rectangular illumination footprint
 
-`Footprint length` 和 `Footprint width` 是晶圆表面上的矩形照明区域尺寸，
+`Scattering area length` 和 `Scattering area width` 是晶圆表面上被纳入散射计算的矩形面积尺寸，
 单位为 `um`。程序自动计算：
 
 ```text
-Effective area = Footprint length x Footprint width
+Effective area = Scattering area length x Scattering area width
 ```
+
+对齐 FEM haze 时，这两个值使用 FEM 的实际粗糙斑块边长，而非 FEM 用于功率
+归一化的较大激光光斑。NIST 页的成像入射强度仍由 FEM 的激光功率和光斑尺寸换算。
 
 当前组合模型假设该矩形照明区域内有一个指定 PSL 颗粒，因此 Bobbert-Vlieger
 颗粒面密度设置为 `1 / Effective area`。SCATMECH
@@ -540,9 +555,51 @@ SCATMECH 官方模型说明：
 `Full-wave FEM (experimental)` 页独立于上述 SCATMECH 模型，计算有限粗糙面与颗粒的相干耦合，
 显示近场、远场、三路像面和相干分解。此页当前仍采用均匀半空间晶圆，不继承 SCATMECH 页的膜层。
 三路 NA、倾角分别设置；线程数、内存限制和超时限制可调。
+新建界面默认选 Gaussian 粗糙面及 9x9 节点，并使用低内存一阶 FEM 预览配置；
+已保存的旧结果仍以各自报告中的 `roughness.model` 为准。
+FEM 远场和颗粒/haze 对照图现在与 SCATMECH 一样使用全局笛卡尔角分布坐标：
+横轴 `kx/k = sin(theta) cos(phi)`，纵轴 `ky/k = sin(theta) sin(phi)`；
+单位圆边界是 90° 出射方向，`-KY` 光源标记位于 `(0, -sin(入射角))`。
+三路 NA 圈也投影到同一坐标。旧结果目录中的 PNG 不会被悄悄改写；如需新坐标图，
+可以从该结果的 scattering 源重成像，无需重新求解 FEM。
+旧的颗粒/haze 对照图则需重新点击 `Compare particle / haze` 生成。
+
+近场 `Near field` 内提供 `Overview` 总览和 `XZ`、`XY`、`YZ` 独立视图。
+XZ 固定 Y=0，YZ 固定 X=0，XY 固定在颗粒中心高度（粒径/2+间隙），不是晶圆表面投影。
+三个平面共用电场强度色标，保持坐标等比例，并分别导出 `near_field_xz.png`、
+`near_field_xy.png`、`near_field_yz.png`。旧数据只有 YZ 时，需重新 Calculate 才能生成另外两个平面；
+重成像不会补算缺失近场。此功能已加入源码，旧发布 EXE 不会自动更新。
 
 新增 `Beam waist`（0 表示平面波）、角谱求积阶数、散光/彗差/球差以及 `Camera response`。
 相机页给出电子数图，不是按每路峰值归一化的图像。`Image archive` 默认 compact；full 额外保留复 E/H。
 计算结束后调整像差、离焦、相机参数，可用 `Re-image source` 选原始 scattering 目录重成像。
 这个入口不改变原始颗粒、粗糙度或光束；这些物理条件改变时必须重新 Calculate。
+加载结果后，也可直接点击 `Image current result`，应用当前倍率、NA、倾角、离焦、像差及相机设置，
+不必再次选择源目录。计算结束后自动显示 `Three image planes`。
+该页提供 `Overview` 与 `Ch1`、`Ch2`、`Ch3`，三路独立成像，不把场相干相加；
+分别导出 `image_channel_1.png`、`image_channel_2.png`、`image_channel_3.png`。
+像面图共用 W/um² 色标，不按各路峰值归一化；总功率是完整计算像面的积分，并非仅显示区域的积分。
+默认倍率为 20 倍、物镜焦距为 20 mm，对应筒镜焦距 400 mm。
+只有图片而没有原始 `paired_fields.npz` 时，当前结果成像按钮不可用。
+成像使用原始三维复散射源，近场 XZ/XY/YZ 图片本身不能代替带相位的物理输入。
+
+### 复现 10 nm 颗粒示例（源码 UI）
+
+打开 `Full-wave FEM (experimental)` 页面时，`Parameter set` 默认选中 `10 nm PSL preview`，
+以下整套数值已填好；手动修改后显示 `Custom`，点击 `Apply preset` 恢复上一次选择的预设。
+需要旧设置时选 `100 nm standard`。
+确认 `Particle diameter = 10 nm`、
+`FEM profile = preview`、`Global mesh scale = 1.50`、`Local mesh scale = 1.00`、
+`Particle mesh = 0.00150 um`、`Source quadrature order = 7`、
+`Direct solver = umfpack`、`FEM order = 1`、`PML order = 0`、
+`PML full-order fraction = 0`、`FEM threads = 2`，粗糙面为 Gaussian PSD、9x9 节点。
+其余采用默认值：355 nm、颗粒 n=1.59/k=0、晶圆 n=5.57/k=0.387、
+入射角 75°、P 偏振、间隙 10 nm、粗糙度 RMS 2 nm（种子 7），
+三路 NA=0.5、倾角 +45°/-45°/0°、20 倍、物镜焦距 20 mm、128 个出瞳采样点。
+`Memory limit` 保持 12 GiB，随后点击 `Calculate`。
+`Particle mesh = 0` 表示由全局和局部比例自动计算；10 nm 示例必须显式填入 0.00150 um。
+这是一组一阶低内存预览设置，不是经网格和 PML 收敛证明的精度配置。
+`Re-image source` 只重算像面，修改颗粒网格后应使用 `Calculate`。
+旧版 EXE 未包含新增的网格和体源积分输入框。
+
 完整单位和范围见 [模型扩展说明](../fullwave_prototype/MODEL_UPGRADE_CN.md)，发布包内对应 docs 目录。

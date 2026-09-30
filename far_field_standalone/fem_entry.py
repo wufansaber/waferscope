@@ -10,7 +10,7 @@ def main():
     if not getattr(sys, 'frozen', False):
         sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
     if len(sys.argv) < 3 or sys.argv[1] != '-m':
-        raise SystemExit('Use -m fullwave_prototype.guarded_run or -m fullwave_prototype.imaging_run')
+        raise SystemExit('Use -m fullwave_prototype.guarded_run or a supported FEM module')
     module = sys.argv[2]
     sys.argv = [sys.argv[0]]+sys.argv[3:]
     os.environ.setdefault('MPLBACKEND', 'Agg')
@@ -18,6 +18,8 @@ def main():
         from fullwave_prototype.guarded_run import main as run
     elif module == 'fullwave_prototype.imaging_run':
         from fullwave_prototype.imaging_run import main as run
+    elif module == 'fullwave_prototype.component_compare':
+        from fullwave_prototype.component_compare import main as run
     else:
         raise SystemExit('Unsupported packaged module: '+module)
     run()

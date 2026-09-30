@@ -4,9 +4,9 @@ import unittest
 import numpy as np
 
 from fullwave_prototype.parameters import Parameters
-from fullwave_prototype.rough_surface import Roughness, height_mesh
+from fullwave_prototype.rough_surface import Roughness, height_mesh, raw_height_grid, surface_statistics
 from fullwave_prototype.far_field import radiation_amplitude, sphere_quadrature
-from fullwave_prototype.rough_run import decompose
+from fullwave_prototype.rough_run import decompose, haze_angular_diagnostics
 
 
 class RoughnessAnalyticTests(unittest.TestCase):
@@ -23,11 +23,38 @@ class RoughnessAnalyticTests(unittest.TestCase):
         np.testing.assert_array_equal(height_mesh(Roughness(rms_nm=0))[0][..., 2], 0)
         self.assertFalse(np.allclose(vertices, height_mesh(Roughness(seed=8))[0]))
 
+    def test_gaussian_correlation_and_ensemble_normalization(self):
+        r = Roughness(model='gaussian', grid_points=9, correlation_length_um=.05)
+        r.validate(Parameters(gap_nm=10))
+        vertices, triangles = height_mesh(r)
+        np.testing.assert_array_equal(vertices, height_mesh(r)[0])
+        summary = surface_statistics(r, vertices, triangles)
+        self.assertNotAlmostEqual(summary['triangle_mean_nm'], 0, places=6)
+        self.assertNotAlmostEqual(summary['triangle_rms_nm'], r.rms_nm, places=6)
+        self.assertEqual(summary['input_rms_nm'], r.rms_nm)
+        self.assertAlmostEqual(summary['target_neighbor_correlation'], np.exp(-.25), places=12)
+        samples = [Roughness(model='gaussian', grid_points=9,
+                   correlation_length_um=.05, seed=seed) for seed in range(400)]
+        raw = np.stack([raw_height_grid(sample) for sample in samples])
+        self.assertAlmostEqual(float(np.mean(raw*raw)), 1, delta=.08)
+        self.assertAlmostEqual(float(np.mean(raw[:, 1:]*raw[:, :-1])), np.exp(-.25), delta=.08)
+        self.assertAlmostEqual(float(np.mean(raw[:, :, 1:]*raw[:, :, :-1])), np.exp(-.25), delta=.08)
+        self.assertAlmostEqual(float(np.mean(raw[:, 2:]*raw[:, :-2])), np.exp(-1), delta=.08)
+        summaries = [surface_statistics(sample, *height_mesh(sample)) for sample in samples]
+        self.assertAlmostEqual(float(np.mean([item['triangle_mean_nm'] for item in summaries])),
+                               0, delta=.2)
+        rms_squared = [item['triangle_rms_nm']**2 for item in summaries]
+        self.assertGreater(float(np.sqrt(np.mean(rms_squared))), 0)
+        self.assertLess(float(np.sqrt(np.mean(rms_squared))), r.rms_nm)
+
     def test_geometry_guards(self):
         for r, p in ((Roughness(), Parameters()),
                      (Roughness(width_um=1), Parameters(gap_nm=10)),
                      (Roughness(rms_nm=-1), Parameters(gap_nm=10)),
                      (Roughness(grid_points=3), Parameters(gap_nm=10)),
+                     (Roughness(model='gaussian', grid_points=5), Parameters(gap_nm=10)),
+                     (Roughness(model='unknown'), Parameters(gap_nm=10)),
+                     (Roughness(correlation_length_um=0), Parameters(gap_nm=10)),
                      (Roughness(seed=-1), Parameters(gap_nm=10))):
             with self.assertRaises(ValueError):
                 r.validate(p)
@@ -62,6 +89,19 @@ class RoughnessAnalyticTests(unittest.TestCase):
         self.assertGreater(d['change_field'][0], 0)
         self.assertLess((d['total']-d['background'])[0], 0)
 
+    def test_haze_report_marks_reflection_reference_without_adding_specular(self):
+        theta = np.deg2rad([0, 30, 75, 90])
+        phi = np.deg2rad([0, 90, 180, 270])
+        background = np.zeros((4, 4))
+        background[1, 3] = 10
+        background[2, 1] = 2
+        result = haze_angular_diagnostics(background, theta, phi, 75)
+        self.assertEqual(result['reference_reflection_deg'], [75, 90])
+        self.assertAlmostEqual(result['haze_peak_deg'][0], 30)
+        self.assertAlmostEqual(result['haze_peak_deg'][1], 270)
+        self.assertAlmostEqual(result['reference_to_peak_ratio'], .2)
+        self.assertGreater(result['peak_offset_from_reference_deg'], 0)
+
     def test_transmitted_p_kernel_at_critical_angle(self):
         from fullwave_prototype.planar import background_vectors
         p = Parameters(substrate_n=.6, substrate_k=0, incidence_deg=np.rad2deg(np.arcsin(.6)))
@@ -76,6 +116,18 @@ class RoughnessAnalyticTests(unittest.TestCase):
 
 @unittest.skipIf(importlib.util.find_spec('ngsolve') is None, 'Native NGSolve environment required')
 class NativeRoughnessTests(unittest.TestCase):
+    def test_gaussian_surface_builds_closed_fem_mesh(self):
+        import ngsolve as ng
+        from fullwave_prototype.rough_surface import surface_solid, build_rough_mesh
+        r = Roughness(model='gaussian', grid_points=9, correlation_length_um=.05)
+        mesh = build_rough_mesh(Parameters(gap_nm=10, order=1), r)
+        vertices, triangles = height_mesh(r)
+        mean_height_um = triangles[..., 2].mean()
+        self.assertAlmostEqual(surface_solid(r, .03).mass,
+                               r.width_um**2*(.03+mean_height_um), places=12)
+        self.assertGreater(ng.Integrate(1, mesh, definedon=mesh.Materials('bump')), 0)
+        self.assertGreater(ng.Integrate(1, mesh, definedon=mesh.Materials('pit')), 0)
+
     def test_closed_solid_and_contrast_volume(self):
         import ngsolve as ng
         from fullwave_prototype.rough_surface import surface_solid, build_rough_mesh

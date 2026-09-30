@@ -81,16 +81,32 @@ def build_scattering_model(parameters):
 
     effective_area_um2 = parameters.illuminated_area_um2
     particle_parameters["density"] = 1.0 / effective_area_um2
-    particle_model = Local_BRDF_Model(
-        "Bobbert_Vlieger_BRDF_Model",
-        particle_parameters,
-    )
     roughness_model, roughness_name = _build_roughness_model(
         parameters,
         wavelength_um,
         substrate,
         stack,
         stack_layer_count,
+    )
+    validity_note = _roughness_validity_note(parameters, wavelength_um)
+    psd_note = ("Gaussian PSD RMS={:.6g} nm, L={:.6g} um".format(
+        parameters.roughness_rms_nm, parameters.roughness_correlation_length_um)
+        if parameters.roughness_psd == "gaussian" else
+        "ABC PSD RMS={:.6g} nm, B={:.6g} um, C={:.6g}".format(
+            parameters.roughness_rms_nm, parameters.roughness_correlation_length_um,
+            parameters.roughness_exponent))
+    if parameters.haze_only:
+        return ScatteringModelBundle(
+            model=roughness_model, output_kind="brdf_to_dsc",
+            effective_area_um2=effective_area_um2, thickness_note=thickness_note,
+            model_note=("SCATMECH {} only (no particle); {}; rough area={:.6g} x {:.6g} um "
+                        "({:.6g} um^2).{}".format(
+                            roughness_name, psd_note, parameters.illumination_length_um,
+                            parameters.illumination_width_um, effective_area_um2, validity_note)),
+            stack_layer_count=stack_layer_count)
+    particle_model = Local_BRDF_Model(
+        "Bobbert_Vlieger_BRDF_Model",
+        particle_parameters,
     )
     combined_model = BRDF_Model(
         "Two_Source_BRDF_Model",
@@ -105,17 +121,13 @@ def build_scattering_model(parameters):
             "correlation": 0.0,
         },
     )
-    validity_note = _roughness_validity_note(parameters, wavelength_um)
     model_note = (
         "SCATMECH Two_Source_BRDF_Model: Bobbert_Vlieger_BRDF_Model + {} "
-        "(incoherent Mueller BRDF sum); ABC PSD RMS={:.6g} nm, B={:.6g} um, "
-        "C={:.6g}; rectangular footprint={:.6g} x {:.6g} um "
+        "(incoherent Mueller BRDF sum); {}; rectangular footprint={:.6g} x {:.6g} um "
         "(area {:.6g} um^2).{}"
     ).format(
         roughness_name,
-        parameters.roughness_rms_nm,
-        parameters.roughness_correlation_length_um,
-        parameters.roughness_exponent,
+        psd_note,
         parameters.illumination_length_um,
         parameters.illumination_width_um,
         effective_area_um2,
@@ -186,16 +198,21 @@ def _build_roughness_model(
     stack,
     stack_layer_count,
 ):
-    psd = {
-        None: "ABC_PSD_Function",
-        "A": abc_psd_a_um4(
-            parameters.roughness_rms_nm,
-            parameters.roughness_correlation_length_um,
-            parameters.roughness_exponent,
-        ),
-        "B": parameters.roughness_correlation_length_um,
-        "C": parameters.roughness_exponent,
-    }
+    if parameters.roughness_psd == "gaussian":
+        psd = {None: "Gaussian_PSD_Function",
+               "sigma": parameters.roughness_rms_nm/1000.0,
+               "length": parameters.roughness_correlation_length_um}
+    else:
+        psd = {
+            None: "ABC_PSD_Function",
+            "A": abc_psd_a_um4(
+                parameters.roughness_rms_nm,
+                parameters.roughness_correlation_length_um,
+                parameters.roughness_exponent,
+            ),
+            "B": parameters.roughness_correlation_length_um,
+            "C": parameters.roughness_exponent,
+        }
     model_parameters = {
         "lambda": wavelength_um,
         "substrate": substrate,

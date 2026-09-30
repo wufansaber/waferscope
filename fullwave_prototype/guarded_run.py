@@ -96,7 +96,8 @@ def main():
     parser.add_argument('--reserve-gib', type=float, default=3)
     parser.add_argument('--timeout-seconds', type=float, default=1800)
     parser.add_argument('--cancel-file')
-    parser.add_argument('module', choices=('physical_audit', 'imaging_run', 'rough_run', 'theory_audit', 'near_audit'))
+    parser.add_argument('module', choices=('physical_audit', 'imaging_run', 'rough_run', 'theory_audit',
+                                           'near_audit', 'component_compare'))
     parser.add_argument('arguments', nargs=argparse.REMAINDER)
     args = parser.parse_args()
     result = run_guarded([sys.executable, '-m', 'fullwave_prototype.'+args.module]+args.arguments,
