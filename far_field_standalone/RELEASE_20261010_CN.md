@@ -21,3 +21,8 @@ FEM/混合模型仍为实验功能：90.7 μm 范围仅用于收敛审计，未�
 整光斑高阶颗粒/粗糙面耦合仍需独立验证。请阅读随包模型文档和 `verification` 摘要。
 
 ZIP 与 SHA-256 校验文件在本 Release 提供。程序未作代码签名。
+
+## 操作手册
+
+[新版中文操作手册（MD）](https://github.com/wufansaber/aptk/releases/download/v2026.10.10-roughness/OPERATION_MANUAL_CN.md) 包含参数设置、10 nm 示例、照明定义、粗糙面统计、三路成像、结果保存和常见问题。
+手册是独立补充附件，原 ZIP 和 EXE 未修改。

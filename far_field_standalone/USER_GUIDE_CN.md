@@ -1,5 +1,7 @@
 # Far-field 远场仿真程序用户使用指南
 
+> 2026-10-10 更新：请优先阅读 [新版中文操作手册](OPERATION_MANUAL_CN.md)。下文保留历史功能说明，旧 Beam waist、内存预算和发行版描述不一定适用于当前版本；以新版操作手册和保存结果参数为准。
+
 ## 全波 FEM 实验页
 
 运行本目录 `main.py` 后，顶部新增 `Full-wave FEM (experimental)`，
