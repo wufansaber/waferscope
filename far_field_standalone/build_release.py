@@ -87,9 +87,18 @@ def build(args):
                      'reimage_final/audit.json', 'native_tests.json', 'packaged/package_smoke.json'):
         source = audit_root/relative
         if source.is_file():
-            target = evidence/relative
+            target = evidence/'historical_20260928'/relative
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source, target)
+    if args.verification_root:
+        for relative in ('campaign_summary.json', 'campaign_summary.png', 'pytest.txt',
+                         'packaged/package_smoke.json', 'packaged/packaged_gui.png',
+                         'packaged/whole_haze_smoke.json', 'packaged/haze_ensemble_smoke.json'):
+            source = args.verification_root/relative
+            if source.is_file():
+                target = evidence/relative
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(source, target)
     (app/'build_manifest.json').write_text(json.dumps(dict(version=args.version,
         source_commit=commit, source_dirty=dirty,
         platform='Windows x64', format='onedir', fem_status='experimental',
@@ -112,6 +121,8 @@ def main():
     parser.add_argument('--fem-python', type=Path, default=ROOT/'build/ngsolve_env/Scripts/python.exe')
     parser.add_argument('--version', default=date.today().isoformat())
     parser.add_argument('--assemble-only', action='store_true')
+    parser.add_argument('--verification-root', type=Path,
+                        help='Current verification summaries to include, without field archives')
     parser.add_argument('--export-licenses', type=Path)
     args = parser.parse_args()
     if args.export_licenses:

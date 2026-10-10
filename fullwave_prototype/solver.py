@@ -52,6 +52,8 @@ def background_coefficient(p):
 def solve(p, mesh=None, particle_enabled=True):
     import ngsolve as ng
     p.validate()
+    from .beam_validation import check_local_beam
+    beam_check = check_local_beam(p)
     ng.SetNumThreads(p.threads)
     print('NGSolve worker threads: {}'.format(p.threads), flush=True)
     start = time.perf_counter()
@@ -102,8 +104,10 @@ def solve(p, mesh=None, particle_enabled=True):
     rel = np.linalg.norm(residual.FV().NumPy()[free])/max(np.linalg.norm(solve_rhs.FV().NumPy()[free]), 1e-300)
     if not np.isfinite(rel) or rel > 1e-8 or not np.isfinite(field.vec.FV().NumPy()).all():
         raise RuntimeError('Linear solve failed the true algebraic residual/finite-field check: {}'.format(rel))
-    volume = ng.Integrate(1, mesh, definedon=mesh.Materials('particle'))
+    volume = (ng.Integrate(1, mesh, definedon=mesh.Materials('particle'))
+              if 'particle' in mesh.GetMaterials() else 0.)
     metadata = dict(elements=mesh.ne, dofs=space.ndof, algebraic_residual=float(rel),
+                    local_beam_quadrature_check=beam_check,
                     threads=p.threads,
                     assembly_seconds=assembly_seconds, factor_seconds=factor_seconds,
                     factored_dofs=sum(space.FreeDofs(coupling=p.static_condensation)),

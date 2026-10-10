@@ -19,6 +19,33 @@ def stop_reason(memory_gib, available_gib, elapsed, maximum, reserve, timeout):
     return None
 
 
+def _wait_for_owned(processes, timeout=10):
+    """Wait only for living processes; Windows may deny waits on exited PIDs."""
+    import psutil
+
+    def still_running(candidates):
+        result = []
+        for process in candidates:
+            try:
+                if process.is_running():
+                    result.append(process)
+            except psutil.NoSuchProcess:
+                pass
+            except psutil.AccessDenied:
+                result.append(process)  # Unknown is not silently treated as gone.
+        return result
+
+    candidates = still_running(processes)
+    if not candidates:
+        return []
+    try:
+        _, alive = psutil.wait_procs(candidates, timeout=timeout)
+        return [process.pid for process in still_running(alive)]
+    except psutil.AccessDenied:
+        time.sleep(min(timeout, 1))
+        return [process.pid for process in still_running(candidates)]
+
+
 def run_guarded(command, report_path, maximum=10., reserve=3., timeout=1800., cancel_file=None):
     import psutil
     for value in (maximum, reserve, timeout):
@@ -79,9 +106,9 @@ def run_guarded(command, report_path, maximum=10., reserve=3., timeout=1800., ca
                     process.kill()
             except psutil.NoSuchProcess:
                 pass
-        _, alive = psutil.wait_procs(list(owned.values()), timeout=10)
+        alive = _wait_for_owned(list(owned.values()), timeout=10)
         report.update(elapsed_seconds=time.monotonic()-start, returncode=child.wait(timeout=10),
-                      surviving_owned_pids=[p.pid for p in alive])
+                      surviving_owned_pids=alive)
         if alive:
             report['status'] = 'cleanup_failed'
         path.write_text(json.dumps(report, indent=2), encoding='utf-8')
@@ -97,7 +124,10 @@ def main():
     parser.add_argument('--timeout-seconds', type=float, default=1800)
     parser.add_argument('--cancel-file')
     parser.add_argument('module', choices=('physical_audit', 'imaging_run', 'rough_run', 'theory_audit',
-                                           'near_audit', 'component_compare'))
+                                           'near_audit', 'component_compare', 'haze_ensemble',
+                                           'haze_convergence', 'whole_haze', 'hybrid_run',
+                                           'local_spm_validation', 'hybrid_range_validation', 'surface_mesh_audit',
+                                           'illumination_definition_audit', 'range_refinement'))
     parser.add_argument('arguments', nargs=argparse.REMAINDER)
     args = parser.parse_args()
     result = run_guarded([sys.executable, '-m', 'fullwave_prototype.'+args.module]+args.arguments,

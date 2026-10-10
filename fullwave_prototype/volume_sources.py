@@ -4,13 +4,13 @@ import numpy as np
 from .solver import background_coefficient, contrast_materials
 
 
-def polarization_sources(mesh, field, p, particle_enabled=True, order=5):
+def polarization_sources(mesh, field, p, particle_enabled=True, order=5, vectorized_background=False):
     import ngsolve as ng
-    total = field+background_coefficient(p)
+    total = field if vectorized_background else field+background_coefficient(p)
     coordinates = ng.CF((ng.x, ng.y, ng.z))
     jacobian = ng.specialcf.JacobianMatrix(3)
     contrasts = contrast_materials(p, particle_enabled)
-    points, sources = [], []
+    points, sources, contrast_weights = [], [], []
     volumes = {name: 0. for name in contrasts if name in mesh.GetMaterials()}
     rules = {}
     for element in mesh.Elements(ng.VOL):
@@ -28,6 +28,12 @@ def polarization_sources(mesh, field, p, particle_enabled=True, order=5):
         volumes[element.mat] += float(weights.sum())
         points.append(np.asarray(coordinates(mapped)).reshape(-1, 3))
         sources.append(contrast*np.asarray(total(mapped)).reshape(-1, 3)*weights[:, None])
+        if vectorized_background:
+            contrast_weights.append(contrast*weights)
     if not points:
         return np.empty((0, 3)), np.empty((0, 3), complex), volumes
-    return np.concatenate(points), np.concatenate(sources), volumes
+    points, sources = np.concatenate(points), np.concatenate(sources)
+    if vectorized_background:
+        from .background_sampling import electric_background
+        sources += electric_background(points, p)*np.concatenate(contrast_weights)[:, None]
+    return points, sources, volumes

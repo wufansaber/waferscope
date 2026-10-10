@@ -22,7 +22,8 @@ def _near(ax, data, report, fig):
     planes = saved_planes(data)
     plane = next(p for p in planes if p.name == 'yz')
     im = draw_plane(ax, data, report, plane, shared_norm(data, planes))
-    ax.set_title('1  NEAR FIELD | Total E, YZ (X = 0 nm)')
+    ax.set_title(('1  LOCAL FEM NEAR FIELD' if report.get('near_field_scope') else '1  NEAR FIELD')+
+                 ' | Total E, YZ (X = 0 nm)')
     fig.colorbar(im, ax=ax, label='|E / E_inc|^2 (sqrt colors)', shrink=.9)
 
 
@@ -81,8 +82,12 @@ def plot_pipeline(output, data, arrays, scattering, report):
             index, info['tilt_deg'], info['na'], info['with']['image_power_w']*1e12), fontsize=11)
     fig.colorbar(im, ax=image_axes, label='I (W / um^2), shared absolute scale', shrink=.9)
     p = scattering['parameters']
-    fig.suptitle('FULL-WAVE DARK-FIELD PIPELINE | {} nm, particle {} nm | {}x, f_obj={} mm, f_tube={} mm\n'
-                 'Experimental FEM + configured optics; independent channels; far field / images exclude specular beam'.format(
+    title = 'HYBRID WHOLE SPM + LOCAL FEM' if report.get('model') == 'whole_spm_local_fem_hybrid' else 'FULL-WAVE DARK-FIELD PIPELINE'
+    subtitle = ('Local near fields only; independent hybrid channels; no specular beam'
+                if report.get('model') == 'whole_spm_local_fem_hybrid' else
+                'Experimental FEM + configured optics; independent channels; far field / images exclude specular beam')
+    fig.suptitle((title+' | {} nm, particle {} nm | {}x, f_obj={} mm, f_tube={} mm\n'
+                 +subtitle).format(
                      p['wavelength_nm'], p['diameter_nm'], settings['magnification'],
                      settings['focal_length_mm'], report['tube_focal_length_mm']), fontsize=12)
     fig.savefig(Path(output)/'near_far_image.png', dpi=160)

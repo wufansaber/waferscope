@@ -63,18 +63,20 @@ def plot_near_planes(output, data, report):
     planes = saved_planes(data)
     norm = shared_norm(data, planes)
     label = '|E / E_inc|^2; shared scale (sqrt colors)'
+    title = ('LOCAL FEM NEAR FIELD | Outer roughness response not included'
+             if report.get('near_field_scope') else 'NEAR FIELD | Total electric field with particle')
     fig, axes = plt.subplots(1, len(planes), figsize=(5.5*len(planes), 5.5),
                              squeeze=False, layout='constrained')
     for ax, plane in zip(axes[0], planes):
         im = draw_plane(ax, data, report, plane, norm)
     fig.colorbar(im, ax=axes.ravel().tolist(), label=label, shrink=.8)
-    fig.suptitle('NEAR FIELD | Total electric field with particle')
+    fig.suptitle(title)
     fig.savefig(Path(output)/'near_field.png', dpi=150)
     plt.close(fig)
     for plane in planes:
         fig, ax = plt.subplots(figsize=(8, 7), layout='constrained')
         im = draw_plane(ax, data, report, plane, norm)
         fig.colorbar(im, ax=ax, label=label, shrink=.9)
-        fig.suptitle('NEAR FIELD | Total electric field with particle')
+        fig.suptitle(title)
         fig.savefig(Path(output)/('near_field_'+plane.name+'.png'), dpi=150)
         plt.close(fig)

@@ -18,6 +18,11 @@ The source FEM UI now defaults to the tested `balanced` order-3 configuration,
 
 ## Implemented scope
 
+Whole-illumination roughness now has a separate coherent first-order surface
+solver and UI entry, with power/taper coverage, PSD sampling, direct aperture
+integration and independent image planes. This is NOT full-wafer FEM or
+particle-coupled scattering. See [whole-beam haze](WHOLE_BEAM_HAZE_CN.md).
+
 - One homogeneous isotropic sphere in air, touching or separated from a smooth,
   isotropic, absorbing/nonabsorbing semi-infinite substrate at z=0.
 - Plane-wave illumination from negative KY toward positive KY and downward Z;
@@ -27,13 +32,21 @@ The source FEM UI now defaults to the tested `balanced` order-3 configuration,
 - Independent SCATMECH comparison through the existing NIST2 interpreter.
 - A separate finite rough-patch runner with paired particle-present/absent
   solves, coherent interference, and sources above/below the reference plane.
-  See [ROUGHNESS.md](ROUGHNESS.md) for its scope, commands and validation.
+  Gaussian/ABC height statistics and haze ensemble comparisons are described
+  in [ROUGHNESS.md](ROUGHNESS.md); research priorities and evidence are in
+  [ROUGHNESS_RESEARCH_CN.md](ROUGHNESS_RESEARCH_CN.md).
 - A near/far/image pipeline with three independent ideal 20x objectives, direct
   complex FEM pupil sampling and coherent image decomposition. See
   [IMAGING.md](IMAGING.md) for commands, units and limitations.
 
-NOT implemented: multilayer films, statistically converged wafer roughness, finite illumination footprints,
-other particle shapes or pixel/noise camera integration with FEM.
+Finite coherent Gaussian wafer footprints now enter the FEM background, near/far/image
+pipeline and haze averaging. The source UI defaults to this mode; the CLI keeps its
+plane-wave default. See [coherent illumination](COHERENT_ILLUMINATION_CN.md) for power
+normalization, clipping, patch coverage and quantitative limitations. Camera pixel/noise
+integration is available in the imaging pipeline, without experimental calibration.
+
+NOT implemented: multilayer FEM films, validated wafer-scale roughness convergence,
+other particle shapes or experimentally calibrated camera/illumination response.
 Arbitrary-geometry FEM is the longer-term route, not a claim that these
 features already work here. Near-field contact peaks are not yet quantitatively
 converged. Do not use this prototype as a production replacement.
@@ -117,6 +130,12 @@ W/um^2, collected power is I times the integrated DSC. Field magnitude squared
 in the near field is not equivalent to outward collected power.
 
 ## Outputs and validation
+
+The UI also offers a shared-surface coherent hybrid: whole-beam first-order SPM
+plus local paired FEM minus the same local triangular SPM amplitudes. See
+[hybrid model and validation limits](HYBRID_MODEL_CN.md). It includes same-realization
+outer-surface diagnostics and three independent images. Near fields remain local FEM;
+it is not a rigorous full-wafer Maxwell solution or an ensemble average.
 
 - `comparison.png`: YZ total/scattered field enhancement and two far-field cuts.
 - `fields.npz`: complex field components, outgoing s/p amplitudes, angular DSC

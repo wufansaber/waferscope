@@ -1,5 +1,5 @@
 """Finite, piecewise-planar roughness patch; flat surface outside the square."""
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 import math
 
 import numpy as np
@@ -15,37 +15,72 @@ class Roughness:
     mesh_um: float = .025
     model: str = 'legacy'
     correlation_length_um: float = .05
+    psd_exponent: float = 3.0
+    taper_fraction: float = .5
+    measurement_path: str = ''
+    detrend: str = 'plane'
+    missing_policy: str = 'reject'
+    sampling_grid_levels: list = field(default_factory=list)
 
-    def validate(self, p):
+    def __post_init__(self):
+        object.__setattr__(self, 'sampling_grid_levels', list(self.sampling_grid_levels))
+
+    def validate(self, p, particle_enabled=True):
         for name, value in asdict(self).items():
-            if name != 'model' and not math.isfinite(value):
+            if name != 'sampling_grid_levels' and not isinstance(value, str) and not math.isfinite(value):
                 raise ValueError(name + ' must be finite')
-        if self.model not in ('legacy', 'gaussian'):
-            raise ValueError('Roughness model must be legacy or gaussian')
+        if self.sampling_grid_levels:
+            from .coupled_surface import joint_nodes
+            _, levels = joint_nodes(tuple(self.sampling_grid_levels))
+            if self.model not in ('gaussian', 'abc') or self.grid_points not in levels:
+                raise ValueError('Coupled refinement requires Gaussian/ABC and a listed height grid')
+        if self.model not in ('legacy', 'gaussian', 'abc', 'measured_height', 'measured_psd'):
+            raise ValueError('Unknown roughness model')
+        if self.model.startswith('measured_'):
+            from .experimental_surface import measurement_report
+            if not self.measurement_path:
+                raise ValueError('Select an experimental measurement file')
+            report = measurement_report(self)
+            if not np.isclose(self.rms_nm, report['rms_nm'], rtol=1e-8, atol=1e-10):
+                raise ValueError('Experimental RMS must come from the measurement, without amplitude rescaling')
         if self.width_um <= 0 or self.rms_nm < 0 or self.mesh_um <= 0 or self.smoothing_cells < 0:
             raise ValueError('Invalid roughness length, RMS or smoothing')
         if self.correlation_length_um <= 0:
-            raise ValueError('Correlation length must be positive')
-        if not isinstance(self.grid_points, int) or not 4 <= self.grid_points <= 17:
-            raise ValueError('Use 4..17 surface grid points per axis')
+            raise ValueError('PSD length must be positive')
+        if self.model == 'abc' and not 2.01 <= self.psd_exponent <= 10:
+            raise ValueError('ABC PSD exponent C must be in [2.01, 10] for the shared UI')
+        if not 0 < self.taper_fraction <= .5:
+            raise ValueError('Edge taper fraction must be in (0, 0.5]')
+        if not isinstance(self.grid_points, int) or not 4 <= self.grid_points <= 41:
+            raise ValueError('Use 4..41 surface grid points per axis')
         if (self.model == 'gaussian' and self.rms_nm > 0 and
                 self.width_um/(self.grid_points-1) > self.correlation_length_um/2):
             raise ValueError('Gaussian surface needs at least two grid intervals per correlation length')
+        if self.taper_fraction*(self.grid_points-1) < 1-1e-12:
+            raise ValueError('Edge taper must span at least one surface grid interval')
         if not isinstance(self.seed, int) or self.seed < 0:
             raise ValueError('seed must be a nonnegative integer')
         _, triangles = height_mesh(self)
         if np.max(np.linalg.norm(triangles, axis=-1)) >= .9*p.domain_radius_um:
             raise ValueError('Rough patch must stay clear of the PML')
-        if self.rms_nm > 0 and p.gap_nm/1000 <= triangles[..., 2].max()+1e-6:
+        if (particle_enabled and self.rms_nm > 0 and
+                p.gap_nm/1000 <= triangles[..., 2].max()+1e-6):
             raise ValueError('Sphere bottom must exceed the highest roughness peak; increase gap_nm')
 
 
 def raw_height_grid(r):
     from scipy.ndimage import gaussian_filter
+    if r.sampling_grid_levels:
+        from .coupled_surface import height_grid
+        return height_grid(r)
     rng = np.random.default_rng(r.seed)
     raw = rng.standard_normal((r.grid_points, r.grid_points))
     if r.model == 'legacy':
         return gaussian_filter(raw, r.smoothing_cells)
+    if r.model == 'abc':
+        from .rough_statistics import abc_node_factor
+        return (abc_node_factor(r.grid_points, r.width_um, r.correlation_length_um,
+                                r.psd_exponent) @ raw.ravel()).reshape(raw.shape)
     if r.model != 'gaussian':
         raise ValueError('Unknown roughness model')
     axis = np.linspace(-r.width_um/2, r.width_um/2, r.grid_points)
@@ -55,25 +90,47 @@ def raw_height_grid(r):
     return factor @ raw @ factor.T
 
 
-def height_mesh(r):
-    """Build a tapered triangular patch; legacy alone has exact per-sample mean/RMS."""
-    axis = np.linspace(-r.width_um/2, r.width_um/2, r.grid_points)
-    x, y = np.meshgrid(axis, axis, indexing='ij')
-    taper = np.outer(np.sin(np.linspace(0, np.pi, r.grid_points))**2,
-                     np.sin(np.linspace(0, np.pi, r.grid_points))**2)
-    taper[[0, -1], :] = 0
-    taper[:, [0, -1]] = 0
-    raw = raw_height_grid(r)
+def _taper_grid(r):
+    distance_from_edge = np.minimum(np.arange(r.grid_points),
+                                    np.arange(r.grid_points)[::-1])/(r.grid_points-1)
+    edge_phase = np.minimum(distance_from_edge/r.taper_fraction, 1)
+    taper_1d = np.sin(np.pi*edge_phase/2)**2
+    return np.outer(taper_1d, taper_1d)
+
+
+def _triangle_indices(n):
     indices = []
-    n = r.grid_points
     for i in range(n-1):
         for j in range(n-1):
             a, b, c, d = i*n+j, (i+1)*n+j, (i+1)*n+j+1, i*n+j+1
             indices.extend(((a, b, c), (a, c, d)))
-    indices = np.asarray(indices)
-    if r.model == 'gaussian':
+    return np.asarray(indices)
+
+
+def taper_effective_area(r):
+    """Integral of the squared piecewise-linear height window over the patch."""
+    tapered = _taper_grid(r).ravel()[_triangle_indices(r.grid_points)]
+    triangle_area = (r.width_um/(r.grid_points-1))**2/2
+    return float(triangle_area*np.sum((np.sum(tapered*tapered, axis=1)+
+                                      np.sum(tapered, axis=1)**2)/12))
+
+
+def height_mesh(r):
+    """Build a tapered triangular patch; legacy alone has exact per-sample mean/RMS."""
+    axis = np.linspace(-r.width_um/2, r.width_um/2, r.grid_points)
+    x, y = np.meshgrid(axis, axis, indexing='ij')
+    taper = _taper_grid(r)
+    taper[[0, -1], :] = 0
+    taper[:, [0, -1]] = 0
+    indices = _triangle_indices(r.grid_points)
+    if r.model.startswith('measured_'):
+        from .experimental_surface import measured_nodes
+        z = measured_nodes(r)*taper
+    elif r.model in ('gaussian', 'abc'):
+        raw = raw_height_grid(r)
         z = raw*taper*(r.rms_nm/1000)
     else:
+        raw = raw_height_grid(r)
         mean_raw = (raw*taper).ravel()[indices].mean()
         mean_taper = taper.ravel()[indices].mean()
         z = (raw-mean_raw/mean_taper)*taper
@@ -92,81 +149,50 @@ def surface_statistics(r, vertices, triangles):
     spacing = r.width_um/(r.grid_points-1)
     summary = dict(model=r.model, seed=r.seed, width_um=r.width_um,
                    grid_points=r.grid_points, grid_spacing_um=spacing,
+                   taper_fraction=r.taper_fraction,
+                   taper_effective_area_um2=taper_effective_area(r),
                    triangle_mean_nm=float(heights.mean()*1000),
                    triangle_rms_nm=float(np.sqrt(second)*1000),
                    input_rms_nm=r.rms_nm,
                    minimum_nm=float(vertices[..., 2].min()*1000),
                    maximum_nm=float(vertices[..., 2].max()*1000),
+                   sampling_grid_levels=list(r.sampling_grid_levels),
                    scope='One tapered finite realization; not an ensemble-averaged wafer PSD.')
-    if r.model == 'gaussian':
+    if r.model in ('gaussian', 'abc'):
+        from .rough_statistics import nyquist_variance_fraction
         length = r.correlation_length_um
         summary.update(correlation_length_um=length,
-                       target_covariance='C(r)=sigma^2 exp(-(r/L)^2) before finite-patch taper',
-                       target_psd='S(f)=pi sigma^2 L^2 exp(-(pi L |f|)^2) before finite-patch taper',
                        normalization='Input sigma is stationary-parent RMS; taper and one realization change patch mean/RMS.',
-                       target_neighbor_correlation=float(np.exp(-(spacing/length)**2)),
-                       correlation_lengths_across_patch=r.width_um/length)
+                       nyquist_variance_fraction=nyquist_variance_fraction(
+                           r.model, spacing, length, r.psd_exponent))
+        if r.model == 'gaussian':
+            summary.update(correlation_lengths_across_patch=r.width_um/length,
+                           target_covariance='C(r)=sigma^2 exp(-(r/L)^2) before finite-patch taper',
+                           target_psd='S(f)=pi sigma^2 L^2 exp(-(pi L |f|)^2) before finite-patch taper',
+                           target_neighbor_correlation=float(np.exp(-(spacing/length)**2)))
+        else:
+            from .rough_statistics import abc_amplitude, abc_correlation
+            summary.update(psd_lengths_across_patch=r.width_um/length,
+                           psd_exponent=r.psd_exponent,
+                           psd_length_definition='B is NIST ABC roll-off length, not Gaussian L',
+                           target_psd='S(f)=A/(1+(B |f|)^2)^(C/2) before finite-patch taper',
+                           abc_amplitude_um4=abc_amplitude(r.rms_nm, length, r.psd_exponent),
+                           target_neighbor_correlation=float(
+                               abc_correlation(spacing, length, r.psd_exponent)))
+    elif r.model.startswith('measured_'):
+        from .experimental_surface import measurement_report
+        summary['measurement'] = measurement_report(r)
+        summary['normalization'] = 'Measured absolute height/PSD; no RMS rescaling, followed by edge taper.'
     else:
         summary['normalization'] = 'Exact zero mean and projected triangle RMS for each legacy sample.'
     return summary
 
 
-def surface_solid(r, depth):
-    """Sew planar triangular faces into a closed OCC solid above z=-depth."""
-    from netgen.occ import Vertex, Face, MakePolygon, Sew, Solid
-    vertices, triangles = height_mesh(r)
-
-    def face(points):
-        corners = [Vertex(tuple(point)) for point in points]
-        return Face(MakePolygon(corners+[corners[0]]))
-
-    faces = [face(t) for t in triangles]
-    edge = np.concatenate((vertices[:-1, 0], vertices[-1, :-1],
-                           vertices[:0:-1, -1], vertices[0, :0:-1]))
-    bottom = edge.copy()
-    bottom[:, 2] = -depth
-    for i in range(len(edge)):
-        j = (i+1) % len(edge)
-        faces.append(face((edge[j], edge[i], bottom[i], bottom[j])))
-    half = r.width_um/2
-    faces.append(face(((-half, -half, -depth), (-half, half, -depth),
-                       (half, half, -depth), (half, -half, -depth))))
-    return Solid(Sew(faces, tolerance=1e-9))
+def surface_solid(r, depth, scale=1.):
+    from .rough_geometry import surface_solid as construct
+    return construct(r, depth, scale)
 
 
-def build_rough_mesh(p, roughness):
-    import ngsolve as ng
-    from netgen.occ import Sphere, Box, Glue, OCCGeometry
-    from .solver import build_mesh
-    from .absorbing_boundary import set_boundary
-    roughness.validate(p)
-    if roughness.rms_nm == 0:
-        return build_mesh(p)
-    radius = p.domain_radius_um
-    outer_r = radius+p.pml_thickness_um
-    outer = Sphere((0, 0, 0), outer_r)
-    outer.faces.name = 'outer'
-    inner = Sphere((0, 0, 0), radius)
-    lower = Box((-2*outer_r,)*3, (2*outer_r, 2*outer_r, 0))
-    half = roughness.width_um/2
-    vertices, _ = height_mesh(roughness)
-    depth = max(.03, 2*abs(vertices[..., 2]).max())
-    slab = surface_solid(roughness, depth)
-    column = Box((-half, -half, -depth), (half, half, 0))
-    bump, pit = slab-lower, column-slab
-    ball = Sphere((0, 0, (p.diameter_nm/2+p.gap_nm)/1000), p.diameter_nm/2000)
-    regions = [(inner-lower-bump-ball, 'air', p.air_mesh_um),
-               ((inner*lower)-pit, 'substrate', p.substrate_mesh_um),
-               (bump, 'bump', roughness.mesh_um), (pit, 'pit', roughness.mesh_um),
-               (ball, 'particle', p.particle_mesh_um),
-               ((outer-inner)-lower, 'pml_air', p.air_mesh_um*p.pml_mesh_scale),
-               ((outer-inner)*lower, 'pml_substrate', p.substrate_mesh_um*p.pml_mesh_scale)]
-    for shape, name, size in regions:
-        shape.mat(name)
-        shape.maxh = size
-        if name in ('bump', 'pit', 'particle'):
-            shape.faces.maxh = size
-    mesh = ng.Mesh(OCCGeometry(Glue([s for s, _, _ in regions])).GenerateMesh(maxh=p.air_mesh_um))
-    mesh.Curve(max(3, p.order+1))
-    set_boundary(mesh, p)
-    return mesh
+def build_rough_mesh(p, roughness, particle_enabled=True, cad_scale=1000.):
+    from .rough_geometry import build_rough_mesh as construct
+    return construct(p, roughness, particle_enabled, cad_scale)

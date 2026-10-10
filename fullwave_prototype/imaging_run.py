@@ -1,6 +1,6 @@
 """Run the near/far/image pipeline or re-image saved complex volume sources."""
 import argparse
-from dataclasses import asdict
+from dataclasses import asdict, replace
 import json
 from pathlib import Path
 
@@ -25,6 +25,14 @@ def image_saved_sources(source, output, settings, archive_mode='full', cache_dir
     with np.load(source/'paired_fields.npz', allow_pickle=False) as saved:
         data = {key: saved[key] for key in saved.files}
     p = Parameters(**scattering['parameters'])
+    p.validate()
+    if p.beam_profile == 'gaussian':
+        from .finite_illumination import power_area
+        if (settings.illumination_model != 'gaussian' or settings.illumination_definition != p.beam_definition or not np.allclose(
+                (settings.illumination_length_um, settings.illumination_width_um,
+                 settings.illumination_normalization_area_um2),
+                (p.beam_length_um, p.beam_width_um, power_area(p)), rtol=1e-10, atol=0)):
+            raise ValueError('Saved finite-beam scattering and imaging illumination differ')
     arrays, report = calculate_images(data, p, settings, retain_complex_fields=archive_mode == 'full',
                                       cache_directory=cache_directory)
     report.update(scattering_parameters=asdict(p), roughness=scattering['roughness'],
@@ -41,6 +49,8 @@ def image_saved_sources(source, output, settings, archive_mode='full', cache_dir
     if settings.detector.enabled:
         from .detector_plot import plot_detector
         plot_detector(output, arrays)
+    from .illumination_output import save_illumination
+    save_illumination(output, p, settings, Roughness(**scattering['roughness']))
     print(json.dumps(report, indent=2), flush=True)
     return report
 
@@ -52,6 +62,11 @@ def build_parser():
     add_options(parser)
     parser.add_argument('--beam-waist-um', type=float)
     parser.add_argument('--beam-order', type=int)
+    parser.add_argument('--beam-profile', choices=('plane', 'gaussian'))
+    parser.add_argument('--beam-definition', choices=('wafer_gaussian', 'beam_cross_section',
+                        'wafer_rectangle', 'measured_wafer'))
+    parser.add_argument('--beam-measurement-path', default='')
+    parser.add_argument('--beam-phase-assumption', choices=('flat', 'reject'), default='flat')
     parser.add_argument('--na', type=float, nargs=3, default=(.5, .5, .5))
     parser.add_argument('--tilts', type=float, nargs=3, default=(45, -45, 0))
     parser.add_argument('--magnification', type=float, default=20)
@@ -84,8 +99,13 @@ def build_parser():
     parser.add_argument('--direct-solver', choices=('umfpack', 'sparsecholesky'))
     parser.add_argument('--mesh-scale', type=float)
     parser.add_argument('--rms-nm', type=float)
-    parser.add_argument('--roughness-model', choices=('legacy', 'gaussian'), default='legacy')
+    parser.add_argument('--roughness-model', choices=('legacy', 'gaussian', 'abc',
+                        'measured_height', 'measured_psd'), default='legacy')
+    parser.add_argument('--measurement-path', default='')
+    parser.add_argument('--detrend', choices=('none', 'mean', 'plane'), default='plane')
+    parser.add_argument('--missing-policy', choices=('reject', 'nearest'), default='reject')
     parser.add_argument('--correlation-length-um', type=float, default=.05)
+    parser.add_argument('--psd-exponent', type=float, default=3.)
     parser.add_argument('--rough-width-um', type=float, default=.2)
     parser.add_argument('--rough-grid-points', type=int, default=5)
     parser.add_argument('--gap-nm', type=float)
@@ -97,7 +117,7 @@ def build_parser():
     return parser
 
 
-def scattering_settings(args):
+def scattering_settings(args, particle_enabled=True):
     scale = args.mesh_scale if args.mesh_scale is not None else 1
     local = args.local_mesh_scale if args.local_mesh_scale is not None else 1
     if not np.isfinite(local) or not .4 <= local <= 1:
@@ -117,12 +137,32 @@ def scattering_settings(args):
         pml_order=args.pml_order, pml_inner_fraction=args.pml_inner_fraction,
         particle_mesh_um=particle_mesh,
         direct_solver=args.direct_solver, **physical)
+    if args.beam_profile == 'gaussian':
+        p = replace(p, beam_profile='gaussian', beam_length_um=args.illumination_length_um or 2.,
+                    beam_width_um=args.illumination_width_um or 2.,
+                    beam_definition=args.beam_definition or 'wafer_gaussian',
+                    beam_order=args.beam_order or 31)
+        if p.beam_definition == 'measured_wafer':
+            from .beam_inputs import fingerprint, measured_envelope
+            path = str(Path(args.beam_measurement_path).resolve())
+            digest = fingerprint(path)
+            _, _, _, info = measured_envelope(path, digest, args.beam_phase_assumption)
+            p = replace(p, beam_measurement_path=path, beam_measurement_sha256=digest,
+                        beam_phase_assumption=args.beam_phase_assumption,
+                        beam_length_um=info['input_extent_y_um'], beam_width_um=info['input_extent_x_um'])
+        p.validate()
     roughness = Roughness(rms_nm=args.rms_nm if args.rms_nm is not None else 2,
                          seed=args.roughness_seed if args.roughness_seed is not None else 7,
                          mesh_um=.025*scale*local, model=args.roughness_model,
                          correlation_length_um=args.correlation_length_um,
+                         psd_exponent=args.psd_exponent,
+                         measurement_path=str(Path(args.measurement_path).resolve()) if args.measurement_path else '',
+                         detrend=args.detrend, missing_policy=args.missing_policy,
                          width_um=args.rough_width_um, grid_points=args.rough_grid_points)
-    roughness.validate(p)
+    if roughness.model.startswith('measured_'):
+        from .experimental_surface import measurement_report
+        roughness = replace(roughness, rms_nm=measurement_report(roughness)['rms_nm'])
+    roughness.validate(p, particle_enabled=particle_enabled)
     from .illumination import illumination_rays
     illumination_rays(p)
     return p, roughness
@@ -142,8 +182,10 @@ def main():
                                                   args.particle_n, args.particle_k, args.substrate_n,
                                                   args.substrate_k, args.incidence_deg, args.domain_radius_um,
                                                   args.polarization, args.roughness_seed,
-                                                  args.beam_waist_um, args.beam_order)):
+                                                  args.beam_waist_um, args.beam_order, args.beam_profile, args.beam_definition)):
         parser.error('FEM parameters cannot change with --source; omit --source to recompute scattering.')
+    if args.source and args.beam_measurement_path:
+        parser.error('Measured illumination cannot change with saved scattering sources')
     output = Path(args.output)
     source = Path(args.source) if args.source else output/'scattering'
     if args.source:
@@ -151,7 +193,7 @@ def main():
         p = Parameters(**source_report['parameters'])
     else:
         p, roughness = scattering_settings(args)
-    settings = imaging_settings(args, incidence_deg=p.incidence_deg)
+    settings = imaging_settings(args, incidence_deg=p.incidence_deg, parameters=p)
     if not args.source:
         from .rough_run import run
         run(p, roughness, source, angular_step=5,

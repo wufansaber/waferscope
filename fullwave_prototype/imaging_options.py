@@ -26,18 +26,25 @@ def add_options(parser):
         parser.add_argument('--detector-'+key, type=type(value), default=value)
 
 
-def imaging_settings(args, incidence_deg=None):
+def imaging_settings(args, incidence_deg=None, parameters=None):
     detector = DetectorParameters(enabled=args.detector, **{
         key.replace('-', '_'): getattr(args, 'detector_'+key.replace('-', '_'))
         for key in DETECTOR_OPTIONS})
     footprint = (args.illumination_power_w, args.illumination_length_um,
                  args.illumination_width_um)
-    if all(value is None for value in footprint) and args.irradiance_w_um2 is None:
-        footprint = (1., 2., 2.)
+    if all(value is None for value in footprint):
+        if parameters is not None and parameters.beam_profile == 'gaussian':
+            from .finite_illumination import power_area
+            power = 1. if args.irradiance_w_um2 is None else args.irradiance_w_um2*power_area(parameters)
+            footprint = (power, parameters.beam_length_um, parameters.beam_width_um)
+        elif args.irradiance_w_um2 is None:
+            footprint = (1., 2., 2.)
+    area, model = None, 'plane'
     if any(value is not None for value in footprint):
         if any(value is None for value in footprint):
             raise ValueError('Specify illumination power, length and width together')
         incidence = (incidence_deg if incidence_deg is not None else
+                     parameters.incidence_deg if parameters is not None else
                      args.incidence_deg if args.incidence_deg is not None else
                      Parameters().incidence_deg)
         if incidence is None or not np.isfinite(incidence) or not 0 <= incidence < 90:
@@ -46,6 +53,26 @@ def imaging_settings(args, incidence_deg=None):
         if not all(np.isfinite(value) and value > 0 for value in footprint):
             raise ValueError('Illumination power and footprint dimensions must be positive and finite')
         irradiance = power/(length*width*np.cos(np.deg2rad(incidence)))
+        p = parameters
+        if p is None and getattr(args, 'beam_profile', None) == 'gaussian':
+            from dataclasses import replace
+            p = replace(Parameters(), beam_profile='gaussian', beam_length_um=length,
+                        beam_width_um=width, incidence_deg=incidence,
+                        wavelength_nm=args.wavelength_nm or Parameters().wavelength_nm,
+                        beam_definition=getattr(args, 'beam_definition', None) or 'wafer_gaussian',
+                        beam_order=args.beam_order or 31)
+            if p.beam_definition == 'measured_wafer':
+                from .imaging_run import scattering_settings
+                p, _ = scattering_settings(args)
+        if p is not None and p.beam_profile == 'gaussian':
+            from .finite_illumination import power_area
+            if p.beam_definition == 'measured_wafer':
+                length, width = p.beam_length_um, p.beam_width_um
+            if not np.allclose((length, width), (p.beam_length_um, p.beam_width_um),
+                               rtol=1e-10, atol=0):
+                raise ValueError('Changing a finite illumination footprint requires a new FEM solve')
+            area, model = power_area(p), 'gaussian'
+            irradiance = power/area
         if args.irradiance_w_um2 is not None and not np.isclose(
                 args.irradiance_w_um2, irradiance, rtol=1e-10, atol=0):
             raise ValueError('Explicit irradiance conflicts with illumination power and footprint')
@@ -57,6 +84,9 @@ def imaging_settings(args, incidence_deg=None):
         irradiance_w_um2=irradiance, illumination_power_w=power,
         illumination_length_um=length, illumination_width_um=width,
         illumination_incidence_deg=incidence, image_defocus_um=args.defocus_um,
+        illumination_definition=(p.beam_definition if p is not None else 'wafer_gaussian')
+            if any(value is not None for value in footprint) else 'wafer_gaussian',
+        illumination_model=model, illumination_normalization_area_um2=area,
         pupil_samples=args.pupil_samples, padding=args.padding,
         transmission=args.transmission, analyzer=args.analyzer,
         aberrations_nm=(args.astigmatism_nm, args.coma_nm, args.spherical_nm), detector=detector)

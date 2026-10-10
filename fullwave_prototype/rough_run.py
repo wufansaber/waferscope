@@ -113,7 +113,9 @@ def run(p, roughness, output, angular_step=10, quadrature_order=5, near_diagnost
                    surface_mean_height_nm=float(triangles[..., 2].mean()*1000),
                    surface_peak_height_nm=float(vertices[..., 2].max()*1000),
                    surface_min_height_nm=float(vertices[..., 2].min()*1000),
-                   note='Change-field power is NOT camera background subtraction. Total-background includes signed interference. Illumination follows beam_waist_um; no ensemble average.')
+                   note='Change-field power is NOT camera background subtraction. Total-background includes signed interference. Illumination follows beam_profile and beam dimensions; no ensemble average.')
+    from .illumination_output import illumination_metadata
+    payload['illumination'] = illumination_metadata(p, roughness)
     np.savez_compressed(output/'paired_fields.npz', **data)
     (output/'report.json').write_text(json.dumps(payload, indent=2), encoding='utf-8')
     from .rough_plotting import plot_pair
@@ -131,8 +133,9 @@ def main():
     parser.add_argument('--width-um', type=float, default=.2)
     parser.add_argument('--grid-points', type=int, default=5)
     parser.add_argument('--smoothing-cells', type=float, default=.6)
-    parser.add_argument('--model', choices=('legacy', 'gaussian'), default='legacy')
+    parser.add_argument('--model', choices=('legacy', 'gaussian', 'abc'), default='legacy')
     parser.add_argument('--correlation-length-um', type=float, default=.05)
+    parser.add_argument('--psd-exponent', type=float, default=3.)
     parser.add_argument('--seed', type=int, default=7)
     parser.add_argument('--gap-nm', type=float, default=10)
     parser.add_argument('--order', type=int)
@@ -150,7 +153,8 @@ def main():
                    pml_mesh_scale=args.pml_mesh_scale)
     r = Roughness(width_um=args.width_um, rms_nm=args.rms_nm, grid_points=args.grid_points,
                   smoothing_cells=args.smoothing_cells, seed=args.seed, mesh_um=.025*args.mesh_scale,
-                  model=args.model, correlation_length_um=args.correlation_length_um)
+                  model=args.model, correlation_length_um=args.correlation_length_um,
+                  psd_exponent=args.psd_exponent)
     run(p, r, args.output, angular_step=args.angular_step, quadrature_order=7 if p.order >= 3 else 5)
 
 

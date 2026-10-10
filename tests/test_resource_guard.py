@@ -4,8 +4,9 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+from unittest.mock import Mock, patch
 
-from fullwave_prototype.guarded_run import stop_reason, run_guarded
+from fullwave_prototype.guarded_run import _wait_for_owned, stop_reason, run_guarded
 
 
 class GuardPolicyTests(unittest.TestCase):
@@ -18,6 +19,24 @@ class GuardPolicyTests(unittest.TestCase):
 
 @unittest.skipIf(importlib.util.find_spec('psutil') is None, 'Resource monitor not installed')
 class GuardProcessTests(unittest.TestCase):
+    def test_exited_windows_child_is_not_waited_on_again(self):
+        import psutil
+        dead = Mock(pid=1234)
+        dead.is_running.return_value = False
+        with patch('psutil.wait_procs', side_effect=psutil.AccessDenied(1234)) as wait:
+            self.assertEqual(_wait_for_owned([dead]), [])
+            wait.assert_not_called()
+
+    def test_access_denied_wait_rechecks_and_keeps_unknown_process(self):
+        import psutil
+        gone = Mock(pid=1234)
+        gone.is_running.side_effect = [True, False]
+        unknown = Mock(pid=5678)
+        unknown.is_running.side_effect = [True, psutil.AccessDenied(5678)]
+        with patch('psutil.wait_procs', side_effect=psutil.AccessDenied(1234)), \
+             patch('fullwave_prototype.guarded_run.time.sleep'):
+            self.assertEqual(_wait_for_owned([gone, unknown]), [5678])
+
     def test_cancellation_cleanup(self):
         with tempfile.TemporaryDirectory() as folder:
             target = Path(folder)/'report.json'

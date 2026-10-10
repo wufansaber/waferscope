@@ -32,12 +32,34 @@ class Parameters:
     pml_inner_fraction: float = 0.0
     beam_waist_um: float = 0.0
     beam_order: int = 5
+    beam_profile: str = 'plane'
+    beam_length_um: float = 0.0
+    beam_width_um: float = 0.0
+    beam_definition: str = 'wafer_gaussian'
+    beam_measurement_path: str = ''
+    beam_measurement_sha256: str = ''
+    beam_phase_assumption: str = 'flat'
 
     def validate(self):
-        if self.beam_waist_um < 0 or not isinstance(self.beam_order, int) or self.beam_order not in (3, 5, 7, 9):
-            raise ValueError('Beam waist must be nonnegative; quadrature order 3/5/7/9.')
+        from .beam_inputs import DEFINITIONS, fingerprint, measured_envelope
+        if self.beam_definition not in DEFINITIONS or self.beam_phase_assumption not in ('flat', 'reject'):
+            raise ValueError('Invalid finite illumination definition or phase assumption')
+        if self.beam_definition == 'measured_wafer' and self.beam_profile == 'gaussian':
+            if not self.beam_measurement_path or fingerprint(self.beam_measurement_path) != self.beam_measurement_sha256:
+                raise ValueError('Measured illumination requires its unchanged file and SHA256')
+            measured_envelope(self.beam_measurement_path, self.beam_measurement_sha256, self.beam_phase_assumption)
+        if self.beam_waist_um < 0 or not isinstance(self.beam_order, int) or self.beam_order not in (3, 5, 7, 9, 15, 21, 31, 41, 61, 81, 101, 151):
+            raise ValueError('Beam waist must be nonnegative; supported quadrature orders: 3/5/7/9/15/21/31/41/61.')
+        if self.beam_profile not in ('plane', 'gaussian'):
+            raise ValueError('Use plane or gaussian illumination')
+        if min(self.beam_length_um, self.beam_width_um) < 0:
+            raise ValueError('Beam diameters must be nonnegative')
+        if self.beam_profile == 'gaussian' and (
+                min(self.beam_length_um, self.beam_width_um) <= 0 or self.beam_waist_um != 0):
+            raise ValueError('Gaussian footprint requires positive diameters and legacy beam waist = 0')
         for key, value in asdict(self).items():
-            if key not in ('polarization', 'direct_solver') and not math.isfinite(value):
+            if key not in ('polarization', 'direct_solver', 'beam_profile', 'beam_definition',
+                           'beam_measurement_path', 'beam_measurement_sha256', 'beam_phase_assumption') and not math.isfinite(value):
                 raise ValueError(key + ' must be finite')
         for key in ('wavelength_nm', 'diameter_nm', 'particle_n', 'substrate_n',
                     'domain_radius_um', 'pml_thickness_um', 'pml_strength',

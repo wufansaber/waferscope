@@ -74,7 +74,8 @@ def run(p, output, reference_python=None):
 
 
 def hemisphere_integral(dsc, theta):
-    return float(2*np.pi*np.trapezoid(np.mean(dsc, axis=1)*np.sin(theta), theta))
+    weighted = np.mean(dsc, axis=1)*np.sin(theta)
+    return float(np.pi*np.sum((weighted[:-1]+weighted[1:])*np.diff(theta)))
 
 
 def main():

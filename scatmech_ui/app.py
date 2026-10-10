@@ -32,7 +32,7 @@ class ScatmechStandaloneWindow(QMainWindow):
         self.simulation_widget.roughness_group.match_fem_button.show()
 
     def use_fem_haze_inputs(self):
-        """Match a completed Gaussian FEM result, not editable form values."""
+        """Match a completed statistical-PSD FEM result, not editable form values."""
         target = self.simulation_widget
         source_dir = self.fullwave_widget.loaded_source
         result_dir = self.fullwave_widget.loaded_result
@@ -54,13 +54,14 @@ class ScatmechStandaloneWindow(QMainWindow):
             QMessageBox.warning(self, 'Cannot match haze inputs',
                 'The displayed FEM result is incomplete: {}'.format(error))
             return
-        if roughness['model'] != 'gaussian':
+        if roughness['model'] not in ('gaussian', 'abc'):
             QMessageBox.warning(self, 'Cannot match haze inputs',
-                'The displayed FEM result uses {} roughness. Its L is not a Gaussian '
-                'correlation length. Select Gaussian on the FEM page and calculate '
-                'a new result before matching NIST Gaussian PSD.'.format(roughness['model']))
+                'The displayed FEM result uses {} roughness without a matching '
+                'stationary PSD. Select Gaussian or ABC on the FEM page and '
+                'calculate a new result.'.format(roughness['model']))
             return
-        if roughness['rms_nm'] <= 0 or physical['beam_waist_um'] != 0:
+        if (roughness['rms_nm'] <= 0 or physical['beam_waist_um'] != 0 or
+                physical.get('beam_profile', 'plane') != 'plane'):
             QMessageBox.warning(self, 'Cannot match haze inputs',
                 'This comparison requires nonzero roughness and plane-wave FEM illumination.')
             return
@@ -79,10 +80,11 @@ class ScatmechStandaloneWindow(QMainWindow):
         rough = target.roughness_group
         rough.enabled.setChecked(True)
         rough.haze_only.setChecked(True)
-        rough.psd.setCurrentIndex(rough.psd.findData('gaussian'))
+        rough.psd.setCurrentIndex(rough.psd.findData(roughness['model']))
         rough.mode.setCurrentIndex(rough.mode.findData('top_interface'))
         rough.rms_nm.setValue(roughness['rms_nm'])
         rough.correlation_length_um.setValue(roughness['correlation_length_um'])
+        rough.exponent.setValue(roughness.get('psd_exponent', 3.))
         patch_width = roughness['width_um']
         rough.footprint_length_um.setValue(patch_width)
         rough.footprint_width_um.setValue(patch_width)
@@ -103,10 +105,10 @@ class ScatmechStandaloneWindow(QMainWindow):
             canvas.figure.clear()
             canvas.draw_idle()
         target.status.setText(
-            'Matched displayed Gaussian FEM result ({}) on nominal inputs and '
-            'rough area {:.6g} um^2. Run SCATMECH far-field now. Gaussian ensemble '
+            'Matched displayed {} FEM result ({}) on nominal inputs and '
+            'rough area {:.6g} um^2. Run SCATMECH far-field now. Statistical ensemble '
             'PSD and one FEM height realization can still differ in angular shape.'.format(
-                result_dir.name, patch_width**2))
+                roughness['model'].upper(), result_dir.name, patch_width**2))
 
     def _resize_for_screen(self):
         screen = QApplication.primaryScreen()
@@ -141,6 +143,10 @@ def run_headless_test(output_directory):
 
 
 def main():
+    if '--haze-package-test' in sys.argv:
+        from fullwave_ui.ensemble_smoke import run
+        run(sys.argv[sys.argv.index('--haze-package-test')+1])
+        return
     if '--fem-package-test' in sys.argv:
         from fullwave_ui.package_smoke import run
         run(sys.argv[sys.argv.index('--fem-package-test')+1])

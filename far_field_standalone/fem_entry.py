@@ -20,6 +20,22 @@ def main():
         from fullwave_prototype.imaging_run import main as run
     elif module == 'fullwave_prototype.component_compare':
         from fullwave_prototype.component_compare import main as run
+    elif module == 'fullwave_prototype.haze_ensemble':
+        from fullwave_prototype.haze_ensemble import main as run
+    elif module == 'fullwave_prototype.whole_haze':
+        from fullwave_prototype.whole_haze import main as run
+    elif module == 'fullwave_prototype.hybrid_run':
+        from fullwave_prototype.hybrid_run import main as run
+    elif module == 'fullwave_prototype.local_spm_validation':
+        from fullwave_prototype.local_spm_validation import main as run
+    elif module == 'fullwave_prototype.hybrid_range_validation':
+        from fullwave_prototype.hybrid_range_validation import main as run
+    elif module == 'fullwave_prototype.surface_mesh_audit':
+        from fullwave_prototype.surface_mesh_audit import main as run
+    elif module == 'fullwave_prototype.illumination_definition_audit':
+        from fullwave_prototype.illumination_definition_audit import main as run
+    elif module == 'fullwave_prototype.range_refinement':
+        from fullwave_prototype.range_refinement import main as run
     else:
         raise SystemExit('Unsupported packaged module: '+module)
     run()

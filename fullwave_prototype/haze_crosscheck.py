@@ -40,6 +40,8 @@ def _surface_transform(triangles, theta, phi, wavelength_um, incidence_deg, orde
 
 
 def _nist_dsc(theta, phi, parameters, spectrum, area_um2):
+    if parameters.get('beam_profile', 'plane') == 'gaussian':
+        raise ValueError('Plane-wave NIST PSD response is not a finite coherent-beam reference')
     from pySCATMECH.brdf import BRDF_Model
     from pySCATMECH.mueller import Polarization
 
@@ -62,23 +64,59 @@ def _nist_dsc(theta, phi, parameters, spectrum, area_um2):
     return result
 
 
+def gaussian_reference(theta, phi, parameters, roughness, area_um2):
+    """SCATMECH ensemble reference on a FEM global-angle grid."""
+    return _nist_dsc(theta, phi, parameters, {
+        None: 'Gaussian_PSD_Function',
+        'sigma': roughness['rms_nm']/1000,
+        'length': roughness['correlation_length_um']}, area_um2)
+
+
+def abc_reference(theta, phi, parameters, roughness, area_um2):
+    """NIST ABC reference with A chosen so the infinite 2D PSD has the input RMS."""
+    from .rough_statistics import abc_amplitude
+    exponent = roughness.get('psd_exponent', 3.)
+    length = roughness['correlation_length_um']
+    return _nist_dsc(theta, phi, parameters, {
+        None: 'ABC_PSD_Function',
+        'A': abc_amplitude(roughness['rms_nm'], length, exponent),
+        'B': length, 'C': exponent}, area_um2)
+
+
+def statistical_reference(theta, phi, parameters, roughness, area_um2):
+    if roughness['model'] == 'gaussian':
+        return gaussian_reference(theta, phi, parameters, roughness, area_um2)
+    if roughness['model'] == 'abc':
+        return abc_reference(theta, phi, parameters, roughness, area_um2)
+    if roughness['model'] == 'measured_psd':
+        from .experimental_surface import sample_psd
+        polar, azimuth = np.meshgrid(theta, phi, indexing='ij')
+        frequency = np.stack((np.sin(polar)*np.cos(azimuth),
+            np.sin(polar)*np.sin(azimuth)-np.sin(np.deg2rad(parameters['incidence_deg']))),
+            axis=-1)/(parameters['wavelength_nm']/1000)
+        return _nist_dsc(theta, phi, parameters, {None: 'Unit_PSD_Function'}, area_um2)*sample_psd(
+            roughness['measurement_path'], frequency)
+    raise ValueError('A matched PSD reference requires Gaussian or ABC roughness')
+
+
+def finite_patch_reference(theta, phi, parameters, roughness, area_um2):
+    """First-order ensemble prediction for the actual FEM height discretization."""
+    from .rough_psd import expected_finite_psd
+    from .rough_surface import Roughness
+
+    spectrum = expected_finite_psd(Roughness(**roughness), theta, phi,
+        parameters['wavelength_nm']/1000, parameters['incidence_deg'])
+    return _nist_dsc(theta, phi, parameters, {None: 'Unit_PSD_Function'}, area_um2)*spectrum
+
+
 def _hemisphere(values, theta):
-    return float(2*np.pi*np.trapz(np.mean(values, axis=1)*np.sin(theta), theta))
+    from .run import hemisphere_integral
+    return hemisphere_integral(values, theta)
 
 
 def _channel_integrals(values, theta, phi, apertures, tilts):
-    polar, azimuth = np.meshgrid(theta, phi, indexing='ij')
-    x = np.sin(polar)*np.cos(azimuth)
-    z = np.cos(polar)
-    result = []
-    for na, tilt in zip(apertures, tilts):
-        if na == 0:
-            result.append(0.)
-            continue
-        angle = np.deg2rad(tilt)
-        mask = x*np.sin(angle)+z*np.cos(angle) >= np.sqrt(1-na*na)
-        result.append(_hemisphere(values*mask, theta))
-    return result
+    from .aperture_integrals import integrate_maps
+    return integrate_maps([values], theta, phi, apertures, tilts)[0].tolist()
 
 
 def _peak(values, theta, phi):
@@ -138,7 +176,7 @@ def _plot(output, theta, phi, maps, metrics, parameters):
         ax.bar(x+(index-1.5)*width, metrics[key]['channels_dsc_um2'], width,
                label=name)
     ax.set(xticks=x, xticklabels=('Ch1 +45 deg', 'Ch2 -45 deg', 'Ch3 0 deg'),
-           ylabel='Collected haze DSC (um^2), 5-deg angular-grid estimate')
+           ylabel='Collected haze DSC (um^2), interpolated cone quadrature')
     ax.legend(fontsize=8)
     ax.grid(axis='y', alpha=.2)
     fig.savefig(output/'haze_channel_comparison.png', dpi=150)
@@ -167,11 +205,8 @@ def compare(source, output, spot_length_um=2., spot_width_um=2.):
     maps['same_height'] = unit*(abs(transform)**2/area)
     sigma = roughness['rms_nm']/1000
     length = roughness['correlation_length_um']
-    maps['gaussian'] = _nist_dsc(theta, phi, parameters, {
-        None: 'Gaussian_PSD_Function', 'sigma': sigma, 'length': length}, area)
-    maps['abc'] = _nist_dsc(theta, phi, parameters, {
-        None: 'ABC_PSD_Function', 'A': sigma**2*length**2/(2*np.pi),
-        'B': length, 'C': 3.}, area)
+    maps['gaussian'] = gaussian_reference(theta, phi, parameters, roughness, area)
+    maps['abc'] = abc_reference(theta, phi, parameters, roughness, area)
     image_report = json.loads((source.parent/'imaging_report.json').read_text(encoding='utf-8'))
     settings = image_report['settings']
     metrics = {key: dict(hemisphere_dsc_um2=_hemisphere(values, theta),
@@ -187,20 +222,21 @@ def compare(source, output, spot_length_um=2., spot_width_um=2.):
         maps['fem'], maps['abc'], theta)
     result = dict(source=str(source.resolve()), parameters={key: parameters[key] for key in
         ('wavelength_nm', 'incidence_deg', 'polarization', 'substrate_n', 'substrate_k')},
-        roughness={key: roughness[key] for key in ('model', 'rms_nm', 'correlation_length_um',
-                                                   'width_um', 'grid_points', 'seed')},
+        roughness={**{key: roughness[key] for key in ('model', 'rms_nm', 'correlation_length_um',
+                                                     'width_um', 'grid_points', 'seed')},
+                   'psd_exponent': roughness.get('psd_exponent', 3.)},
         surface=surface, gaussian_spot_area_um2=spot_length_um*spot_width_um,
         surface_transform_relative_l2=float(np.linalg.norm(transform-lower_order)/
                                             np.linalg.norm(transform)),
         map_similarity_definition='Solid-angle-weighted cosine similarity of nonnegative DSC maps; 1 means the same angular shape up to scale.',
-        map_scope='Haze only. NIST maps use A=FEM geometric patch area. Unit-PSD map uses the exact FEM height realization. Statistical Gaussian L is not a legacy-FEM input.' if roughness['model'] == 'legacy' else 'Haze only. NIST maps use A=FEM geometric patch area. Unit-PSD map uses the exact FEM height realization.',
+        map_scope='Haze only. NIST DSC uses the FEM geometric patch area. Unit-PSD map uses the exact FEM height realization. Statistical PSD lengths are not legacy-FEM inputs.' if roughness['model'] == 'legacy' else 'Haze only. NIST DSC uses the FEM geometric patch area. Unit-PSD map uses the exact FEM height realization.',
         spot_area_note='Current UI spot controls power scaling, not FEM rough-surface extent.',
         nist_gaussian_spot_area_hemisphere_dsc_um2=metrics['gaussian']['hemisphere_dsc_um2']*
             spot_length_um*spot_width_um/area,
         nist_abc_spot_area_hemisphere_dsc_um2=metrics['abc']['hemisphere_dsc_um2']*
             spot_length_um*spot_width_um/area,
         channels=dict(na=settings['numerical_apertures'], tilt_deg=settings['tilt_degrees'],
-                      integration='5-degree angular-grid cone mask; not direct complex-pupil integration'),
+                      integration='Cone Gauss quadrature of periodic bilinear DSC; not direct complex-pupil integration'),
         metrics=metrics)
     output.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(output/'haze_maps.npz', theta=theta, phi=phi, **maps)
@@ -211,7 +247,10 @@ def compare(source, output, spot_length_um=2., spot_width_um=2.):
         'NIST here is Microroughness_BRDF_Model only; no Bobbert-Vlieger particle is included.',
         'All four maps use the FEM rough patch geometric area ({:.6g} um^2).'.format(area),
         'FEM uses the {} roughness generator and one tapered height realization; Gaussian and ABC are ensemble PSD models.'.format(roughness['model']),
-        'For legacy FEM, L is not used to generate the surface, so the statistical Gaussian and ABC columns are not matched physical inputs.' if roughness['model'] == 'legacy' else 'Gaussian FEM uses L for its stationary parent before finite-patch taper.',
+        ('For legacy FEM, the PSD length is not used to generate the surface; Gaussian and ABC columns are not matched physical inputs.'
+         if roughness['model'] == 'legacy' else
+         'Gaussian FEM uses covariance length L before taper.' if roughness['model'] == 'gaussian'
+         else 'ABC FEM uses PSD length B and exponent C before taper; B is not Gaussian L.'),
         'The same-height NIST map uses the piecewise-planar FEM surface Fourier transform and Unit_PSD_Function.',
         '', '| Model | Hemisphere DSC (um^2) | Ratio to FEM | Peak (theta, phi) | Ch1 | Ch2 | Ch3 |',
         '| --- | ---: | ---: | --- | ---: | ---: | ---: |']

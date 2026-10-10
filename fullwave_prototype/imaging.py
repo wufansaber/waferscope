@@ -20,6 +20,9 @@ class ImagingSettings:
     illumination_length_um: float = None
     illumination_width_um: float = None
     illumination_incidence_deg: float = None
+    illumination_model: str = 'plane'
+    illumination_definition: str = 'wafer_gaussian'
+    illumination_normalization_area_um2: float = None
     transmission: float = 1.
     analyzer: str = 'none'
     image_defocus_um: float = 0.
@@ -29,6 +32,17 @@ class ImagingSettings:
     detector: DetectorParameters = field(default_factory=DetectorParameters)
 
     def validate(self):
+        from .beam_inputs import DEFINITIONS
+        if self.illumination_definition not in DEFINITIONS:
+            raise ValueError('Invalid saved illumination definition')
+        if self.illumination_model not in ('plane', 'gaussian'):
+            raise ValueError('Unknown illumination power normalization')
+        area = self.illumination_normalization_area_um2
+        if self.illumination_model == 'gaussian' and (
+                area is None or not np.isfinite(area) or area <= 0):
+            raise ValueError('Gaussian illumination requires a positive power normalization area')
+        if self.illumination_model == 'gaussian' and self.illumination_power_w is None:
+            raise ValueError('Gaussian illumination requires total power and footprint dimensions')
         self.detector.validate()
         if len(self.aberrations_nm) != 3 or not np.isfinite(self.aberrations_nm).all():
             raise ValueError('Three finite Zernike coefficients in nm required.')
@@ -52,9 +66,10 @@ class ImagingSettings:
             power, length, width, incidence = footprint
             if min(power, length, width) <= 0 or not 0 <= incidence < 90:
                 raise ValueError('Positive illumination power/footprint and incidence in [0,90) required')
-            expected = power/(length*width*np.cos(np.deg2rad(incidence)))
+            expected = (power/area if self.illumination_model == 'gaussian' else
+                        power/(length*width*np.cos(np.deg2rad(incidence))))
             if not np.isclose(self.irradiance_w_um2, expected, rtol=1e-10, atol=0):
-                raise ValueError('Irradiance must equal power / (wafer footprint area x cos incidence)')
+                raise ValueError('Irradiance conflicts with the saved illumination power normalization')
         if not 0 <= self.transmission <= 1:
             raise ValueError('Power transmission must be in [0,1]')
         if self.pupil_samples not in (32, 64, 96, 128) or self.padding not in (2, 4, 8):
@@ -92,7 +107,9 @@ def image_from_amplitude(amplitude, local, global_k, rotation, du, wavelength_um
                 image_integral_dsc_um2=integral, flux_relative_error=error)
 
 
-def calculate_channel(data, p, settings, index, cache=None):
+def calculate_channel(data, p, settings, index, cache=None, amplitude_provider=None):
+    if amplitude_provider is not None and cache is not None:
+        raise ValueError('Custom complex sources cannot use a local-FEM-only pupil cache')
     na, tilt = settings.numerical_apertures[index], settings.tilt_degrees[index]
     local, k, rotation, mask, du = pupil_geometry(na, tilt, settings.pupil_samples)
     arrays = dict(pupil_mask=mask, global_k=k, pupil_u_axis=local[0, :, 0],
@@ -106,8 +123,9 @@ def calculate_channel(data, p, settings, index, cache=None):
         if saved is not None:
             amplitude = saved[name]
         elif np.any(mask):
-            amplitude[mask] = radiation_amplitude(data['source_points_'+name],
-                data['source_polarization_weights_'+name], k[mask], p)
+            amplitude[mask] = (amplitude_provider(k[mask], name) if amplitude_provider else
+                radiation_amplitude(data['source_points_'+name],
+                                    data['source_polarization_weights_'+name], k[mask], p))
         result = image_from_amplitude(amplitude, local, k, rotation, du, p.wavelength_nm/1000, settings)
         outputs[name] = result
         arrays['amplitude_'+name] = amplitude
@@ -142,16 +160,20 @@ def calculate_channel(data, p, settings, index, cache=None):
     return arrays, metrics
 
 
-def calculate_images(data, p, settings, retain_complex_fields=True, cache_directory=None):
+def calculate_images(data, p, settings, retain_complex_fields=True, cache_directory=None,
+                     amplitude_provider=None):
     p.validate()
     settings.validate()
+    if amplitude_provider is not None and cache_directory is not None:
+        raise ValueError('Custom complex sources cannot use a local-FEM-only pupil cache')
     arrays, summaries = {}, []
     from .pupil_cache import PupilCache
     cache = PupilCache(cache_directory, data, p) if cache_directory else None
     seeds = np.random.SeedSequence(settings.detector.seed).spawn(3)
     for index in range(3):
-        print('Computing direct FEM pupil and image for channel {}...'.format(index+1), flush=True)
-        channel, metrics = calculate_channel(data, p, settings, index, cache)
+        source_label = 'custom complex-source' if amplitude_provider is not None else 'direct FEM'
+        print('Computing {} pupil and image for channel {}...'.format(source_label, index+1), flush=True)
+        channel, metrics = calculate_channel(data, p, settings, index, cache, amplitude_provider)
         if settings.detector.enabled:
             detector = calculate_detector(dict(image_axis_um=channel['image_axis_um'],
                 irradiance_w_um2=channel['image_with_w_um2'],

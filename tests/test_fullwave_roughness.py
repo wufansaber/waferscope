@@ -116,6 +116,40 @@ class RoughnessAnalyticTests(unittest.TestCase):
 
 @unittest.skipIf(importlib.util.find_spec('ngsolve') is None, 'Native NGSolve environment required')
 class NativeRoughnessTests(unittest.TestCase):
+    def test_periodic_measured_height_with_particle_preserves_geometric_volume(self):
+        from pathlib import Path
+        import tempfile
+        import ngsolve as ng
+        from fullwave_prototype.experimental_surface import load_height
+        from fullwave_prototype.rough_surface import build_rough_mesh
+        axis = np.linspace(-.1, .1, 17)
+        x, y = np.meshgrid(axis, axis)
+        heights = 1.8*np.cos(2*np.pi*x/.1)*np.cos(2*np.pi*y/.08)+3*x-2*y
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)/'height.npz'
+            np.savez(path, height_nm=heights, dx_um=.0125, dy_um=.0125)
+            rms = load_height(path, 'plane', 'reject')[1]['rms_nm']
+            r = Roughness(model='measured_height', grid_points=9, taper_fraction=.125,
+                          measurement_path=str(path), rms_nm=rms)
+            mesh = build_rough_mesh(Parameters(gap_nm=10, order=1), r)
+            mesh.UnSetPML('pml_.*')
+            self.assertLess(abs(ng.Integrate(1, mesh)/(4*np.pi*.38**3/3)-1), 1e-4)
+            volume = ng.Integrate(1, mesh, definedon=mesh.Materials('particle'))
+            self.assertLess(abs(volume/(4*np.pi*.05**3/3)-1), 1e-3)
+
+    def test_nanometre_cad_scale_repairs_abc_boundary_overlap(self):
+        import ngsolve as ng
+        from fullwave_prototype.rough_surface import build_rough_mesh
+        r = Roughness(model='abc', width_um=.25, grid_points=11, seed=9,
+                      correlation_length_um=.2, psd_exponent=4.5, taper_fraction=.1)
+        mesh = build_rough_mesh(Parameters(gap_nm=10, order=1), r, particle_enabled=False)
+        mesh.UnSetPML('pml_.*')
+        volumes = {name: ng.Integrate(1, mesh, definedon=mesh.Materials(name))
+                   for name in mesh.GetMaterials()}
+        expected = r.width_um**2*height_mesh(r)[1][..., 2].mean()
+        self.assertAlmostEqual(volumes['bump']-volumes['pit'], expected, places=12)
+        self.assertLess(abs(sum(volumes.values())/(4*np.pi*.38**3/3)-1), 1e-4)
+
     def test_gaussian_surface_builds_closed_fem_mesh(self):
         import ngsolve as ng
         from fullwave_prototype.rough_surface import surface_solid, build_rough_mesh
