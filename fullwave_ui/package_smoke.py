@@ -21,6 +21,9 @@ def run(output):
     window = ScatmechStandaloneWindow()
     window.tabs.setCurrentIndex(1)
     widget = window.fullwave_widget
+    # Keep this bounded solver/cache smoke independent of whole-beam defaults.
+    widget.controls.fields['beam-profile'].setCurrentText('plane')
+    widget.controls.fields['illumination-fit'].setCurrentText('manual')
     widget.controls.fields['accuracy'].setCurrentText('preview')
     widget.controls.fields['pupil-samples'].setCurrentText('32')
     widget.controls.fields['rms-nm'].setValue(0)
