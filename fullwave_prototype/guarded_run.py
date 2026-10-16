@@ -127,7 +127,7 @@ def main():
                                            'near_audit', 'component_compare', 'haze_ensemble',
                                            'haze_convergence', 'whole_haze', 'hybrid_run',
                                            'local_spm_validation', 'hybrid_range_validation', 'surface_mesh_audit',
-                                           'illumination_definition_audit', 'range_refinement'))
+                                           'illumination_definition_audit', 'range_refinement', 'detection_replay'))
     parser.add_argument('arguments', nargs=argparse.REMAINDER)
     args = parser.parse_args()
     result = run_guarded([sys.executable, '-m', 'fullwave_prototype.'+args.module]+args.arguments,

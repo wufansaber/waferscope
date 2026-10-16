@@ -147,9 +147,25 @@ class ResultsTabs(QTabWidget):
         self.parameters.setReadOnly(True)
         self.addTab(self.parameters, 'Result parameters')
         self.detector_view = FigureView()
-        self.addTab(self.detector_view, 'Camera')
-        self.setTabEnabled(self.indexOf(self.detector_view), False)
+        self.camera_components = FigureView()
+        self.camera_snr = FigureView()
+        self.gray_acquisition = FigureView()
+        from .camera_metrics import CameraMetrics
+        self.camera_metrics = CameraMetrics()
+        self.camera_tabs = QTabWidget()
+        for view, name in ((self.detector_view, 'Raw camera'), (self.camera_components, 'Defect / haze / noise'),
+                           (self.camera_snr, 'Predicted pixel SNR'), (self.camera_metrics, 'Detection metrics'),
+                           (self.gray_acquisition, 'Gray SNR acquisition')):
+            self.camera_tabs.addTab(view, name)
+        self.camera_tabs.currentChanged.connect(self.fit_current)
+        self.addTab(self.camera_tabs, 'Camera')
+        self.setTabEnabled(self.indexOf(self.camera_tabs), False)
         self.currentChanged.connect(self.fit_current)
+        from .audit_results import AuditResults
+        self.audit_results = AuditResults()
+        self.audit_results.currentChanged.connect(self.fit_current)
+        self.addTab(self.audit_results, 'Saved validation')
+        self.setTabEnabled(self.indexOf(self.audit_results), False)
 
     def fit_current(self, *_):
         view = self.currentWidget()
@@ -185,6 +201,15 @@ class ResultsTabs(QTabWidget):
         detector = report.get('settings', {}).get('detector', {}).get('enabled', False)
         if detector and QPixmap(str(directory/'detector.png')).isNull():
             raise ValueError('Missing or invalid detector figure')
+        paired_camera = detector and report.get('camera_detection_model_version') == 1
+        if paired_camera:
+            for name in ('detector_components.png', 'detector_snr.png'):
+                if QPixmap(str(directory/name)).isNull():
+                    raise ValueError('Missing or invalid paired camera figure: '+name)
+            if not all('detection_roi_valid' in c.get('detector', {}) for c in channels):
+                raise ValueError('Missing paired camera detection metrics')
+            if any(c['detector'].get('gray_frames', 0) for c in channels) and QPixmap(str(directory/'gray_acquisition.png')).isNull():
+                raise ValueError('Missing or invalid gray acquisition figure')
         for _, name in self.FIGURES:
             if QPixmap(str(directory/name)).isNull():
                 raise ValueError('Missing or invalid result figure: '+name)
@@ -253,7 +278,27 @@ class ResultsTabs(QTabWidget):
         else:
             self.detector_view.scene().clear()
             self.detector_view.item = None
-        self.setTabEnabled(self.indexOf(self.detector_view), detector)
+        if paired_camera:
+            self.camera_components.load(directory/'detector_components.png')
+            self.camera_snr.load(directory/'detector_snr.png')
+            self.camera_metrics.load(channels, report['settings']['detector'])
+            self.camera_tabs.setCurrentWidget(self.camera_metrics)
+        gray_available = paired_camera and any(c['detector'].get('gray_frames', 0) for c in channels)
+        if gray_available:
+            self.gray_acquisition.load(directory/'gray_acquisition.png')
+        else:
+            self.gray_acquisition.scene().clear()
+            self.gray_acquisition.item = None
+        self.camera_tabs.setTabEnabled(self.camera_tabs.indexOf(self.gray_acquisition), gray_available)
+        if not paired_camera:
+            for view in (self.camera_components, self.camera_snr):
+                view.scene().clear()
+                view.item = None
+            self.camera_metrics.clear()
+            self.camera_tabs.setCurrentWidget(self.detector_view)
+        for view in (self.camera_components, self.camera_snr, self.camera_metrics):
+            self.camera_tabs.setTabEnabled(self.camera_tabs.indexOf(view), bool(paired_camera))
+        self.setTabEnabled(self.indexOf(self.camera_tabs), detector)
         self.parameters.setPlainText('Loaded result: '+str(directory.resolve())+'\n\n'+
                                      json.dumps(report, indent=2, ensure_ascii=False))
         self.load_illumination(directory)

@@ -10,23 +10,34 @@ IMAGING_FLAGS = {'na', 'tilts', 'magnification', 'objective-focal-mm', 'irradian
                  'illumination-power-w', 'illumination-length-um', 'illumination-width-um',
                  'defocus-um', 'transmission', 'analyzer', 'pupil-samples', 'padding',
                  'archive-mode', 'astigmatism-nm', 'coma-nm', 'spherical-nm', 'detector'}
+IMAGING_FLAGS.update(('illumination-fit', 'minimum-field-illumination'))
+IMAGING_FLAGS.update(('camera-profile', 'gray-snr-pairs', 'gray-snr-seed'))
 DETECTOR_OPTIONS = {'pixel-pitch-um': 6.5, 'exposure-ms': 1., 'quantum-efficiency': .6,
                     'read-noise-e': 2., 'dark-current-e-s': .1, 'background-e-s': 0.,
-                    'full-well-e': 30000., 'pixels-x': 16, 'pixels-y': 16, 'seed': 0}
+                    'full-well-e': 30000., 'pixels-x': 16, 'pixels-y': 16, 'seed': 0,
+                    'gain-e-dn': .5, 'offset-dn': 100., 'bit-depth': 16, 'fill-factor': 1.,
+                    'prnu-fraction': 0., 'dsnu-e': 0., 'dark-current-std-e-s': 0., 'fixed-pattern-seed': 0,
+                    'reference-frames': 1, 'haze-mismatch-fraction': 0.}
 IMAGING_FLAGS.update('detector-'+key for key in DETECTOR_OPTIONS)
 
 
 def add_options(parser):
+    parser.add_argument('--illumination-fit', choices=('manual', 'camera'), default='manual')
+    parser.add_argument('--minimum-field-illumination', type=float, default=.5)
     parser.add_argument('--archive-mode', choices=('compact', 'full'), default='compact')
     parser.add_argument('--pupil-cache', help='Optional content-addressed complex pupil cache directory')
     for key in ('astigmatism', 'coma', 'spherical'):
         parser.add_argument('--'+key+'-nm', type=float, default=0)
     parser.add_argument('--detector', action='store_true')
+    parser.add_argument('--camera-profile', choices=('custom', 'gemi_area'), default='custom')
+    parser.add_argument('--gray-snr-pairs', type=int, default=0)
+    parser.add_argument('--gray-snr-seed', type=int, default=20261016)
     for key, value in DETECTOR_OPTIONS.items():
         parser.add_argument('--detector-'+key, type=type(value), default=value)
 
 
 def imaging_settings(args, incidence_deg=None, parameters=None):
+    p = parameters
     detector = DetectorParameters(enabled=args.detector, **{
         key.replace('-', '_'): getattr(args, 'detector_'+key.replace('-', '_'))
         for key in DETECTOR_OPTIONS})
@@ -80,6 +91,7 @@ def imaging_settings(args, incidence_deg=None, parameters=None):
         power = length = width = incidence = None
         irradiance = args.irradiance_w_um2 if args.irradiance_w_um2 is not None else 1e-6
     settings = ImagingSettings(numerical_apertures=tuple(args.na), tilt_degrees=tuple(args.tilts),
+        illumination_fit=args.illumination_fit, minimum_field_illumination=args.minimum_field_illumination,
         magnification=args.magnification, focal_length_mm=args.objective_focal_mm,
         irradiance_w_um2=irradiance, illumination_power_w=power,
         illumination_length_um=length, illumination_width_um=width,
@@ -89,6 +101,13 @@ def imaging_settings(args, incidence_deg=None, parameters=None):
         illumination_model=model, illumination_normalization_area_um2=area,
         pupil_samples=args.pupil_samples, padding=args.padding,
         transmission=args.transmission, analyzer=args.analyzer,
-        aberrations_nm=(args.astigmatism_nm, args.coma_nm, args.spherical_nm), detector=detector)
+        aberrations_nm=(args.astigmatism_nm, args.coma_nm, args.spherical_nm), detector=detector,
+        camera_profile=args.camera_profile, gray_snr_pairs=args.gray_snr_pairs, gray_snr_seed=args.gray_snr_seed)
     settings.validate()
+    if settings.illumination_fit == 'camera' and p is not None:
+        from .field_coverage import illumination_coverage
+        coverage = illumination_coverage(p, detector, settings.magnification, settings.numerical_apertures,
+                                         settings.tilt_degrees, settings.minimum_field_illumination)
+        if not coverage['all_channels_covered']:
+            raise ValueError('Illumination no longer covers this camera field; calculate new scattering')
     return settings

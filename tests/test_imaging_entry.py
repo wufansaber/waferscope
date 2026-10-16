@@ -109,6 +109,36 @@ class ImagingEntryTests(unittest.TestCase):
                 self.assertFalse(tabs.image_tabs.isTabEnabled(tabs.image_tabs.indexOf(view)))
             tabs.close()
 
+    def test_paired_camera_metrics_atomic_loading_and_legacy_clear(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)
+            report = self.result_at(path)
+            report.update(settings=dict(detector=dict(enabled=True, reference_frames=4)),
+                          camera_detection_model_version=1)
+            for channel in report['channels']:
+                channel['detector'] = dict(detection_roi_valid=True, detection_roi_snr=2.,
+                                           detection_template_snr=3.)
+            pixmap = QPixmap(80, 60)
+            pixmap.fill()
+            for name in ('detector.png', 'detector_components.png', 'detector_snr.png'):
+                pixmap.save(str(path/name))
+            (path/'imaging_report.json').write_text(json.dumps(report), encoding='utf-8')
+            tabs = ResultsTabs()
+            tabs.load(path)
+            roi_row = [key for _, key in tabs.camera_metrics.ROWS].index('detection_roi_snr')
+            self.assertEqual(tabs.camera_metrics.table.item(roi_row, 0).text(), '2')
+            self.assertTrue(tabs.camera_tabs.isTabEnabled(1))
+            (path/'detector_snr.png').unlink()
+            with self.assertRaisesRegex(ValueError, 'paired camera figure'):
+                tabs.load(path)
+            self.assertEqual(tabs.camera_metrics.table.item(roi_row, 0).text(), '2')
+            report.pop('camera_detection_model_version')
+            (path/'imaging_report.json').write_text(json.dumps(report), encoding='utf-8')
+            tabs.load(path)
+            self.assertFalse(tabs.camera_tabs.isTabEnabled(1))
+            self.assertIsNone(tabs.camera_metrics.table.item(roi_row, 0))
+            tabs.close()
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -15,6 +15,11 @@ def plot_surface(output, data, metadata, settings, audit):
     local_width = metadata['roughness']['width_um']
     values = (data['whole_height_um']*data['whole_height_window']*1000,
               data['whole_incident_flux_unit']*settings.irradiance_w_um2)
+    from .field_coverage import illumination_coverage
+    from .parameters import Parameters
+    coverage = illumination_coverage(Parameters(**metadata['parameters']), settings.detector,
+        settings.magnification, settings.numerical_apertures, settings.tilt_degrees,
+        settings.minimum_field_illumination)
     fig, axes = plt.subplots(1, 2, figsize=(12, 5), layout='constrained')
     for ax, value, title, unit, cmap in zip(axes, values,
             ('Shared whole rough surface', 'Incident-only coherent illumination'),
@@ -22,6 +27,13 @@ def plot_surface(output, data, metadata, settings, audit):
         image = ax.pcolormesh(axis, axis, value, shading='auto', cmap=cmap)
         ax.add_patch(Rectangle((-local_width/2, -local_width/2), local_width, local_width,
                               fill=False, edgecolor='black', linewidth=1.2))
+        for channel in coverage['channels']:
+            w, h = channel['width_x_um'], channel['height_y_um']
+            ax.add_patch(Rectangle((-w/2, -h/2), w, h, fill=False, linestyle='--',
+                edgecolor=('red', 'cyan', 'white')[channel['channel']-1], linewidth=1,
+                label='Ch{} camera'.format(channel['channel'])))
+        if coverage['channels']:
+            ax.legend(fontsize=8, loc='upper right')
         ax.set(xlabel='Wafer X (um)', ylabel='Wafer Y (um)', aspect='equal', title=title)
         fig.colorbar(image, ax=ax, label=unit)
     fig.suptitle('Shared synthetic surface | whole width {:.4g} um | local FEM width {:.4g} um\n'
@@ -40,6 +52,7 @@ def plot_surface(output, data, metadata, settings, audit):
         beam_definition=p.beam_definition, target_wafer_dimensions_um=list(wafer_dimensions(p)),
         envelope_spectrum=truncation_report(p),
         normalization_area_um2=settings.illumination_normalization_area_um2,
+        camera_field_coverage=coverage,
         whole_surface_plan=plan, local_fem_width_um=local_width,
         mother_surface=metadata['mother_surface'],
         geometric_input_power_coverage=float(np.sum(data['whole_incident_flux_unit'])*step**2/

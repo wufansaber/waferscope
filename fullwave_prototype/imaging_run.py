@@ -19,6 +19,8 @@ def image_saved_sources(source, output, settings, archive_mode='full', cache_dir
     if archive_mode not in ('compact', 'full'):
         raise ValueError('Unknown archive mode')
     settings.validate()
+    if settings.illumination_fit == 'camera':
+        raise ValueError('Camera-matched roughness requires a whole-surface hybrid source, not a local FEM archive')
     scattering = json.loads((source/'report.json').read_text(encoding='utf-8'))
     if scattering.get('source_format_version') != 1:
         raise ValueError('This result lacks reusable volume sources. Run the pipeline again without --source.')
@@ -151,6 +153,19 @@ def scattering_settings(args, particle_enabled=True):
                         beam_phase_assumption=args.beam_phase_assumption,
                         beam_length_um=info['input_extent_y_um'], beam_width_um=info['input_extent_x_um'])
         p.validate()
+    if args.illumination_fit == 'camera':
+        from detector_model import DetectorParameters
+        from .imaging_options import DETECTOR_OPTIONS
+        from .field_coverage import fit_camera_beam
+        detector = DetectorParameters(enabled=args.detector, **{
+            key.replace('-', '_'): getattr(args, 'detector_'+key.replace('-', '_')) for key in DETECTOR_OPTIONS})
+        p, _ = fit_camera_beam(p, detector, args.magnification, args.na, args.tilts,
+                               args.minimum_field_illumination)
+        args.illumination_length_um, args.illumination_width_um = p.beam_length_um, p.beam_width_um
+        if args.illumination_power_w is None:
+            from .finite_illumination import power_area
+            args.illumination_power_w = (1. if args.irradiance_w_um2 is None else
+                                         args.irradiance_w_um2*power_area(p))
     roughness = Roughness(rms_nm=args.rms_nm if args.rms_nm is not None else 2,
                          seed=args.roughness_seed if args.roughness_seed is not None else 7,
                          mesh_um=.025*scale*local, model=args.roughness_model,
@@ -194,6 +209,18 @@ def main():
     else:
         p, roughness = scattering_settings(args)
     settings = imaging_settings(args, incidence_deg=p.incidence_deg, parameters=p)
+    if not args.source and settings.illumination_fit == 'camera':
+        if roughness.model not in ('gaussian', 'abc'):
+            raise ValueError('Camera-matched whole-surface roughness requires Gaussian or ABC PSD')
+        if args.near_diagnostics:
+            raise ValueError('Dense near diagnostics are local-FEM-only; disable them for camera-matched hybrid imaging')
+        from .hybrid_run import prepare_sources, export_images
+        inputs = dict(parameters=asdict(p), roughness=asdict(roughness), imaging_settings=asdict(settings),
+                      coverage=.99, variance_fraction=.9, taper_width_um=.025,
+                      quadrature_order=args.quadrature_order or (7 if p.order >= 3 else 5))
+        prepare_sources(inputs, output)
+        export_images(output, output, asdict(settings))
+        return
     if not args.source:
         from .rough_run import run
         run(p, roughness, source, angular_step=5,

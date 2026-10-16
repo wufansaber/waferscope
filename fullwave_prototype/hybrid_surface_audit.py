@@ -48,24 +48,27 @@ def surface_variant(mother_axis, mother_height, n, spacing, taper_um, p, padding
     grid = (np.arange(n)-n//2)*spacing
     height = sample_mother(mother_axis, mother_height, grid, grid)
     taper = window(grid, grid, n*spacing, taper_um)
-    if fields_provider is not None:
-        weighted = np.empty((n, n, 3), complex)
-        incident_sum = 0.
-        # Only the weighted total E is needed for radiation; don't retain full E/H maps.
-        for start in range(0, n, 256):
-            stop = min(start+256, n)
-            fields, ei, hi = fields_provider(grid, grid[start:stop], p)
-            weighted[start:stop] = height[start:stop, :, None]*taper[start:stop, :, None]*fields
-            flux = -np.real(np.cross(ei, hi.conj()))[..., 2]
-            incident_sum += float(np.sum(flux*taper[start:stop]**2))
-        del fields, ei, hi, flux
-        coverage = incident_sum*spacing**2/power_area(p)
-    else:
-        fields, ei, hi = surface_fields(grid, grid, p)
-        weighted = height[..., None]*taper[..., None]*fields
+    fields_provider = fields_provider or surface_fields
+    weighted = np.empty((n, n, 3), complex)
+    incident_sum = 0.
+    # Only weighted E is retained; chunk incident E/H to bound wide-field memory.
+    for start in range(0, n, 256):
+        stop = min(start+256, n)
+        fields, ei, hi = fields_provider(grid, grid[start:stop], p)
+        weighted[start:stop] = height[start:stop, :, None]*taper[start:stop, :, None]*fields
         flux = -np.real(np.cross(ei, hi.conj()))[..., 2]
-        coverage = float(np.sum(flux*taper**2)*spacing**2/power_area(p))
+        incident_sum += float(np.sum(flux*taper[start:stop]**2))
+    del fields, ei, hi, flux
+    coverage = incident_sum*spacing**2/power_area(p)
     return SurfaceRadiation(grid, grid, weighted, p, padding=padding), coverage, grid, weighted
+
+
+def audit_padding(n, requested=4, maximum_fft_axis=4096):
+    if n*requested <= maximum_fft_axis:
+        return requested
+    if 2*n <= maximum_fft_axis:
+        return 2
+    raise ValueError('Surface audit exceeds the bounded FFT workspace; reduce the field or use a larger-memory audit')
 
 
 def audit_surface(source, data, metadata, settings):
@@ -86,7 +89,8 @@ def audit_surface(source, data, metadata, settings):
         audit_order = p.beam_order
     probes = np.array([[0, 0, 1], [.3, .4, np.sqrt(.75)],
         [-.4, .1, np.sqrt(.83)], [0, -.8, .6], [.65, -.3, np.sqrt(1-.65**2-.3**2)]])
-    base, _, grid, weighted = surface_variant(axis, height, n0, step, plan['taper_width_um'], p, 4,
+    base_padding = audit_padding(n0)
+    base, _, grid, weighted = surface_variant(axis, height, n0, step, plan['taper_width_um'], p, base_padding,
                                              fields_provider=provider)
     source_beam_change = float(np.linalg.norm(weighted-data['whole_weighted_fields'])/
                                max(np.linalg.norm(weighted), 1e-300))
@@ -96,6 +100,7 @@ def audit_surface(source, data, metadata, settings):
     angular_check = _observables(base, settings.numerical_apertures, settings.tilt_degrees, order=96)
     direct = direct_amplitude(grid, grid, weighted, probes, p)
     direct_error = float(np.linalg.norm(baseline_fields-direct)/max(np.linalg.norm(direct), 1e-300))
+    del base, grid, weighted
     variants = []
     range_samples = []
     for label, n, spacing, padding in (
@@ -106,8 +111,14 @@ def audit_surface(source, data, metadata, settings):
             ('finer_spatial_quadrature', 2*n0, step/2, 4),
             ('less_fft_padding', n0, step, 2)):
         chosen_axis, chosen_height = (fine_axis, fine_height) if spacing < step else (axis, height)
-        radiation, coverage, _, _ = surface_variant(chosen_axis, chosen_height, n, spacing,
+        requested_padding = padding
+        padding = audit_padding(n, padding)
+        radiation, coverage, variant_grid, variant_weighted = surface_variant(chosen_axis, chosen_height, n, spacing,
                                                     plan['taper_width_um'], p, padding, fields_provider=provider)
+        variant_direct = direct_amplitude(variant_grid, variant_grid, variant_weighted, probes, p)
+        variant_error = float(np.linalg.norm(radiation.amplitude(probes)-variant_direct)/
+                              max(np.linalg.norm(variant_direct), 1e-300))
+        del variant_grid, variant_weighted
         fields_change = float(np.linalg.norm(radiation.amplitude(probes)-baseline_fields)/
                               max(np.linalg.norm(baseline_fields), 1e-300))
         caps = sample_caps(radiation, settings.numerical_apertures, settings.tilt_degrees)
@@ -115,12 +126,14 @@ def audit_surface(source, data, metadata, settings):
         if label in ('larger_range', 'extended_range', 'largest_shared_range'):
             range_samples.append((n*spacing, radiation.amplitude(probes), power, caps))
         variants.append(dict(test=label, width_um=n*spacing, grid_points=n, spacing_um=spacing,
-            fft_padding=padding, taper_width_um=plan['taper_width_um'],
+            fft_padding=padding, requested_fft_padding=requested_padding,
+            selected_fft_vs_direct_complex_relative_l2=variant_error, taper_width_um=plan['taper_width_um'],
             input_power_coverage=coverage,
             selected_complex_field_relative_l2_change=fields_change,
             collected_spm_power_w=(power*settings.irradiance_w_um2).tolist(),
             collected_spm_complex_relative_l2_changes=cap_field_changes(caps, baseline_caps),
             collected_spm_relative_changes=_relative_change(power, baseline_power)))
+        del radiation
     large = next(v for v in variants if v['test'] == 'larger_range')
     fine = next(v for v in variants if v['test'] == 'finer_spatial_quadrature')
     numerical_met = all(v <= .01 for item in (large, fine)
@@ -140,6 +153,7 @@ def audit_surface(source, data, metadata, settings):
         previous = current
     return dict(model='same_realization_outer_spm_audit', mother_sha256=mother['sha256'],
         baseline=dict(width_um=plan['width_um'], grid_points=n0, spacing_um=step,
+            fft_padding=base_padding,
             collected_spm_power_w=(baseline_power*settings.irradiance_w_um2).tolist()),
         variants=variants, angular_orders=[64, 96], angular_relative_changes=angular_changes,
         adjacent_range_checks=adjacent,
@@ -147,9 +161,13 @@ def audit_surface(source, data, metadata, settings):
         beam_quadrature_target_met=beam_met, source_vs_audit_beam_weighted_field_relative_l2=source_beam_change,
         selected_fft_vs_direct_complex_relative_l2=direct_error, numerical_target=.01,
         outer_spm_numerical_target_met=bool(numerical_met and direct_error <= .01 and
+                                           all(v['selected_fft_vs_direct_complex_relative_l2'] <= .01 for v in variants) and
                                            all(v <= .01 for v in angular_changes) and
                                            beam_met and source_beam_change <= .001),
         full_model_converged=False,
+        memory_policy='Sequential variants; chunked E/H; audit FFT axis <=4096. Padding can be 2 instead '
+                      'of requested 4, explicitly recorded and checked against direct Fourier quadrature. '
+                      'Physical surface extent, height samples and PSD bandwidth are not reduced.',
         scope='Same stored band-limited surface, same physical taper width and coherent beam. '
               'Finer quadrature uses Fourier interpolation with NO new random modes or PSD tail. '
               'The same physical beam is integrated at an independently checked higher ray order '

@@ -133,7 +133,7 @@ def calculate_imaging(simulation, objective, imaging, progress_callback=None):
         if imaging.detector.enabled:
             channel["detector"] = calculate_detector(
                 channel, simulation.wavelength_nm, imaging.detector,
-                np.random.default_rng(streams[index]))
+                np.random.default_rng(streams[index]), sensor_index=index)
         channels.append(channel)
     return dict(plot_kind="coherent_imaging", parameters=simulation,
                 objective_parameters=objective, imaging_parameters=imaging,
@@ -164,6 +164,9 @@ def export_imaging(result, directory, figure, detector_figure=None):
         arrays.update({"ch{}_{}".format(index, key): value for key, value in channel.items()
                        if isinstance(value, np.ndarray)})
     np.savez_compressed(str(directory / "coherent_imaging.npz"), **arrays)
+    if result['imaging_parameters'].detector.enabled:
+        from camera_readout import export_raw_camera
+        export_raw_camera(directory, [channel['detector'] for channel in result['channels']])
     payload = {key: asdict(result[key]) for key in
                ("parameters", "objective_parameters", "imaging_parameters")}
     payload.update(channels=summaries, tube_focal_length_mm=result["tube_focal_length_mm"],
@@ -173,7 +176,8 @@ def export_imaging(result, directory, figure, detector_figure=None):
                    "plane-wave illumination; particle-only signal; no background leakage, "
                    "roughness, or full near-field solution. Optional detector uses area-integrated "
                    "sampled irradiance, Poisson photo/dark/background counts, full-well clipping "
-                   "before Gaussian read noise; no ADC, gain, blooming or pixel crosstalk. "
+                   "before Gaussian read noise, then linear gain, offset, ADC rounding/clipping. "
+                   "Optional central-square active area and fixed QE/dark maps. No blooming or pixel crosstalk. "
                    "Detector SNR is pre-saturation with known mean background, not a measured SNR. "
                    "E and H*Z0 modes are flux-normalized, not SI fields; s,p inputs "
                    "are incoherent for unpolarized light. FFT images are periodic.")

@@ -235,7 +235,11 @@ PSD 频率单位是 cycles/μm，不是 rad/μm；二维 PSD 单位是 μm⁴。
 
 相机的 `Ideal SNR` 是指定噪声假设下的指标，不代表实际设备检测率。额外均匀相机背景不等同于物理 haze。注意满阱饱和、ROI 越界和实际波长处的量子效率。
 
+源码 2026-10-12 增加了 [EMVA 1288 相机模型与验证](../CAMERA_MODEL_EMVA1288_CN.md)：相机增益（e⁻/DN）、黑电平、8～16 位 ADC、PRNU 相对 RMS、DSNU1288 固定暗偏置 RMS（e⁻）和可选 DCNU（e⁻/s）。PRNU 的 `0.01` 表示 1%，不是 0.01%。时间噪声与包含空间不均匀的总 SNR 分别输出；饱和后不能沿用线性 SNR。开启 Camera 后导出的 `camera_ch1.tiff`～`camera_ch3.tiff` 是原始灰度码，不是热力图。**已有发布版 EXE 尚未重新打包，这些新增控制需运行更新后的源码。**
+
 ## 8. 整光斑 haze 和混合计算
+
+源码 2026-10-14 在 FEM/混合结果的 Camera 页增加 [缺陷、haze、相机噪声检测 SNR](../DETECTION_SNR_UI_CN.md)。启用 Camera response 后，以同一粗糙面的有/无颗粒像面生成相机帧并计算检测对比，不用总亮度代替缺陷信号。可设置 reference frames 及附加 haze mismatch fraction；结果含原始相机、分量图、像素 SNR 和三路指标表，饱和 ROI 显示 Invalid。默认是同一静态表面参考，不代表不同 wafer 位置的统计背景已被消除。已有 EXE 尚未重新打包。
 
 ### 8.1 纯 haze：Whole-beam haze (SPM)
 
@@ -395,3 +399,28 @@ SCATMECH 页用 `Export figures and data` 导出 PNG、NPZ 和参数；粒径扫
 8. 保存可复用复场及依赖源。高阶全局耦合、多层 FEM、镜面泄漏和未知测量相位等未建模因素须注明。
 
 更多说明：[模型实现与本次校验](../fullwave_prototype/ROUGHNESS_CAMPAIGN_CN.md)、[混合模型](../fullwave_prototype/HYBRID_MODEL_CN.md)、[整光斑 haze](../fullwave_prototype/WHOLE_BEAM_HAZE_CN.md)、[原有详细指南](USER_GUIDE_CN.md)。仓库内这些链接相对有效；单独下载本手册时，可在 GitHub 同目录查看对应文件。
+
+## 15. Gemi 面阵近似与原始灰度 SNR（2026-10-16）
+
+FEM 页的 `Parameter set` 增加 `266 nm low-haze camera`：100 nm PSL、266 nm、RMS=0.2 nm、L=0.05 μm、三路 NA=0.5、20 倍、1 W，透过率 0.0001，Gemi 面阵近似 10 μs 曝光、20×20 个 5 μm 像元。光斑采用相机视野匹配，不是沿用旧 2×2 μm 光斑。
+
+相机预设也可用 `Apply Gemi area parameters` 单独应用，不会修改材料、波长、照明或光路透过率。QE=0.639 仅有 266 nm 的手册依据；使用此预设时其他波长会提示改为自定义 QE。手动改动探测器参数后标为 custom。
+
+按面阵单次曝光模拟，绝不乘 TDI 级数。16 e-/DN 转换增益与黑电平 64 DN 是暂估输入，手册边界值不等于实测标定，Area 模式图像质量也未获手册保证。详见相机预设提示和保存报告。
+
+`Gray frame pairs (0=off)` 设为 100～20000，预设为 5000。完成后在 `Camera > Detection metrics` 读取 `Gray-frame ROI SNR`，在 `Gray SNR acquisition` 查看参与统计的第一组样本/参考灰度图。原有两项预测 SNR 明确标为 Predicted，不作为灰度测得值。
+
+```text
+D_n = sum_ROI(sample_DN_n - mean_reference_DN_n)
+SNR = abs(mean(D_n)) / std(D_n, ddof=1)
+```
+
+样本和无缺陷参考使用同一静态粗糙面、独立相机噪声。参考帧先逐帧 ADC 再平均；参考多帧不能当成 TDI 增益。计入颗粒/haze 相干作用后的强度及两帧散粒噪声、暗电流、读噪声、固定像素响应和实际 ADC 量化。它是模拟灰度的时间 SNR，不是实拍测量、单图空间对比度或检出概率。
+
+若 `haze-mismatch-fraction` 非零，灰度采样不输出虚假的“已包含空间失配”SNR，会提示设为 0；理论预测仍保留失配预算。满阱或 ADC 截断时灰度 SNR 标记无效，应降低曝光或透过率后重算。
+
+输出 `gray_chN_series.csv`、`gray_chN_sample.tiff`、`gray_chN_reference.tiff` 和 `gray_acquisition.png`。TIFF 为原始 uint16 容器，不是 16 位 ADC；Gemi 预设有效范围 0～1023。小规模任务另存 `gray_raw_stacks.npz`：样本形状 [帧,Y,X]，参考形状 [帧,参考数,Y,X]。超过存档上限时只保存 ROI 灰度序列及第一组帧，并在报告明确注明。
+
+已有完整像面结果时，点击成像工具栏的电脑图标，仅重新模拟相机。此操作不采用当前颗粒、粗糙度、照明或 NA 控件的新值；这些物理量仍来自原图。修改 RMS 要重新物理求解。扩大相机 ROI 超过旧光斑或 FFT 视野时，也需要新的相应物理/成像计算。
+
+顶部文档图标可加载保存的 NIST/对称性报告目录。发布包内选 `verification/camera_20261016`；这是带保存参数的校验结果，不是依据当前 UI 参数刚计算的结果。完整验证和剩余数值误差见 `CHANNEL_SYMMETRY_VALIDATION_CN.md`。

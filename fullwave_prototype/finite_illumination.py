@@ -47,7 +47,7 @@ def gaussian_spectrum(p, order=None):
     return np.concatenate(directions), np.concatenate(amplitudes)
 
 
-def _raw_power_area(p, order):
+def _raw_power_area(p, order, flux=True):
     """Parseval integral of downward Poynting flux, not rectangular P/A."""
     nodes, weights = leggauss(order)
     wx, wy = p.beam_width_um/2, p.beam_length_um/2
@@ -63,7 +63,7 @@ def _raw_power_area(p, order):
     jacobian = span[:, None]*np.pi/4*np.cos(np.pi*nodes/2)
     qy = center+2*y/(p.k0*wy)
     cosine = np.sqrt(np.maximum(0, 1-qx[:, None]**2-qy*qy))
-    integrand = np.exp(-2*(x[:, None]**2+y*y))*cosine
+    integrand = np.exp(-2*(x[:, None]**2+y*y))*(cosine if flux else 1.)
     return float(wx*wy*bound*np.sum(weights[:, None]*weights*jacobian*integrand))
 
 

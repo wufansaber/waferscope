@@ -151,6 +151,18 @@ class FullwaveImagingTests(unittest.TestCase):
         self.assertGreater(metrics['with']['image_power_w'], 0)
         self.assertLess(metrics['with']['flux_relative_error'], 1e-11)
 
+    def test_full_pipeline_detector_receives_same_surface_haze(self):
+        from detector_model import DetectorParameters
+        from fullwave_prototype.imaging import calculate_images
+        settings = replace(self.settings, detector=DetectorParameters(enabled=True,
+                           pixel_pitch_um=1, pixels_x=4, pixels_y=4, reference_frames=4))
+        arrays, report = calculate_images(self.data, self.p, settings, retain_complex_fields=False)
+        self.assertEqual(report['camera_detection_model_version'], 1)
+        self.assertGreater(report['channels'][0]['detector']['haze_roi_e'], 0)
+        self.assertIn('ch1_detector_detection_snr', arrays)
+        self.assertIn('ch1_detector_reference_mean_dn', arrays)
+        self.assertEqual(report['channels'][2]['detector']['detection_template_snr'], 0)
+
 
 if __name__ == '__main__':
     unittest.main()

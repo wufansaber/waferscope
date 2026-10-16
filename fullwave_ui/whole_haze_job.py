@@ -1,6 +1,6 @@
 """Launch the explicitly approximate whole-illumination haze calculation."""
 import codecs
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from datetime import datetime
 import json
 from pathlib import Path
@@ -18,6 +18,7 @@ def start_whole_haze(widget):
     plan_surface(p, roughness, widget.whole_coverage.value(), widget.whole_variance.value(),
                  widget.ensemble_taper.value())
     settings = imaging_settings(args, parameters=p)
+    settings = replace(settings, detector=replace(settings.detector, enabled=False))
     interpreter = Path(widget.interpreter.text())
     if not interpreter.is_file():
         raise ValueError('Select the isolated solver Python environment')

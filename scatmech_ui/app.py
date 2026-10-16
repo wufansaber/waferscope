@@ -143,6 +143,11 @@ def run_headless_test(output_directory):
 
 
 def main():
+    if '--camera-package-test' in sys.argv:
+        from fullwave_ui.camera_smoke import run
+        index = sys.argv.index('--camera-package-test')
+        run(sys.argv[index+1], sys.argv[index+2])
+        return
     if '--haze-package-test' in sys.argv:
         from fullwave_ui.ensemble_smoke import run
         run(sys.argv[sys.argv.index('--haze-package-test')+1])

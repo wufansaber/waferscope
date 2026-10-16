@@ -18,6 +18,8 @@ def main():
         from fullwave_prototype.guarded_run import main as run
     elif module == 'fullwave_prototype.imaging_run':
         from fullwave_prototype.imaging_run import main as run
+    elif module == 'fullwave_prototype.detection_replay':
+        from fullwave_prototype.detection_replay import main as run
     elif module == 'fullwave_prototype.component_compare':
         from fullwave_prototype.component_compare import main as run
     elif module == 'fullwave_prototype.haze_ensemble':

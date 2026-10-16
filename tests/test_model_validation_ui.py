@@ -30,6 +30,7 @@ def test_validation_guard_and_saved_source_lock(app, tmp_path, mode):
     p = Parameters(beam_profile='gaussian', beam_length_um=3, beam_width_um=4,
                    wavelength_nm=266, incidence_deg=60)
     widget = FullwaveWidget()
+    widget.controls.fields['illumination-fit'].setCurrentText('manual')
     widget.interpreter.setText(str(interpreter))
     widget.loaded_hybrid = source
     widget.controls.fields['diameter-nm'].setValue(200)

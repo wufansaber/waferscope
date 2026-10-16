@@ -54,18 +54,28 @@ def _far(ax, data, settings, fig, incidence_deg):
 def _image(ax, arrays, index, key, limit, norm, cmap):
     axis = arrays['ch{}_image_axis_um'.format(index)]
     value = arrays['ch{}_image_{}_w_um2'.format(index, key)]
-    selected = abs(axis) <= limit+2*abs(axis[1]-axis[0])
-    im = ax.pcolormesh(axis[selected], axis[selected], value[np.ix_(selected, selected)],
+    lx, ly = limit if isinstance(limit, tuple) else (limit, limit)
+    selected_x = abs(axis) <= lx+2*abs(axis[1]-axis[0])
+    selected_y = abs(axis) <= ly+2*abs(axis[1]-axis[0])
+    im = ax.pcolormesh(axis[selected_x], axis[selected_y], value[np.ix_(selected_y, selected_x)],
                        norm=norm, cmap=cmap, shading='auto')
-    ax.set(xlim=(-limit, limit), ylim=(-limit, limit), xlabel="Image x' (um)", ylabel="Image y' (um)", aspect='equal')
+    ax.set(xlim=(-lx, lx), ylim=(-ly, ly), xlabel="Image x' (um)", ylabel="Image y' (um)", aspect='equal')
     return im
+
+
+def image_limits(settings):
+    if settings.get('illumination_fit', 'manual') == 'camera':
+        detector = settings['detector']
+        return (detector['pixels_x']*detector['pixel_pitch_um']/2,
+                detector['pixels_y']*detector['pixel_pitch_um']/2)
+    return 15*settings['magnification']/20
 
 
 def plot_pipeline(output, data, arrays, scattering, report):
     from matplotlib.colors import PowerNorm, TwoSlopeNorm
     plt = _pyplot()
     settings = report['settings']
-    limit = 15*settings['magnification']/20
+    limit = image_limits(settings)
     vmax = max(arrays['ch{}_image_with_w_um2'.format(i)].max() for i in range(1, 4))
     norm = PowerNorm(.5, vmin=0, vmax=max(vmax, 1e-30))
     fig = plt.figure(figsize=(16, 10), layout='constrained')
@@ -126,7 +136,7 @@ def plot_stages(output, data, arrays, scattering, report):
     maximum = max(arrays['ch{}_image_with_w_um2'.format(i)].max() for i in range(1, 4))
     norm = PowerNorm(.5, vmin=0, vmax=max(maximum, 1e-30))
     for i, (ax, channel) in enumerate(zip(axes, report['channels']), 1):
-        im = _image(ax, arrays, i, 'with', 15*settings['magnification']/20, norm, 'magma')
+        im = _image(ax, arrays, i, 'with', image_limits(settings), norm, 'magma')
         ax.set_title('Ch{} | {:+g} deg | NA {:g}\n{:.4g} pW'.format(
             i, channel['tilt_deg'], channel['na'], channel['with']['image_power_w']*1e12))
     fig.colorbar(im, ax=axes.tolist(), label='W / um^2; shared absolute scale', shrink=.8)
@@ -141,7 +151,7 @@ def plot_image_channels(output, arrays, report, norm):
     settings = report['settings']
     for index, channel in enumerate(report['channels'], 1):
         fig, ax = plt.subplots(figsize=(8, 7), layout='constrained')
-        im = _image(ax, arrays, index, 'with', 15*settings['magnification']/20, norm, 'magma')
+        im = _image(ax, arrays, index, 'with', image_limits(settings), norm, 'magma')
         ax.set_title('Ch{} | {:+g} deg | NA {:g} | {}x\nFull-plane power: {:.4g} pW'.format(
             index, channel['tilt_deg'], channel['na'], settings['magnification'],
             channel['with']['image_power_w']*1e12))

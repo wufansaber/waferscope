@@ -104,11 +104,14 @@ def truncation_report(p):
         # Scalar-envelope Parseval power before the propagating-disk cutoff.
         length, width = wafer_dimensions(p)
         total = np.pi*length*width/8
-        nodes, w = disk_quadrature(192)
-        q0 = np.sin(np.deg2rad(p.incidence_deg))
-        ft = np.pi*length*width/4*np.exp(-((p.k0*nodes[..., 0]*width/4)**2+
-                                          (p.k0*(nodes[..., 1]-q0)*length/4)**2))
-        retained = float(np.sum(abs(ft)**2*w)*(p.k0/(2*np.pi))**2/total)
+        from dataclasses import replace
+        from .finite_illumination import _raw_power_area
+        effective = replace(p, beam_length_um=length, beam_width_um=width)
+        # Beam-scaled integration resolves narrow spectra of large illuminated fields.
+        retained = _raw_power_area(effective, 192, flux=False)/total
+        check = _raw_power_area(effective, 128, flux=False)/total
+        if not np.isfinite(retained) or abs(retained-check) > 1e-5:
+            raise ValueError('Gaussian scalar spectral coverage integral did not converge')
         metadata = {}
     else:
         if p.beam_definition == 'measured_wafer':

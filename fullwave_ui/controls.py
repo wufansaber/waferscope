@@ -18,7 +18,7 @@ class SimulationControls(QWidget):
         self.form.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
         self.form.setRowWrapPolicy(QFormLayout.WrapLongRows)
         self.preset = QComboBox()
-        self.preset.addItems(('10 nm PSL preview', '100 nm standard', 'Custom'))
+        self.preset.addItems(('10 nm PSL preview', '100 nm standard', '266 nm low-haze camera', 'Custom'))
         self.preset_button = QPushButton('Apply preset')
         self.form.addRow('Parameter set', self.preset)
         self.form.addRow(self.preset_button)
@@ -42,7 +42,7 @@ class SimulationControls(QWidget):
             ('illumination-length-um', 'Wafer spot length (um)', 2, .01, 10000, 3),
             ('illumination-width-um', 'Wafer spot width (um)', 2, .01, 10000, 3),
             ('defocus-um', 'Image defocus (um)', 0, -1000, 1000, 2),
-            ('transmission', 'Power transmission', 1, 0, 1, 3),
+            ('transmission', 'Power transmission', 1, 0, 1, 8),
         ):
             self.number(name, label, value, low, high, decimals)
         self.choice('beam-profile', 'Illumination', ('gaussian', 'plane'))
@@ -146,26 +146,60 @@ class SimulationControls(QWidget):
         for key, value in DETECTOR_OPTIONS.items():
             if isinstance(value, int):
                 control = QSpinBox()
-                control.setRange(0 if key == 'seed' else 1, 1000000 if key == 'seed' else 512)
+                limits = ((8, 16) if key == 'bit-depth' else (1, 128) if key == 'reference-frames'
+                          else (0, 1000000) if key.endswith('seed') else (1, 512))
+                control.setRange(*limits)
                 control.setValue(value)
                 self.fields['detector-'+key] = control
                 self.form.addRow('Camera '+key.replace('-', ' '), control)
             else:
                 self.number('detector-'+key, 'Camera '+key.replace('-', ' '), value,
-                            0 if key in ('read-noise-e', 'dark-current-e-s', 'background-e-s', 'quantum-efficiency') else .001,
-                            1 if key == 'quantum-efficiency' else 1000000, 3)
+                            0 if key in ('read-noise-e', 'dark-current-e-s', 'background-e-s', 'quantum-efficiency',
+                                        'offset-dn', 'prnu-fraction', 'dsnu-e', 'dark-current-std-e-s',
+                                        'haze-mismatch-fraction') else .001,
+                            .5 if key == 'prnu-fraction' else 10 if key == 'haze-mismatch-fraction'
+                            else 1 if key in ('quantum-efficiency', 'fill-factor') else 1000000,
+                            6 if key in ('quantum-efficiency', 'prnu-fraction', 'fill-factor', 'haze-mismatch-fraction') else 4)
         detector.toggled.connect(self.set_camera_enabled)
         self.set_camera_enabled(False)
+        for key, tip in {
+            'read-noise-e': 'EMVA 1288 temporal dark noise in electrons, excluding ADC quantization; '
+                           'use the minimum-exposure value. Exposure-dependent dark shot noise is added separately.',
+            'gain-e-dn': 'Electron/DN conversion gain; EMVA system gain K in DN/e- is its reciprocal.',
+            'prnu-fraction': 'EMVA relative RMS response variation; 0.01 means 1%. Fixed between frames.',
+            'dsnu-e': 'EMVA DSNU1288: fixed dark-offset spatial RMS in electrons, not e-/s.',
+            'dark-current-std-e-s': 'Optional DCNU rate variation, not part of EMVA 1288 Linear.',
+            'fill-factor': 'Central-square sensitive area. Keep at 1 if effective QE already includes fill factor.',
+            'reference-frames': 'Independent noise frames of the same no-defect rough surface. '
+                                  'Detection includes reference haze photon/read noise divided by this count.',
+            'haze-mismatch-fraction': 'Residual haze RMS / mean after reference subtraction. '
+                                      '0 means a stable, identical surface. SNR uncertainty only; '
+                                      'a user assumption, not PSD ensemble statistics.'
+        }.items():
+            self.fields['detector-'+key].setToolTip(tip)
         self.form.addRow(QLabel('Finite rough patch / homogeneous wafer'))
         self.fields['roughness-model'].setCurrentText('gaussian')
         self.adjust_rough_grid('gaussian')
+        from .field_coverage import FieldCoverageControls
+        self.field_coverage = FieldCoverageControls(self)
+        from .camera_controls import CameraControls
+        self.camera_controls = CameraControls(self)
+        self.set_camera_enabled(False)
         standard = {name: (field.isChecked() if isinstance(field, QCheckBox) else
                            field.currentText() if isinstance(field, QComboBox) else field.value())
                     for name, field in self.fields.items()}
         small_particle = dict(standard, **{'diameter-nm': 10, 'accuracy': 'preview',
             'threads': 2, 'pml-inner-fraction': 0, 'mesh-scale': 1.5,
             'particle-mesh-um': .0015, 'quadrature-order': '7'})
-        self._presets = (small_particle, standard)
+        from camera_profiles import profile_values
+        low_haze = dict(small_particle, **{'diameter-nm': 100, 'wavelength-nm': 266,
+            'rms-nm': .2, 'correlation-length-um': .05, 'rough-grid-points': 9,
+            'particle-mesh-um': .0225, 'order': '1', 'direct-solver': 'umfpack',
+            'pml-order': '0', 'transmission': .0001, 'illumination-fit': 'camera',
+            'camera-profile': 'gemi_area', 'gray-snr-pairs': 5000})
+        low_haze.update({'detector' if name == 'enabled' else 'detector-'+name.replace('_', '-'): value
+                         for name, value in profile_values('gemi_area').items()})
+        self._presets = (small_particle, standard, low_haze)
         self._last_preset_index = 0
         self._applying_preset = False
         self.preset.currentIndexChanged.connect(self.apply_preset)
@@ -198,6 +232,7 @@ class SimulationControls(QWidget):
                     field.setValue(value)
         finally:
             self._applying_preset = False
+        self.field_coverage.update()
 
     def restore_preset(self):
         if self.preset.currentIndex() >= len(self._presets):
@@ -211,7 +246,7 @@ class SimulationControls(QWidget):
 
     def set_camera_enabled(self, enabled):
         for name, field in self.fields.items():
-            if name.startswith('detector-'):
+            if name.startswith(('detector-', 'gray-snr-')):
                 field.setEnabled(enabled)
 
     def adjust_rough_grid(self, model):
@@ -319,6 +354,9 @@ class SimulationControls(QWidget):
             }[definition]) if finite else 'Effective rectangular footprint for plane-wave power scaling only.')
         self.update_irradiance_label()
 
+        if hasattr(self, 'field_coverage'):
+            self.field_coverage.update()
+
     def choose_beam_measurement(self):
         path, _ = QFileDialog.getOpenFileName(self, 'Measured coherent wafer beam', '', 'Beam NPZ (*.npz)')
         if path:
@@ -348,17 +386,24 @@ class SimulationControls(QWidget):
             'analyzer': saved['analyzer'],
             'pupil-samples': str(saved['pupil_samples']),
             'padding': str(saved['padding']),
+            'illumination-fit': saved.get('illumination_fit', 'manual'),
+            'minimum-field-illumination': saved.get('minimum_field_illumination', .5),
+            'camera-profile': saved.get('camera_profile', 'custom'),
+            'gray-snr-pairs': saved.get('gray_snr_pairs', 0),
+            'gray-snr-seed': saved.get('gray_snr_seed', 20261016),
         }
         for index in (1, 2, 3):
             values['na'+str(index)] = saved['numerical_apertures'][index-1]
             values['tilt'+str(index)] = saved['tilt_degrees'][index-1]
         for name, value in zip(('astigmatism-nm', 'coma-nm', 'spherical-nm'), saved['aberrations_nm']):
             values[name] = value
-        detector = saved['detector']
+        detector = dict({key.replace('-', '_'): value for key, value in DETECTOR_OPTIONS.items()},
+                        **saved['detector'])
         values['detector'] = detector['enabled']
         values.update({'detector-'+name.replace('_', '-'): value
                        for name, value in detector.items() if name != 'enabled'})
         self._applying_preset = True
+        self._loading_field_coverage = True
         try:
             for name, value in values.items():
                 field = self.fields[name]
@@ -371,6 +416,8 @@ class SimulationControls(QWidget):
             self.preset.setCurrentIndex(len(self._presets))
         finally:
             self._applying_preset = False
+            self._loading_field_coverage = False
+        self.field_coverage.update(resize=False)
 
     def load_beam_parameters(self, saved):
         self.beam_measurement_path.setText(saved.get('beam_measurement_path', ''))
@@ -383,6 +430,24 @@ class SimulationControls(QWidget):
                 field.setCurrentText(str(saved[source]))
             else:
                 field.setValue(saved[source])
+
+    def load_physical_parameters(self, saved, roughness=None):
+        for name in ('diameter-nm', 'particle-n', 'particle-k', 'substrate-n', 'substrate-k',
+                     'gap-nm', 'domain-radius-um', 'particle-mesh-um', 'threads'):
+            if name.replace('-', '_') in saved:
+                self.fields[name].setValue(saved[name.replace('-', '_')])
+        if roughness and roughness.get('model') in ('gaussian', 'abc'):
+            self.fields['roughness-model'].setCurrentText(roughness['model'])
+            for name, key in (('rms-nm', 'rms_nm'), ('correlation-length-um', 'correlation_length_um'),
+                ('psd-exponent', 'psd_exponent'), ('rough-width-um', 'width_um'),
+                ('rough-grid-points', 'grid_points'), ('roughness-seed', 'seed')):
+                if key in roughness:
+                    self.fields[name].setValue(roughness[key])
+        for name in ('order', 'direct-solver', 'pml-order'):
+            if name.replace('-', '_') in saved:
+                self.fields[name].setCurrentText(str(saved[name.replace('-', '_')]))
+        if 'pml_inner_fraction' in saved:
+            self.fields['pml-inner-fraction'].setValue(saved['pml_inner_fraction'])
 
     def number(self, name, label, value, low, high, decimals):
         field = QDoubleSpinBox()
@@ -425,11 +490,21 @@ class SimulationControls(QWidget):
         if not imaging_only and self.fields['beam-profile'].currentText() == 'gaussian' and self.fields['beam-definition'].currentText() == 'measured_wafer':
             result.extend(('--beam-measurement-path', self.beam_measurement_path.text()))
         args = build_parser().parse_args(result)
+        if imaging_only and parameters is not None and args.illumination_fit == 'camera':
+            for flag, value in (('--illumination-length-um', parameters.beam_length_um),
+                                ('--illumination-width-um', parameters.beam_width_um)):
+                result[result.index(flag)+1] = str(value)
+            args = build_parser().parse_args(result)
         if not imaging_only:
             parameters, roughness = scattering_settings(args, particle_enabled=particle_enabled)
+            if args.illumination_fit == 'camera':
+                for flag, value in (('--illumination-length-um', args.illumination_length_um),
+                                    ('--illumination-width-um', args.illumination_width_um)):
+                    result[result.index(flag)+1] = str(value)
             if roughness.model.startswith('measured_'):
                 self.fields['rms-nm'].setMaximum(max(30., roughness.rms_nm))
                 self.fields['rms-nm'].setValue(roughness.rms_nm)
-        imaging_settings(args, incidence_deg=(incidence_deg if incidence_deg is not None else
+        settings = imaging_settings(args, incidence_deg=(incidence_deg if incidence_deg is not None else
                                              self.fields['incidence-deg'].value()), parameters=parameters)
+        self.irradiance_label.setText('{:.6g} W/um2'.format(settings.irradiance_w_um2))
         return result

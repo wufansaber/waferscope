@@ -5,7 +5,10 @@ import numpy as np
 
 from optical_propagation import pupil_geometry, collimated_pupil, propagate_pupil
 from .far_field import radiation_amplitude
-from detector_model import DetectorParameters, calculate_detector
+from detector_model import DetectorParameters
+from defect_detection import calculate_detection
+from gray_acquisition import acquire_gray, validate_acquisition
+from camera_profiles import describe_profile
 from .wavefront import pupil_phase
 
 
@@ -23,6 +26,8 @@ class ImagingSettings:
     illumination_model: str = 'plane'
     illumination_definition: str = 'wafer_gaussian'
     illumination_normalization_area_um2: float = None
+    illumination_fit: str = 'manual'
+    minimum_field_illumination: float = .5
     transmission: float = 1.
     analyzer: str = 'none'
     image_defocus_um: float = 0.
@@ -30,8 +35,14 @@ class ImagingSettings:
     padding: int = 8
     aberrations_nm: tuple = (0., 0., 0.)
     detector: DetectorParameters = field(default_factory=DetectorParameters)
+    camera_profile: str = 'custom'
+    gray_snr_pairs: int = 0
+    gray_snr_seed: int = 20261016
 
     def validate(self):
+        from .field_coverage import FIT_MODES
+        if self.illumination_fit not in FIT_MODES or not np.isfinite(self.minimum_field_illumination) or not .05 <= self.minimum_field_illumination <= .95:
+            raise ValueError('Invalid camera illumination coverage policy')
         from .beam_inputs import DEFINITIONS
         if self.illumination_definition not in DEFINITIONS:
             raise ValueError('Invalid saved illumination definition')
@@ -44,6 +55,8 @@ class ImagingSettings:
         if self.illumination_model == 'gaussian' and self.illumination_power_w is None:
             raise ValueError('Gaussian illumination requires total power and footprint dimensions')
         self.detector.validate()
+        describe_profile(self.camera_profile)
+        validate_acquisition(self.detector, self.gray_snr_pairs, self.gray_snr_seed)
         if len(self.aberrations_nm) != 3 or not np.isfinite(self.aberrations_nm).all():
             raise ValueError('Three finite Zernike coefficients in nm required.')
         if len(self.numerical_apertures) != 3 or len(self.tilt_degrees) != 3:
@@ -164,6 +177,13 @@ def calculate_images(data, p, settings, retain_complex_fields=True, cache_direct
                      amplitude_provider=None):
     p.validate()
     settings.validate()
+    if settings.detector.enabled and settings.camera_profile == 'gemi_area' and p.wavelength_nm != 266:
+        raise ValueError('Gemi preset QE is specified at 266 nm; select 266 nm or enter a custom calibrated QE')
+    from .field_coverage import illumination_coverage
+    coverage = illumination_coverage(p, settings.detector, settings.magnification,
+        settings.numerical_apertures, settings.tilt_degrees, settings.minimum_field_illumination)
+    if settings.illumination_fit == 'camera' and not coverage['all_channels_covered']:
+        raise ValueError('Saved illumination does not cover the camera field; calculate new scattering with camera matching')
     if amplitude_provider is not None and cache_directory is not None:
         raise ValueError('Custom complex sources cannot use a local-FEM-only pupil cache')
     arrays, summaries = {}, []
@@ -175,10 +195,15 @@ def calculate_images(data, p, settings, retain_complex_fields=True, cache_direct
         print('Computing {} pupil and image for channel {}...'.format(source_label, index+1), flush=True)
         channel, metrics = calculate_channel(data, p, settings, index, cache, amplitude_provider)
         if settings.detector.enabled:
-            detector = calculate_detector(dict(image_axis_um=channel['image_axis_um'],
+            detector = calculate_detection(dict(image_axis_um=channel['image_axis_um'],
                 irradiance_w_um2=channel['image_with_w_um2'],
-                power_w=metrics['with']['image_power_w']), p.wavelength_nm, settings.detector,
-                rng=np.random.default_rng(seeds[index]))
+                power_w=metrics['with']['image_power_w']),
+                dict(image_axis_um=channel['image_axis_um'], irradiance_w_um2=channel['image_without_w_um2'],
+                     power_w=metrics['without']['image_power_w']), p.wavelength_nm, settings.detector,
+                rng=np.random.default_rng(seeds[index]), sensor_index=index)
+            detector.update(acquire_gray(detector, settings.detector, settings.gray_snr_pairs,
+                                         settings.gray_snr_seed, index))
+            detector['camera_profile_note'] = describe_profile(settings.camera_profile)
             metrics['detector'] = {k: v for k, v in detector.items() if not isinstance(v, np.ndarray)}
             channel.update({'detector_'+k: v for k, v in detector.items() if isinstance(v, np.ndarray)})
         if not retain_complex_fields:
@@ -187,6 +212,8 @@ def calculate_images(data, p, settings, retain_complex_fields=True, cache_direct
         arrays.update({'ch{}_{}'.format(index+1, key): value for key, value in channel.items()})
         summaries.append(metrics)
     return arrays, dict(settings=asdict(settings), channels=summaries,
+                       field_coverage=coverage,
+                       camera_detection_model_version=1 if settings.detector.enabled else 0,
                        tube_focal_length_mm=settings.focal_length_mm*settings.magnification,
                        image_field_units='Flux normalized, not SI E/H; intensity W/um^2.',
                        focus='Object reference plane passes through (0,0,0), perpendicular to each objective axis.',

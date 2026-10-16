@@ -36,7 +36,7 @@ def illumination_metadata(p, roughness=None):
     return report
 
 
-def save_illumination(output, p, settings, roughness=None):
+def save_illumination(output, p, settings, roughness=None, whole_surface_plan=None):
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
@@ -44,6 +44,12 @@ def save_illumination(output, p, settings, roughness=None):
     output = Path(output)
     output.mkdir(parents=True, exist_ok=True)
     report = illumination_metadata(p, roughness)
+    from .field_coverage import illumination_coverage
+    report['camera_field_coverage'] = illumination_coverage(p, settings.detector, settings.magnification,
+        settings.numerical_apertures, settings.tilt_degrees, settings.minimum_field_illumination)
+    if whole_surface_plan is not None:
+        report['whole_surface_plan'] = whole_surface_plan
+        report['coverage_scope'] = 'Whole illuminated stationary rough surface; local FEM patch is only the coupling correction'
     length, width = settings.illumination_length_um or 2., settings.illumination_width_um or 2.
     if p.beam_profile == 'gaussian':
         from .beam_inputs import wafer_dimensions
@@ -73,6 +79,14 @@ def save_illumination(output, p, settings, roughness=None):
         from matplotlib.patches import Rectangle
         w = roughness.width_um
         ax.add_patch(Rectangle((-w/2, -w/2), w, w, fill=False, edgecolor='white', linewidth=1))
+    from matplotlib.patches import Rectangle
+    for channel in report['camera_field_coverage']['channels']:
+        w, h = channel['width_x_um'], channel['height_y_um']
+        ax.add_patch(Rectangle((-w/2, -h/2), w, h, fill=False, linestyle='--',
+            edgecolor=('red', 'cyan', 'white')[channel['channel']-1], linewidth=1.2,
+            label='Ch{} camera field'.format(channel['channel'])))
+    if report['camera_field_coverage']['channels']:
+        ax.legend(fontsize=8, loc='upper right')
     ax.set(xlabel='Wafer X (um)', ylabel='Wafer Y (um)', aspect='equal',
            title='Incident-only coherent illumination\n{} | {} deg | {} nm'.format(
                report.get('target_definition', report['model']), p.incidence_deg, p.wavelength_nm))

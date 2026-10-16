@@ -65,6 +65,9 @@ def build(args):
             shutil.copy2(source, target/source.name)
     shutil.copy2(HERE/'RELEASE_README_CN.md', app/'README_CN.md')
     shutil.copy2(HERE/'THIRD_PARTY_NOTICES.md', app/'THIRD_PARTY_NOTICES.md')
+    for name in ('CAMERA_MODEL_EMVA1288_CN.md', 'DETECTION_SNR_UI_CN.md'):
+        if (ROOT/name).is_file():
+            shutil.copy2(ROOT/name, app/'docs'/name)
     for label, python in (('gui', args.gui_python), ('fem', args.fem_python)):
         subprocess.run([str(python), str(Path(__file__).resolve()), '--export-licenses',
                         str(app/'licenses'/label)], check=True)
@@ -97,6 +100,22 @@ def build(args):
             source = args.verification_root/relative
             if source.is_file():
                 target = evidence/relative
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(source, target)
+        for name in ('summary_report.json', 'nist_haze_report.json', 'nist_haze_comparison.png',
+                     'low_haze_comparison.json', 'low_haze_comparison.png', 'peak_decomposition.png',
+                     'rough_mirror.png', 'ensemble_confidence.png', 'all_tests.xml',
+                     'camera_ui_smoke.json', 'camera_metrics_1200.png', 'camera_metrics_640.png'):
+            source = args.verification_root/name
+            if source.is_file():
+                target = evidence/'camera_20261016'/name
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(source, target)
+        for name in ('camera_ui_smoke.json', 'camera_metrics_1200.png',
+                     'camera_metrics_640.png', 'gray_acquisition_ui.png'):
+            source = args.verification_root/'packaged_camera'/name
+            if source.is_file():
+                target = evidence/'camera_20261016'/'packaged'/name
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(source, target)
     (app/'build_manifest.json').write_text(json.dumps(dict(version=args.version,

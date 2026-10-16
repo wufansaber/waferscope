@@ -16,6 +16,11 @@ def plot_results(output, arrays, report):
         (axes[0], 'first_height_nm', 'First whole-beam rough surface', 'Height (nm)', 'coolwarm'),
         (axes[1], 'incident_flux_w_um2', 'Incident beam on modeled rough wafer', 'W / um2', 'viridis')):
         image = ax.pcolormesh(axis, axis, arrays[key], shading='auto', cmap=cmap)
+        from matplotlib.patches import Rectangle
+        for channel in report.get('field_coverage', {}).get('channels', []):
+            w, h = channel['width_x_um'], channel['height_y_um']
+            ax.add_patch(Rectangle((-w/2, -h/2), w, h, fill=False, linestyle='--',
+                edgecolor=('red', 'cyan', 'white')[channel['channel']-1], linewidth=1))
         ax.set(xlabel='Wafer X (um)', ylabel='Wafer Y (um)', aspect='equal', title=title)
         fig.colorbar(image, ax=ax, label=unit)
     fig.suptitle('First-order surface model | taper-weighted coverage {:.3%}'.format(
@@ -42,7 +47,11 @@ def plot_results(output, arrays, report):
         image = ax.pcolormesh(image_axis, image_axis, arrays['ch{}_mean_image_w_um2'.format(i)],
             cmap='inferno', shading='auto', norm=PowerNorm(.5, vmin=0, vmax=max(vmax, 1e-300)))
         ax.set(xlabel='Image X (um)', ylabel='Image Y (um)', aspect='equal',
-            title='Ch{} | mean {:.4g} W'.format(i, report['metrics']['mean_image_power_w'][i-1]))
+            title='Ch{} | full-plane mean {:.4g} W'.format(i, report['metrics']['mean_image_power_w'][i-1]))
+        if report['imaging_settings'].get('illumination_fit') == 'camera':
+            from .imaging_plotting import image_limits
+            lx, ly = image_limits(report['imaging_settings'])
+            ax.set(xlim=(-lx, lx), ylim=(-ly, ly))
     fig.colorbar(image, ax=list(axes), label='Mean image flux (W / um2)')
     fig.suptitle('Whole-beam first-order haze | independent objectives | FFT images are periodic')
     fig.savefig(output/'whole_haze_images.png', dpi=140)

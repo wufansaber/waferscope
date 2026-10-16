@@ -112,6 +112,7 @@ class FullwaveUiTests(unittest.TestCase):
             engine = root/'fem.exe'
             engine.touch()
             widget = FullwaveWidget()
+            widget.controls.fields['illumination-fit'].setCurrentText('manual')
             widget.interpreter.setText(str(engine))
             widget.ensemble_count.setValue(2)
             with patch('fullwave_ui.widget.ROOT', root), \
@@ -146,7 +147,8 @@ class FullwaveUiTests(unittest.TestCase):
             self.assertEqual(widget.job_kind, 'hybrid')
             inputs = json.loads((widget.output/'hybrid_request_input.json').read_text(encoding='utf-8'))
             self.assertEqual(inputs['parameters']['beam_profile'], 'gaussian')
-            self.assertEqual(inputs['parameters']['beam_length_um'], 2)
+            self.assertGreater(inputs['parameters']['beam_length_um'], 12)
+            self.assertEqual(inputs['imaging_settings']['illumination_fit'], 'camera')
             self.assertEqual(inputs['roughness']['width_um'], .2)
             self.assertAlmostEqual(inputs['roughness']['taper_fraction'], .125)
             self.assertEqual(inputs['imaging_settings']['numerical_apertures'][1], 0)
@@ -316,8 +318,9 @@ class FullwaveUiTests(unittest.TestCase):
         controls = SimulationControls()
         args = build_parser().parse_args(controls.arguments())
         settings = imaging_settings(args, incidence_deg=75)
-        self.assertEqual((settings.illumination_power_w, settings.illumination_length_um,
-                          settings.illumination_width_um), (1, 2, 2))
+        self.assertEqual(settings.illumination_power_w, 1)
+        self.assertGreater(settings.illumination_length_um, 12)
+        self.assertGreater(settings.illumination_width_um, 17)
         from fullwave_prototype.finite_illumination import power_area
         p, _ = scattering_settings(args)
         self.assertEqual(settings.illumination_model, 'gaussian')
@@ -431,6 +434,10 @@ class FullwaveUiTests(unittest.TestCase):
             pml_inner_fraction=0)
         from dataclasses import replace
         expected = replace(expected, beam_profile='gaussian', beam_length_um=2., beam_width_um=2., beam_order=31)
+        from fullwave_prototype.field_coverage import fit_camera_beam
+        from detector_model import DetectorParameters
+        expected, _ = fit_camera_beam(expected, DetectorParameters(pixels_x=16, pixels_y=16),
+                                     20, (.5, .5, .5), (45, -45, 0))
         self.assertEqual(p, expected)
         self.assertEqual((roughness.model, roughness.grid_points), ('gaussian', 9))
         self.assertAlmostEqual(roughness.mesh_um, .0375)
@@ -540,6 +547,7 @@ class FullwaveUiTests(unittest.TestCase):
             python = root/'python.exe'
             python.touch()
             widget = FullwaveWidget()
+            widget.controls.fields['illumination-fit'].setCurrentText('manual')
             widget.interpreter.setText(str(python))
             with patch('fullwave_ui.widget.ROOT', root), patch.object(widget.process, 'start') as start:
                 widget.start_job()
@@ -611,6 +619,7 @@ class FullwaveUiTests(unittest.TestCase):
             python = root/'python.exe'
             python.touch()
             widget = FullwaveWidget()
+            widget.controls.fields['detector'].setChecked(True)
             widget.interpreter.setText(str(python))
             widget.controls.fields['na1'].setValue(0)
             widget.whole_coverage.setValue(.995)
@@ -624,6 +633,8 @@ class FullwaveUiTests(unittest.TestCase):
                 inputs = json.loads(Path(command[command.index('--input')+1]).read_text(encoding='utf-8'))
                 self.assertEqual(inputs['coverage'], .995)
                 self.assertEqual(inputs['imaging_settings']['numerical_apertures'][0], 0)
+                self.assertFalse(inputs['imaging_settings']['detector']['enabled'])
+                self.assertEqual(inputs['imaging_settings']['detector']['pixels_x'], 16)
                 self.assertFalse(widget.whole_button.isEnabled())
             widget.process_error(QProcess.FailedToStart)
             widget.close()

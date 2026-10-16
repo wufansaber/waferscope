@@ -118,10 +118,16 @@ mean background (no additional reference-frame estimation noise):
 They are not valid descriptions of a saturated measurement. Both expected
 overfull pixels and sampled saturated pixels are exported. Readout can be
 negative or exceed full well because read noise is added after charge clipping.
-No ADC quantization, electronic offset/gain, blooming, pixel crosstalk, or
-wavelength-dependent detector calibration is simulated. Background is an
+The camera includes e-/DN conversion gain, black level, integer ADC rounding
+and clipping, optional fixed PRNU and DSNU1288 offsets, and optional DCNU.
+Noise definitions reference EMVA 1288 Release 4.0 Linear, not certification.
+DSNU is spatial RMS in electrons, not dark-current rate. DCNU is an extension.
+Digital temporal SNR includes quantization; total SNR also includes spatial
+nonuniformity. Both are pre-clipping predictions, not measured detection rates.
+The validity mask rejects saturation and unresolved quantization. No blooming,
+pixel crosstalk, or measured wavelength-dependent calibration is simulated. Background is an
 independent uniform electron rate, not a computed roughness or leakage field.
-Signal views and readout views have separate absolute electron-per-pixel scales
+Signal views use electrons; raw camera views use DN with absolute color scales
 (power-law display stretch gamma 0.5), without peak normalization.
 
 ## Exports
@@ -138,6 +144,10 @@ With detectors enabled, the NPZ also contains `ch1_detector_*` through
 sampled readout, saturation masks, ideal pixel SNR and pixel axes. Detector arrays
 are [row/y,column/x]. JSON contains the detector settings and per-channel summaries.
 UI export additionally writes `detector_pixels.png`.
+`camera_ch1.tiff` through `camera_ch3.tiff` contain lossless raw ADC codes in
+16-bit containers, without display stretch. NPZ also preserves signed pre-ADC
+electrons, sensor maps, ADC masks and temporal/total SNR. See
+[`CAMERA_MODEL_EMVA1288_CN.md`](../CAMERA_MODEL_EMVA1288_CN.md).
 
 ## Sources
 

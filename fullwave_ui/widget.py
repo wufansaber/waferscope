@@ -34,6 +34,7 @@ class FullwaveWidget(QWidget):
         self.loaded_source = None
         self.loaded_hybrid = None
         self.loaded_whole = None
+        self.camera_optical_result = None
         self.imaging_only_job = False
         self.job_kind = None
         self.active_report = None
@@ -153,7 +154,7 @@ class FullwaveWidget(QWidget):
         self.controls.form.addRow('Whole-beam PSD variance fraction', self.whole_variance)
         self.mother_factor = QComboBox()
         self.mother_factor.addItems(('2', '4', '8'))
-        self.mother_factor.setCurrentText('8')
+        self.mother_factor.setCurrentText('2')
         self.mother_factor.setToolTip('Mother width / initial rough width. A larger mother needs fresh local FEM; existing sources are not extended.')
         self.controls.form.addRow('Hybrid mother range factor', self.mother_factor)
         self.convergence_button = QPushButton(self.style().standardIcon(QStyle.SP_MediaPlay), 'Convergence')
@@ -189,10 +190,22 @@ class FullwaveWidget(QWidget):
         for button in (self.start, self.cancel, self.load_button, self.fit_button):
             toolbar.addWidget(button)
         toolbar.addStretch()
+        self.audit_button = QToolButton()
+        self.audit_button.setIcon(self.style().standardIcon(QStyle.SP_FileDialogDetailedView))
+        self.audit_button.setToolTip('Open saved symmetry / NIST validation report (not a new calculation)')
+        self.audit_button.clicked.connect(self.choose_audit)
+        toolbar.addWidget(self.audit_button)
         imaging_toolbar = QHBoxLayout()
         imaging_toolbar.addWidget(self.image_current_button)
         imaging_toolbar.addWidget(self.reimage_button)
         imaging_toolbar.addWidget(self.compare_button)
+        self.camera_button = QToolButton()
+        self.camera_button.setIcon(self.style().standardIcon(QStyle.SP_ComputerIcon))
+        self.camera_button.setToolTip('Acquire camera / gray-frame SNR from loaded image. '
+            'Only camera controls apply; optics, NA, roughness and illumination remain unchanged.')
+        self.camera_button.setEnabled(False)
+        self.camera_button.clicked.connect(self.start_camera_job)
+        imaging_toolbar.addWidget(self.camera_button)
         imaging_toolbar.addStretch()
         ensemble_toolbar = QHBoxLayout()
         ensemble_toolbar.addWidget(self.ensemble_button)
@@ -234,7 +247,7 @@ class FullwaveWidget(QWidget):
             self.interpreter.setText(path)
 
     def apply_runtime_preset(self, *_):
-        if self.controls.preset.currentIndex() == 2:
+        if self.controls.preset.currentIndex() == len(self.controls._presets):
             return
         self.memory.setValue(10)
         self.timeout.setValue(30)
@@ -248,6 +261,7 @@ class FullwaveWidget(QWidget):
         self.image_current_button.setEnabled(not running and self.loaded_source is not None)
         self.compare_button.setEnabled(not running and self.loaded_source is not None and
                                        self.loaded_result is not None)
+        self.camera_button.setEnabled(not running and self.camera_optical_result is not None)
         for field in (self.ensemble_button, self.convergence_button, self.ensemble_count,
                       self.ensemble_taper, self.ensemble_area, self.whole_button, self.hybrid_button):
             field.setEnabled(not running)
@@ -265,12 +279,24 @@ class FullwaveWidget(QWidget):
                 source = source/'scattering'
             self.start_job(source=source)
 
+    def start_camera_job(self):
+        if self.process.state() != QProcess.NotRunning:
+            return
+        try:
+            from .camera_job import start_camera
+            start_camera(self)
+        except (ValueError, OSError, KeyError) as exc:
+            QMessageBox.warning(self, 'Cannot acquire camera', str(exc))
+
     def image_current_result(self):
         if self.loaded_source is not None:
             self.start_job(source=self.loaded_source)
 
     def start_job(self, checked=False, source=None):
         if self.process.state() != QProcess.NotRunning:
+            return
+        if source is None and self.controls.fields['illumination-fit'].currentText() == 'camera':
+            self.start_hybrid_job()
             return
         try:
             source_report = None
@@ -366,6 +392,9 @@ class FullwaveWidget(QWidget):
             QMessageBox.warning(self, 'Cannot compare components', str(exc))
 
     def start_ensemble(self):
+        if self.controls.fields['illumination-fit'].currentText() == 'camera':
+            self.start_whole_haze()
+            return
         if self.process.state() != QProcess.NotRunning:
             return
         try:
@@ -583,6 +612,10 @@ class FullwaveWidget(QWidget):
                 if self.load_ensemble_result(self.output):
                     self.results.setCurrentWidget(self.results.ensemble_tabs)
                     self.progress.setValue(1)
+            elif self.job_kind == 'camera':
+                if self.load_result(self.output):
+                    self.results.setCurrentWidget(self.results.camera_tabs)
+                    self.progress.setValue(1)
             elif self.load_result(self.output, restore_imaging_controls=self.job_kind != 'comparison'):
                 if self.job_kind == 'comparison':
                     self.results.setCurrentWidget(self.results.comparison_tabs)
@@ -600,7 +633,9 @@ class FullwaveWidget(QWidget):
     def choose_result(self):
         directory = QFileDialog.getExistingDirectory(self, 'Load FEM result', str(results_root(ROOT)))
         if directory:
-            if (Path(directory)/'range_report.json').is_file() or (Path(directory)/'validation_report.json').is_file():
+            if (Path(directory)/'summary_report.json').is_file() or (Path(directory)/'nist_haze_report.json').is_file():
+                self.load_audit(directory)
+            elif (Path(directory)/'range_report.json').is_file() or (Path(directory)/'validation_report.json').is_file():
                 self.load_model_validation(directory)
             elif (Path(directory)/'surface_mesh_report.json').is_file():
                 self.load_model_validation(directory)
@@ -619,6 +654,21 @@ class FullwaveWidget(QWidget):
                 self.load_ensemble_result(directory)
             else:
                 self.load_result(directory)
+
+    def choose_audit(self):
+        directory = QFileDialog.getExistingDirectory(self, 'Saved symmetry / NIST validation', str(ROOT/'verification'))
+        if directory:
+            self.load_audit(directory)
+
+    def load_audit(self, directory):
+        try:
+            self.results.audit_results.load(directory)
+            self.results.setTabEnabled(self.results.indexOf(self.results.audit_results), True)
+            self.results.setCurrentWidget(self.results.audit_results)
+            self.status.setText('Saved validation | inputs are from the saved report, not current controls')
+            self.loaded.setText(str(Path(directory).resolve()))
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            QMessageBox.warning(self, 'Cannot load saved validation', str(exc))
 
     def load_ensemble_result(self, directory):
         try:
@@ -641,6 +691,8 @@ class FullwaveWidget(QWidget):
             self.controls.load_beam_parameters(report['parameters'])
             self.controls.load_imaging_settings(report['imaging_settings'], report['parameters']['incidence_deg'])
             self.loaded_whole = Path(directory).resolve()
+            self.camera_optical_result = None
+            self.camera_button.setEnabled(False)
             self.loaded_hybrid = self.loaded_source = self.loaded_result = None
             for button in (self.hybrid_reimage, self.image_current_button, self.compare_button):
                 button.setEnabled(False)
@@ -663,7 +715,10 @@ class FullwaveWidget(QWidget):
             if report.get('model') != 'whole_spm_local_fem_hybrid':
                 raise ValueError('Select a phase-aligned hybrid result')
             powers = self.results.load(directory)
+            self.camera_optical_result = Path(directory).resolve()
+            self.camera_button.setEnabled(self.process.state() == QProcess.NotRunning)
             self.loaded_whole = None
+            self.controls.load_physical_parameters(report['scattering_parameters'], report.get('stationary_roughness'))
             self.controls.load_beam_parameters(report['scattering_parameters'])
             self.controls.load_imaging_settings(report['settings'],
                                                 incidence_deg=report['scattering_parameters']['incidence_deg'])
@@ -692,6 +747,8 @@ class FullwaveWidget(QWidget):
             return self.load_hybrid_result(directory)
         try:
             powers = self.results.load(directory)
+            self.camera_optical_result = Path(directory).resolve()
+            self.camera_button.setEnabled(self.process.state() == QProcess.NotRunning)
             self.loaded_hybrid = None
             self.loaded_whole = None
             self.hybrid_reimage.setEnabled(False)

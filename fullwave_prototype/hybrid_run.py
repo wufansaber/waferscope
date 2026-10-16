@@ -38,6 +38,12 @@ def optical_settings(values, p):
     detector = DetectorParameters(**values.pop('detector', {}))
     settings = ImagingSettings(**values, detector=detector)
     settings.validate()
+    if settings.illumination_fit == 'camera':
+        from .field_coverage import illumination_coverage
+        check = illumination_coverage(p, detector, settings.magnification, settings.numerical_apertures,
+                                     settings.tilt_degrees, settings.minimum_field_illumination)
+        if not check['all_channels_covered']:
+            raise ValueError('Beam no longer covers the camera field; calculate new camera-matched scattering')
     if settings.illumination_model != 'gaussian' or settings.illumination_definition != p.beam_definition or not np.allclose(
             (settings.illumination_length_um, settings.illumination_width_um, settings.illumination_incidence_deg),
             (p.beam_length_um, p.beam_width_um, p.incidence_deg), rtol=1e-10, atol=0):
@@ -50,9 +56,11 @@ def prepare_sources(inputs, output):
     from .rough_run import run
     p, rough = Parameters(**inputs['parameters']), Roughness(**inputs['roughness'])
     p.validate()
-    optical_settings(inputs['imaging_settings'], p)
+    settings = optical_settings(inputs['imaging_settings'], p)
     p, plan = plan_surface(p, rough, inputs.get('coverage', .99), inputs.get('variance_fraction', .9),
                            inputs.get('taper_width_um', .025))
+    from .field_coverage import rough_surface_coverage
+    plan['camera_coverage'] = rough_surface_coverage(settings, plan)
     output = Path(output)
     output.mkdir(parents=True, exist_ok=True)
     mother_axis, mother_height = make_mother(rough, plan, inputs.get('mother_range_factor', 2))
@@ -134,6 +142,7 @@ def export_images(source, output, settings_values):
                       max(np.linalg.norm(terms['local_spm']), 1e-300))
     arrays, report = calculate_images(data, p, settings, retain_complex_fields=False,
                                       amplitude_provider=radiation.amplitude)
+    del radiation
     from .hybrid_surface_audit import audit_surface
     print('Checking outer SPM range and spatial quadrature on the same mother surface...', flush=True)
     surface_audit = audit_surface(source, data, metadata, settings)

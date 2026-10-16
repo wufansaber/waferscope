@@ -8,6 +8,7 @@ from pathlib import Path
 import numpy as np
 
 from optical_propagation import pupil_geometry
+from detector_model import DetectorParameters
 from .far_field import angular_grid
 from .finite_illumination import power_area
 from .haze_statistics import report_from_observables
@@ -24,10 +25,16 @@ def run(inputs, output, resume_source=None):
     p.validate()
     roughness = Roughness(**inputs['roughness'])
     values = dict(inputs['imaging_settings'])
-    if values.pop('detector', {}).get('enabled', False):
+    detector = DetectorParameters(**values.pop('detector', {}))
+    if detector.enabled:
         raise ValueError('Whole-beam haze exports optical flux, not detector noise; disable the detector')
-    settings = ImagingSettings(**values)
+    settings = ImagingSettings(**values, detector=detector)
     settings.validate()
+    from .field_coverage import illumination_coverage
+    field_coverage = illumination_coverage(p, detector, settings.magnification,
+        settings.numerical_apertures, settings.tilt_degrees, settings.minimum_field_illumination)
+    if settings.illumination_fit == 'camera' and not field_coverage['all_channels_covered']:
+        raise ValueError('Beam does not cover the camera field; refit illumination and recompute')
     if (settings.illumination_model != 'gaussian' or settings.illumination_definition != p.beam_definition or
             not np.allclose((settings.illumination_length_um, settings.illumination_width_um,
                              settings.illumination_incidence_deg),
@@ -52,6 +59,8 @@ def run(inputs, output, resume_source=None):
     output = Path(output)
     output.mkdir(parents=True, exist_ok=True)
     n, step, width = plan['grid_points'], plan['spacing_um'], plan['width_um']
+    from .field_coverage import rough_surface_coverage
+    plan['camera_coverage'] = rough_surface_coverage(settings, plan)
     axis = (np.arange(n)-n//2)*step
     edge = window(axis, axis, width, plan['taper_width_um'])
     from .surface_beam import surface_fields_order
@@ -151,6 +160,7 @@ def run(inputs, output, resume_source=None):
             warnings.append('An image FFT object field is narrower than the rough surface; increase pupil samples '
                             'before quantitative image-shape use. Padding alone cannot enlarge the field.')
     report = dict(status='complete', model='whole_beam_first_order_surface', source_directory=str(output.resolve()),
+        field_coverage=field_coverage,
         parameters=asdict(p), roughness=asdict(roughness), plan=plan,
         imaging_settings=asdict(settings), statistics=statistics,
         direct_integration_checks=integral_checks,
