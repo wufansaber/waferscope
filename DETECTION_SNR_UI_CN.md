@@ -85,4 +85,4 @@ ROI 求和会使正负干涉对比相互抵消；已知模板 SNR 使用图样�
 
 输出的 `imaging_report.json` 和 `image_fields.npz` 可直接由 UI 加载；NPZ 增加相机缺陷对比、haze、方差预算、参考平均 DN、差值 DN、像素 SNR 和有效性掩膜。`detector_components.png`、`detector_snr.png` 为新增诊断图；原始有缺陷帧继续导出三路灰度 TIFF。该脚本输出目录必须与原始存档目录分离，不修改原始光学结果。
 
-SCATMECH 纯颗粒相干成像页仍不将平均 Mueller haze BRDF 当成确定复场；本次完整颗粒+haze 相机检测功能在 FEM/混合模型页使用。已有发布 EXE 不包含本次更新，应运行最新源码。
+SCATMECH 纯颗粒相干成像页仍不将平均 Mueller haze BRDF 当成确定复场；完整颗粒+haze 相机检测功能在 FEM/混合模型页使用。2026.10.16 分文件发布版已接入该功能及原始灰度帧 SNR，操作见随包手册第 15 节；更早的 EXE 不包含这些更新。

@@ -70,7 +70,7 @@ FEM 额外验证复用了已有 355 nm、100 nm 颗粒及局部粗糙面存档�
 
 ## 操作与复算
 
-SCATMECH 页启用 `Detectors`；FEM 页启用 `Camera response`。调整增益、ADC、PRNU/DSNU 和曝光后重新成像。参数随 JSON 保存；旧结果缺少的新字段按默认值加载。源码运行入口不变，已有发布版 EXE 不包含本次更新。
+SCATMECH 页启用 `Detectors`；FEM 页启用 `Camera response`。调整增益、ADC、PRNU/DSNU 和曝光后重新成像。参数随 JSON 保存；旧结果缺少的新字段按默认值加载。源码运行入口不变，2026.10.16 分文件发布版已接入相机与灰度 SNR；更早的 EXE 不包含这些更新。
 
 ```powershell
 & D:/anaconda/envs/NIST2/python.exe -m camera_validation `
