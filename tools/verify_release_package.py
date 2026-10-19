@@ -92,10 +92,16 @@ def seal(archive, built):
             assert '..' not in relative.parts
             assert hashlib.sha256(saved.read(entry)).hexdigest() == digest(built/relative), str(relative)
         assert 'DFI_Simulation/verification/release_20261019/package_validation.json' in saved.namelist()
-    files = [archive, ROOT/'output/pdf/DFI_Simulation_中文操作手册.pdf',
-             ROOT/'output/pdf/DFI_Simulation_功能与案例手册.pdf',
-             ROOT/'output/pdf/DFI_Simulation_案例与宣传资料.zip',
-             ROOT/'far_field_standalone/OPERATION_MANUAL_CN.md']
+    files = [archive]
+    # GitHub strips Chinese asset names, which would collide for the two PDFs.
+    for source, name in (
+            ('DFI_Simulation_中文操作手册.pdf', 'DFI_Simulation_Operation_Manual_CN.pdf'),
+            ('DFI_Simulation_功能与案例手册.pdf', 'DFI_Simulation_Features_and_Cases_CN.pdf'),
+            ('DFI_Simulation_案例与宣传资料.zip', 'DFI_Simulation_Case_Materials.zip')):
+        target = archive.parent/name
+        shutil.copy2(ROOT/'output/pdf'/source, target)
+        files.append(target)
+    files.append(ROOT/'far_field_standalone/OPERATION_MANUAL_CN.md')
     checksums = archive.parent/'SHA256SUMS.txt'
     checksums.write_text(''.join(digest(path)+'  '+path.name+'\n' for path in files), encoding='utf-8')
     print(json.dumps(dict(status='passed', archive=str(archive), bytes=archive.stat().st_size,
