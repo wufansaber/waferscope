@@ -1,0 +1,12 @@
+{
+  "status": "passed",
+  "pages": 21,
+  "chapters": 18,
+  "content_blocks_checked": 530,
+  "toc_link_annotations": 36,
+  "actual_ui_screenshots": 4,
+  "preset_inputs_checked": 2,
+  "visual_qa": "All 21 final rendered pages inspected",
+  "pdf_bytes": 925883,
+  "pdf_sha256": "4c1063196834cf856eca6f5c12ccb5731cf93c478e639a17066b57291dc4eee9"
+}

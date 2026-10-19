@@ -80,6 +80,28 @@ def validate(app, built, evidence):
     print(json.dumps(result, indent=2))
 
 
+def seal(archive, built):
+    with zipfile.ZipFile(archive) as saved:
+        assert saved.testzip() is None
+        for entry in saved.infolist():
+            if entry.is_dir():
+                continue
+            path = Path(entry.filename)
+            assert path.parts[0] == 'DFI_Simulation'
+            relative = Path(*path.parts[1:])
+            assert '..' not in relative.parts
+            assert hashlib.sha256(saved.read(entry)).hexdigest() == digest(built/relative), str(relative)
+        assert 'DFI_Simulation/verification/release_20261019/package_validation.json' in saved.namelist()
+    files = [archive, ROOT/'output/pdf/DFI_Simulation_中文操作手册.pdf',
+             ROOT/'output/pdf/DFI_Simulation_功能与案例手册.pdf',
+             ROOT/'output/pdf/DFI_Simulation_案例与宣传资料.zip',
+             ROOT/'far_field_standalone/OPERATION_MANUAL_CN.md']
+    checksums = archive.parent/'SHA256SUMS.txt'
+    checksums.write_text(''.join(digest(path)+'  '+path.name+'\n' for path in files), encoding='utf-8')
+    print(json.dumps(dict(status='passed', archive=str(archive), bytes=archive.stat().st_size,
+                         sha256=digest(archive), checksums=str(checksums)), indent=2))
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--archive', type=Path)
@@ -87,8 +109,11 @@ def main():
     parser.add_argument('--app', type=Path)
     parser.add_argument('--built', type=Path)
     parser.add_argument('--evidence', type=Path)
+    parser.add_argument('--seal', type=Path)
     args = parser.parse_args()
-    if args.archive:
+    if args.seal:
+        seal(args.seal, args.built)
+    elif args.archive:
         unpack(args.archive, args.extract_to)
     else:
         validate(args.app, args.built, args.evidence)
