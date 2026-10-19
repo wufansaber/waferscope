@@ -1,10 +1,12 @@
-# FarField Simulation 2026-10-19
+# DFI Simulation 2026-10-19
 
-Windows x64 分文件实验版，完整解压后运行 `FarField_Simulation.exe`。
+Windows x64 分文件实验版，完整解压后运行 `DFI_Simulation.exe`。
 必须保留 `_internal` 与 `fem` 文件夹，无需另装 Python、Anaconda 或 NGSolve。
 
 ## 更新内容
 
+- 软件名称、窗口标题、主程序与求解器文件名、手册封面统一为 DFI Simulation。
+  为兼容旧结果，用户数据目录仍保留原来的 FarField_Simulation 名称。
 - FEM 增加横线、竖线、十字有限缺陷及尺寸、厚度与旋转设置。
 - 根据缺陷大小自动扩大计算域，近场和像面视图适配图案范围。
 - 附带 21 页中文操作手册与 10 页功能案例手册，以及可查看的案例数据。

@@ -14,5 +14,5 @@ if errorlevel 1 exit /b %errorlevel%
 
 echo.
 echo Build completed:
-echo %~dp0dist\YYYY-MM-DD\FarField_Simulation\FarField_Simulation.exe
+echo %~dp0dist\YYYY-MM-DD\DFI_Simulation\DFI_Simulation.exe
 endlocal

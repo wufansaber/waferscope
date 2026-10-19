@@ -10,8 +10,11 @@ def application_root():
 
 
 def default_engine(root):
-    bundled = root/'fem/FarField_FEM.exe'
-    return bundled if bundled.is_file() else root/'build/ngsolve_env/Scripts/python.exe'
+    for name in ('DFI_FEM.exe', 'FarField_FEM.exe'):
+        bundled = root/'fem'/name
+        if bundled.is_file():
+            return bundled
+    return root/'build/ngsolve_env/Scripts/python.exe'
 
 
 def results_root(root):

@@ -17,7 +17,7 @@ class ScatmechStandaloneWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("pySCATMECH Particle-on-Wafer Far-Field Simulator")
+        self.setWindowTitle("DFI Simulation")
         self.setMinimumSize(1200, 720)
         self._resize_for_screen()
         self.simulation_widget = ScatmechSimulationWidget()

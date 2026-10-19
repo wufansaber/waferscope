@@ -14,14 +14,14 @@ from reportlab.pdfbase.ttfonts import TTFont
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT/'docs/showcase_20261017'
 ASSETS = OUT/'assets'
-PDF = ROOT/'output/pdf/FarField_Simulation_功能与案例手册.pdf'
+PDF = ROOT/'output/pdf/DFI_Simulation_功能与案例手册.pdf'
 W, H = landscape(A4)
 M = 40
 TEAL = '#007f86'
 INK = '#181b1e'
 GRAY = '#525b61'
 DATA = json.loads((OUT/'case_manifest.json').read_text(encoding='utf-8'))
-MD = ['# FarField Simulation 暗场光学仿真软件\n\n功能与案例手册 · 2026 年 10 月 · 当前源码功能展示\n']
+MD = ['# DFI Simulation 暗场光学仿真软件\n\n功能与案例手册 · 2026 年 10 月 · 当前源码功能展示\n']
 
 
 def main():
@@ -29,8 +29,8 @@ def main():
     pdfmetrics.registerFont(TTFont('CNB', 'C:/Windows/Fonts/msyhbd.ttc'))
     PDF.parent.mkdir(parents=True, exist_ok=True)
     c = canvas.Canvas(str(PDF), pagesize=(W, H))
-    c.setTitle('FarField Simulation 暗场光学仿真软件 功能与案例手册')
-    c.setAuthor('FarField Simulation')
+    c.setTitle('DFI Simulation 暗场光学仿真软件 功能与案例手册')
+    c.setAuthor('DFI Simulation')
     c.setSubject('六类真实计算案例与软件功能展示')
     page = 0
 
@@ -64,7 +64,7 @@ def main():
         paragraph(title, M, H-48, W-2*M, size=25, leading=32, bold=True)
         paragraph(subtitle, M, H-91, W-2*M, size=10, color=GRAY)
         c.setFont('CN', 8); c.setFillColor(HexColor(GRAY))
-        c.drawString(M, 20, 'FarField Simulation  |  功能与案例  |  2026.10')
+        c.drawString(M, 20, 'DFI Simulation  |  功能与案例  |  2026.10')
         c.drawRightString(W-M, 20, '%02d'%page)
         MD.append('\n## '+title+'\n\n'+subtitle+'\n')
 
@@ -109,7 +109,7 @@ def main():
         im.crop((0,0,im.width,mid)).save(ASSETS/'case01_near.png')
         im.crop((0,mid,im.width,im.height)).save(ASSETS/'case01_far_image.png')
 
-    begin('PRODUCT OVERVIEW', 'FarField Simulation 暗场光学仿真软件',
+    begin('PRODUCT OVERVIEW', 'DFI Simulation 暗场光学仿真软件',
           '面向晶圆颗粒检测研发的散射分析与成像评估工具')
     note('从缺陷散射到相机灰度图', M, H-135, W-2*M, size=27, bold=True)
     note('在同一套工作流中比较缺陷、照明、收光孔径和粗糙背景，连接电磁场、光学像面与相机读出。',

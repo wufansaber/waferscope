@@ -16,7 +16,7 @@ def compact(text):
 def main():
     root = Path(__file__).resolve().parents[1]
     source = root/'far_field_standalone/OPERATION_MANUAL_CN.md'
-    pdf = root/'output/pdf/FarField_Simulation_中文操作手册.pdf'
+    pdf = root/'output/pdf/DFI_Simulation_中文操作手册.pdf'
     folder = root/'build/manual_pdf_20261017'
     build = json.loads((folder/'build_report.json').read_text(encoding='utf-8'))
     assert hashlib.sha256(source.read_bytes()).hexdigest() == build['markdown_sha256']

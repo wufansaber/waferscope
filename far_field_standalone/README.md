@@ -1,4 +1,4 @@
-# Far-field Standalone UI
+# DFI Simulation
 
 This directory contains the standalone launcher and PyInstaller configuration
 for the particle-on-wafer far-field simulation UI.
@@ -35,10 +35,10 @@ NGSolve environments. The tested solver packager is PyInstaller 6.16.0.
 The build uses two PyInstaller onedir runtimes and produces a dated ZIP plus SHA-256:
 
 ```text
-dist\YYYY-MM-DD\FarField_Simulation\
-|-- FarField_Simulation.exe
+dist\YYYY-MM-DD\DFI_Simulation\
+|-- DFI_Simulation.exe
 |-- _internal\
-|-- fem\FarField_FEM.exe
+|-- fem\DFI_FEM.exe
 |-- fem\_internal\
 |-- docs\
 |-- licenses\

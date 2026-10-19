@@ -1,4 +1,4 @@
-# FarField Simulation 中文操作手册
+# DFI Simulation 中文操作手册
 
 适用范围：Windows x64 分文件发行版及截至 2026-10-17 的当前源码。更新日期：2026-10-17。
 
@@ -33,16 +33,16 @@
 
 1. 从 [GitHub Releases](https://github.com/wufansaber/aptk/releases) 选择需要的版本。已归档的相机版本为 `v2026.10.16-camera-snr`；使用该版本的 Windows x64 ZIP 和配套校验文件。
 2. 完整解压到本地可访问的目录，不要直接在 ZIP 内运行。
-3. 双击 `FarField_Simulation.exe`。
+3. 双击 `DFI_Simulation.exe`。
 
 主要文件结构如下，实际目录还包含许可、示例和验证摘要：
 
 ```text
-FarField_Simulation/
-  FarField_Simulation.exe
+DFI_Simulation/
+  DFI_Simulation.exe
   _internal/
   fem/
-    FarField_FEM.exe
+    DFI_FEM.exe
     _internal/
   docs/
   verification/
@@ -80,7 +80,7 @@ FEM 页默认 `Memory limit = 10 GiB`、`Time limit = 30 min`、2 个 FEM 线程
 
 源码界面依赖 NIST2 中的 PyQt5/pySCATMECH，FEM 求解器使用另一个包含 NGSolve 的隔离环境，当前路径为 `build/ngsolve_env/Scripts/python.exe`。迁移电脑时需要重新配置这些环境和求解器路径；发行版 EXE 不需要这些开发环境。
 
-不要把 `FEM engine / Python` 指向只含界面依赖的 NIST2 解释器。源码运行时应选择含 NGSolve 的隔离解释器；发行版选择 `fem/FarField_FEM.exe`。若 VS Code 的终端激活受 PowerShell 脚本策略限制，可先使用上述绝对解释器路径启动，不必为了打开软件而放开系统范围的脚本策略。
+不要把 `FEM engine / Python` 指向只含界面依赖的 NIST2 解释器。源码运行时应选择含 NGSolve 的隔离解释器；发行版选择 `fem/DFI_FEM.exe`。若 VS Code 的终端激活受 PowerShell 脚本策略限制，可先使用上述绝对解释器路径启动，不必为了打开软件而放开系统范围的脚本策略。
 
 ## 2. 选择计算入口
 
@@ -131,7 +131,7 @@ FEM 页默认 `Memory limit = 10 GiB`、`Time limit = 30 min`、2 个 FEM 线程
 1. 打开 FEM 页，选择 `Parameter set = 10 nm PSL preview`，点击 `Apply preset`。
 2. 确认 `Defect shape=sphere`、`Sphere diameter=10 nm`。将 `Illumination sizing=manual`，再明确填写 `Wafer spot length=2 um`、`Wafer spot width=2 um`、`Laser power=1 W`。预设可能继承相机视野匹配，不能假设显示的光斑始终是 2×2 μm。
 3. 首次检查将 `Roughness RMS=0 nm`，关闭 `Camera response`，以排除粗糙背景和探测器噪声；保持 `Illumination=gaussian`、`Finite beam definition=wafer_gaussian`、`Beam waist=0`。
-4. 保持程序识别的 `fem/FarField_FEM.exe` 求解器路径，点击 `Calculate`。
+4. 保持程序识别的 `fem/DFI_FEM.exe` 求解器路径，点击 `Calculate`。
 5. 等待完成提示，查看 `Near field`、`Far field`、`Three image planes` 和 `Result parameters`。
 6. 需要局部粗糙背景时，再把 RMS 改为目标值并重新 `Calculate`；需要整光斑背景时按第 8 节运行 hybrid。
 

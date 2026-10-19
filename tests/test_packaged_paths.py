@@ -16,6 +16,9 @@ class PackagedPathsTests(unittest.TestCase):
             engine.parent.mkdir()
             engine.touch()
             self.assertEqual(default_engine(root), engine)
+            renamed = root/'fem/DFI_FEM.exe'
+            renamed.touch()
+            self.assertEqual(default_engine(root), renamed)
 
     def test_frozen_root_and_writable_results(self):
         with tempfile.TemporaryDirectory() as directory:
