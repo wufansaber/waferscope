@@ -55,7 +55,7 @@ def validate(app, built, evidence):
     for name in ('near_field_xy.png', 'near_field_xz.png', 'near_field_yz.png',
                  'far_field.png', 'image_planes.png', 'detector.png', 'gray_acquisition.png'):
         assert (evidence/'cross'/name).is_file(), name
-    assert len(list((evidence/'scatmech').glob('*.png'))) >= 2
+    assert len(list((evidence/'scatmech_dfi').glob('*.png'))) >= 2
     for name in ('manual_validation.json', 'showcase_validation.json'):
         assert json.loads((evidence/name).read_text(encoding='utf-8'))['status'] == 'passed'
     result = dict(status='passed', tests=tests, extracted_directory=str(app),

@@ -202,7 +202,7 @@ def main():
         c.saveState(); c.setFont('CN',8); c.setFillColor(colors.HexColor('#59646a'))
         if doc.page > 1:
             c.drawString(48,A4[1]-30,'DFI Simulation 中文操作手册')
-        c.drawString(48,25,'2026-10-17  |  当前源码与分文件发行版')
+        c.drawString(48,25,'2026-10-19  |  DFI Simulation 分文件发行版')
         c.drawRightString(A4[0]-48,25,'第 %d 页'%doc.page)
         c.restoreState()
     OUTPUT.parent.mkdir(parents=True,exist_ok=True)

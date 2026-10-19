@@ -204,7 +204,7 @@ def main():
     y = table(rows, M, H-130, [150,335,W-2*M-485])
     y = body('在软件中复现', '选择模型入口，填写材料 n/k 和照明；设置各路 NA、倾角与倍率；查看近场、远场和像面；启用相机后检查灰度、噪声、饱和与 SNR。保存参数及原始数据，再进行收敛与统计比较。', M, y-18, W-2*M)
     y = body('可交付结果', '二维与三维远场、收光锥、三路独立出瞳与像面、相机 TIFF、CSV 曲线及 JSON/NPZ 参数和场数据。模型核对、独立传播检查与统计区间用于辅助判断，不替代完整实验验证。', M, y-14, W-2*M)
-    note('软件仓库  github.com/wufansaber/aptk<br/>展示范围为 2026 年 10 月 17 日当前源码；既有 EXE 发行版可能不含最新图案功能。相机噪声按 EMVA 1288 相关量组织，不代表认证。', M, y-14, W-2*M, size=9, color=GRAY)
+    note('软件仓库  github.com/wufansaber/aptk<br/>适用于 DFI Simulation 2026.10.19 分文件发行版；旧版 EXE 不会自动更新。相机噪声按 EMVA 1288 相关量组织，不代表认证。', M, y-14, W-2*M, size=9, color=GRAY)
     MD.append('\n## 案例数据与复现\n\n'
               '- 2026-10-19：案例 01 远场在同一保存混合源上加密方向求值；不是重新求解 FEM 或对旧图做平滑。\n'
               '- [远场加密计算报告](assets/case01_dense_far_report.json)\n'
