@@ -6,6 +6,8 @@ from .planar import fresnel
 
 
 def sphere_quadrature(p, radial_order=10):
+    if p.defect_shape != 'sphere':
+        raise ValueError('Sphere quadrature is sphere-only; use the FEM imaging/rough_run pipeline for patterns')
     nodes, weights = leggauss(radial_order)
     radius = p.diameter_nm/2000
     r = (nodes+1)*radius/2

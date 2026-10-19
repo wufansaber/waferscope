@@ -33,6 +33,7 @@ def build_rough_mesh(p, roughness, particle_enabled=True, cad_scale=1000.):
     from netgen.occ import Sphere, Box, Glue, OCCGeometry
     from .rough_surface import height_mesh
     from .solver import build_mesh
+    from .defects import cad_solid
     from .absorbing_boundary import set_boundary
     if not math.isfinite(cad_scale) or cad_scale <= 0:
         raise ValueError('CAD construction scale must be finite and positive')
@@ -53,8 +54,7 @@ def build_rough_mesh(p, roughness, particle_enabled=True, cad_scale=1000.):
     bump, pit = slab-lower, column-slab
     air = inner-lower-bump
     if particle_enabled:
-        ball = Sphere((0, 0, (p.diameter_nm/2+p.gap_nm)*cad_scale/1000),
-                      p.diameter_nm*cad_scale/2000)
+        ball = cad_solid(p, cad_scale)
         air = air-ball
     regions = [(air, 'air', p.air_mesh_um),
                ((inner*lower)-pit, 'substrate', p.substrate_mesh_um),

@@ -756,6 +756,8 @@ class FullwaveWidget(QWidget):
             if restore_imaging_controls:
                 report = json.loads((Path(directory)/'imaging_report.json').read_text(encoding='utf-8'))
                 if 'settings' in report:
+                    self.controls.load_physical_parameters(report.get('scattering_parameters', {}),
+                                                          report.get('roughness'))
                     self.controls.load_beam_parameters(report.get('scattering_parameters', {}))
                     incidence = report.get('scattering_parameters', {}).get('incidence_deg')
                     self.controls.load_imaging_settings(report['settings'], incidence_deg=incidence)

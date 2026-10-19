@@ -38,12 +38,26 @@ def make_planes(p, samples=101):
     radius = p.domain_radius_um
     lateral = np.linspace(-.6*radius, .6*radius, samples)
     height = np.linspace(-.299*radius, .75*radius, samples)
-    center = (p.diameter_nm/2+p.gap_nm)/1000
+    from .defects import center_height_um, footprint_nm
+    center = center_height_um(p)
+    if p.defect_shape != 'sphere':
+        top = (p.gap_nm+p.defect_height_nm)/1000
+        high = min(.95*radius, max(center+.15*radius, top*1.1))
+        extent = max(.6*radius, np.max(abs(footprint_nm(p)))/1000*1.1)
+        extent = min(extent, .98*np.sqrt(radius**2-high**2))
+        lateral = np.linspace(-extent, extent, samples)
+        height = np.linspace(-.299*radius, high, samples)
     # Keep even the XY rectangle corners inside the physical sphere, outside PML.
     half_width = min(.6*radius, .98*np.sqrt((radius**2-center**2)/2))
     xy_axis = np.linspace(-half_width, half_width, samples)
+    xy_u, xy_v = xy_axis, xy_axis
+    if p.defect_shape != 'sphere':
+        extent = np.maximum(.25*radius, np.max(abs(footprint_nm(p)), axis=0)*1.1/1000)
+        allowed = (.98*radius)**2-center**2
+        extent *= min(1., np.sqrt(allowed/np.sum(extent**2)))
+        xy_u, xy_v = (np.linspace(-edge, edge, samples) for edge in extent)
     return (NearPlane('xz', lateral, height, 0.),
-            NearPlane('xy', xy_axis, xy_axis, center),
+            NearPlane('xy', xy_u, xy_v, center),
             NearPlane('yz', lateral, height, 0.))
 
 

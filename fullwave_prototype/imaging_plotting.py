@@ -63,19 +63,29 @@ def _image(ax, arrays, index, key, limit, norm, cmap):
     return im
 
 
-def image_limits(settings):
+def image_limits(settings, parameters=None):
     if settings.get('illumination_fit', 'manual') == 'camera':
         detector = settings['detector']
         return (detector['pixels_x']*detector['pixel_pitch_um']/2,
                 detector['pixels_y']*detector['pixel_pitch_um']/2)
-    return 15*settings['magnification']/20
+    limit = 15*settings['magnification']/20
+    if parameters and parameters.get('defect_shape', 'sphere') != 'sphere':
+        from .defects import footprint_nm
+        m = settings['magnification']
+        half_object = np.max(abs(footprint_nm(parameters)))/1000
+        height = (parameters.get('gap_nm', 0)+parameters.get('defect_height_nm', 50))/1000
+        active_na = [na for na in settings['numerical_apertures'] if na > 0]
+        blur_margin = (1.5*.61*parameters['wavelength_nm']/1000*m/min(active_na)
+                       if active_na else 0)
+        limit = max(limit, m*(half_object+height)+blur_margin)
+    return limit
 
 
 def plot_pipeline(output, data, arrays, scattering, report):
     from matplotlib.colors import PowerNorm, TwoSlopeNorm
     plt = _pyplot()
     settings = report['settings']
-    limit = image_limits(settings)
+    limit = image_limits(settings, scattering.get('parameters'))
     vmax = max(arrays['ch{}_image_with_w_um2'.format(i)].max() for i in range(1, 4))
     norm = PowerNorm(.5, vmin=0, vmax=max(vmax, 1e-30))
     fig = plt.figure(figsize=(16, 10), layout='constrained')
@@ -96,9 +106,10 @@ def plot_pipeline(output, data, arrays, scattering, report):
     subtitle = ('Local near fields only; independent hybrid channels; no specular beam'
                 if report.get('model') == 'whole_spm_local_fem_hybrid' else
                 'Experimental FEM + configured optics; independent channels; far field / images exclude specular beam')
-    fig.suptitle((title+' | {} nm, particle {} nm | {}x, f_obj={} mm, f_tube={} mm\n'
+    from .defects import description
+    fig.suptitle((title+' | {} nm, {} | {}x, f_obj={} mm, f_tube={} mm\n'
                  +subtitle).format(
-                     p['wavelength_nm'], p['diameter_nm'], settings['magnification'],
+                     p['wavelength_nm'], description(p), settings['magnification'],
                      settings['focal_length_mm'], report['tube_focal_length_mm']), fontsize=12)
     fig.savefig(Path(output)/'near_far_image.png', dpi=160)
     plt.close(fig)
@@ -136,7 +147,7 @@ def plot_stages(output, data, arrays, scattering, report):
     maximum = max(arrays['ch{}_image_with_w_um2'.format(i)].max() for i in range(1, 4))
     norm = PowerNorm(.5, vmin=0, vmax=max(maximum, 1e-30))
     for i, (ax, channel) in enumerate(zip(axes, report['channels']), 1):
-        im = _image(ax, arrays, i, 'with', image_limits(settings), norm, 'magma')
+        im = _image(ax, arrays, i, 'with', image_limits(settings, scattering.get('parameters')), norm, 'magma')
         ax.set_title('Ch{} | {:+g} deg | NA {:g}\n{:.4g} pW'.format(
             i, channel['tilt_deg'], channel['na'], channel['with']['image_power_w']*1e12))
     fig.colorbar(im, ax=axes.tolist(), label='W / um^2; shared absolute scale', shrink=.8)
@@ -151,7 +162,7 @@ def plot_image_channels(output, arrays, report, norm):
     settings = report['settings']
     for index, channel in enumerate(report['channels'], 1):
         fig, ax = plt.subplots(figsize=(8, 7), layout='constrained')
-        im = _image(ax, arrays, index, 'with', image_limits(settings), norm, 'magma')
+        im = _image(ax, arrays, index, 'with', image_limits(settings, report.get('scattering_parameters')), norm, 'magma')
         ax.set_title('Ch{} | {:+g} deg | NA {:g} | {}x\nFull-plane power: {:.4g} pW'.format(
             index, channel['tilt_deg'], channel['na'], settings['magnification'],
             channel['with']['image_power_w']*1e12))

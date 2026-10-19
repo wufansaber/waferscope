@@ -18,24 +18,25 @@ class SimulationControls(QWidget):
         self.form.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
         self.form.setRowWrapPolicy(QFormLayout.WrapLongRows)
         self.preset = QComboBox()
-        self.preset.addItems(('10 nm PSL preview', '100 nm standard', '266 nm low-haze camera', 'Custom'))
+        self.preset.addItems(('10 nm PSL preview', '100 nm standard', '266 nm low-haze camera',
+                             '266 nm line X preview', '266 nm line Y preview', '266 nm cross preview', 'Custom'))
         self.preset_button = QPushButton('Apply preset')
         self.form.addRow('Parameter set', self.preset)
         self.form.addRow(self.preset_button)
         for name, label, value, low, high, decimals in (
             ('wavelength-nm', 'Wavelength (nm)', 355, 100, 2000, 1),
-            ('diameter-nm', 'Particle diameter (nm)', 100, 1, 1000, 1),
-            ('particle-n', 'Particle n', 1.59, .01, 20, 4),
-            ('particle-k', 'Particle k', 0, 0, 20, 4),
+            ('diameter-nm', 'Sphere diameter (nm)', 100, 1, 1000, 1),
+            ('particle-n', 'Defect n', 1.59, .01, 20, 4),
+            ('particle-k', 'Defect k', 0, 0, 20, 4),
             ('substrate-n', 'Wafer n', 5.57, .01, 20, 4),
             ('substrate-k', 'Wafer k', .387, 0, 20, 4),
             ('incidence-deg', 'Incidence / normal (deg)', 75, 0, 89, 1),
-            ('gap-nm', 'Sphere / wafer gap (nm)', 10, 0, 500, 1),
+            ('gap-nm', 'Defect bottom / wafer gap (nm)', 10, 0, 500, 1),
             ('rms-nm', 'Roughness RMS (nm)', 2, 0, 30, 2),
             ('correlation-length-um', 'PSD length B / L (um)', .05, .001, 1, 4),
             ('psd-exponent', 'ABC exponent C', 3, 2.01, 10, 3),
             ('rough-width-um', 'Rough patch width (um)', .2, .05, 2, 3),
-            ('domain-radius-um', 'Domain radius (um)', .22, .12, 2, 3),
+            ('domain-radius-um', 'Domain radius (um)', .22, .12, 10, 3),
             ('magnification', 'Magnification', 20, 1, 200, 1),
             ('objective-focal-mm', 'Objective focal length (mm)', 20, 1, 500, 1),
             ('illumination-power-w', 'Laser power (W)', 1, 1e-15, 1000, 15),
@@ -45,6 +46,8 @@ class SimulationControls(QWidget):
             ('transmission', 'Power transmission', 1, 0, 1, 8),
         ):
             self.number(name, label, value, low, high, decimals)
+        from .defect_controls import DefectControls
+        self.defect_controls = DefectControls(self)
         self.choice('beam-profile', 'Illumination', ('gaussian', 'plane'))
         self.choice('beam-definition', 'Finite beam definition', ('wafer_gaussian', 'beam_cross_section',
                     'wafer_rectangle', 'measured_wafer'))
@@ -199,7 +202,13 @@ class SimulationControls(QWidget):
             'camera-profile': 'gemi_area', 'gray-snr-pairs': 5000})
         low_haze.update({'detector' if name == 'enabled' else 'detector-'+name.replace('_', '-'): value
                          for name, value in profile_values('gemi_area').items()})
-        self._presets = (small_particle, standard, low_haze)
+        pattern = dict(low_haze, **{'defect-length-nm': 200, 'defect-width-nm': 50,
+            'defect-height-nm': 50, 'defect-rotation-deg': 0, 'particle-mesh-um': .015,
+            'rms-nm': 0, 'illumination-fit': 'manual', 'beam-profile': 'plane',
+            'illumination-length-um': 2, 'illumination-width-um': 2, 'transmission': .000001,
+            'pupil-samples': '32', 'padding': '4', 'gray-snr-pairs': 100})
+        self._presets = (small_particle, standard, low_haze)+tuple(
+            dict(pattern, **{'defect-shape': shape}) for shape in ('line_x', 'line_y', 'cross'))
         self._last_preset_index = 0
         self._applying_preset = False
         self.preset.currentIndexChanged.connect(self.apply_preset)
@@ -432,6 +441,7 @@ class SimulationControls(QWidget):
                 field.setValue(saved[source])
 
     def load_physical_parameters(self, saved, roughness=None):
+        self.defect_controls.load(saved)
         for name in ('diameter-nm', 'particle-n', 'particle-k', 'substrate-n', 'substrate-k',
                      'gap-nm', 'domain-radius-um', 'particle-mesh-um', 'threads'):
             if name.replace('-', '_') in saved:
@@ -466,6 +476,8 @@ class SimulationControls(QWidget):
         self.form.addRow(label, field)
 
     def arguments(self, imaging_only=False, incidence_deg=None, particle_enabled=True, parameters=None):
+        if not imaging_only:
+            self.defect_controls.update()
         result = []
         for name, field in self.fields.items():
             if name.startswith(('na', 'tilt')):

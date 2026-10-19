@@ -29,9 +29,8 @@ def surface_distance(points, triangles):
 
 
 def clearances(points, p, triangles):
-    radius = p.diameter_nm/2000
-    center = np.array((0, 0, radius+p.gap_nm/1000))
-    return surface_distance(points, triangles), abs(np.linalg.norm(points-center, axis=1)-radius)
+    from .defects import boundary_distance_um
+    return surface_distance(points, triangles), boundary_distance_um(points, p)
 
 
 def peak(points, electric, mask=None):

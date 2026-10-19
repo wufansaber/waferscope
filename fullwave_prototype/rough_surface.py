@@ -65,7 +65,8 @@ class Roughness:
             raise ValueError('Rough patch must stay clear of the PML')
         if (particle_enabled and self.rms_nm > 0 and
                 p.gap_nm/1000 <= triangles[..., 2].max()+1e-6):
-            raise ValueError('Sphere bottom must exceed the highest roughness peak; increase gap_nm')
+            label = 'Sphere' if p.defect_shape == 'sphere' else 'Defect'
+            raise ValueError(label+' bottom must exceed the highest roughness peak; increase gap_nm')
 
 
 def raw_height_grid(r):

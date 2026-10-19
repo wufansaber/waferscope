@@ -39,6 +39,11 @@ class Parameters:
     beam_measurement_path: str = ''
     beam_measurement_sha256: str = ''
     beam_phase_assumption: str = 'flat'
+    defect_shape: str = 'sphere'
+    defect_length_nm: float = 200.0
+    defect_width_nm: float = 50.0
+    defect_height_nm: float = 50.0
+    defect_rotation_deg: float = 0.0
 
     def validate(self):
         from .beam_inputs import DEFINITIONS, fingerprint, measured_envelope
@@ -59,7 +64,7 @@ class Parameters:
             raise ValueError('Gaussian footprint requires positive diameters and legacy beam waist = 0')
         for key, value in asdict(self).items():
             if key not in ('polarization', 'direct_solver', 'beam_profile', 'beam_definition',
-                           'beam_measurement_path', 'beam_measurement_sha256', 'beam_phase_assumption') and not math.isfinite(value):
+                           'beam_measurement_path', 'beam_measurement_sha256', 'beam_phase_assumption', 'defect_shape') and not math.isfinite(value):
                 raise ValueError(key + ' must be finite')
         for key in ('wavelength_nm', 'diameter_nm', 'particle_n', 'substrate_n',
                     'domain_radius_um', 'pml_thickness_um', 'pml_strength',
@@ -68,8 +73,8 @@ class Parameters:
                 raise ValueError(key + ' must be positive')
         if min(self.particle_k, self.substrate_k, self.gap_nm) < 0:
             raise ValueError('Loss and gap must be nonnegative')
-        if self.domain_radius_um <= (self.diameter_nm + self.gap_nm)/1000:
-            raise ValueError('The particle must be entirely inside the physical domain')
+        from .defects import validate_geometry
+        validate_geometry(self)
         if not 0 <= self.incidence_deg < 90 or self.polarization not in ('s', 'p'):
             raise ValueError('Use s/p polarization and incidence in [0,90)')
         if self.order not in (1, 2, 3) or not isinstance(self.threads, int) or self.threads < 1:

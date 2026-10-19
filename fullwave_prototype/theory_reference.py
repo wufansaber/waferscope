@@ -5,6 +5,8 @@ from scipy.special import spherical_jn, spherical_yn
 
 
 def mie_fields(points, p, include_incident=True):
+    if p.defect_shape != 'sphere':
+        raise ValueError('Mie fields require a sphere')
     if p.eps_substrate != 1:
         raise ValueError('Homogeneous Mie oracle requires an air substrate')
     from .illumination import illumination_rays
@@ -29,6 +31,8 @@ def _mie_ray(points, p, ray, include_incident):
 
 def bessel_mie_cross_sections(p, terms=16):
     """Direct Riccati-Bessel formula, independently of SCATMECH/miepython recurrences."""
+    if p.defect_shape != 'sphere':
+        raise ValueError('Mie cross sections require a sphere')
     if p.beam_waist_um:
         raise ValueError('Plane-wave Mie cross sections cannot benchmark a finite beam')
     x = p.k0*p.diameter_nm/2000

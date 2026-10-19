@@ -1,0 +1,504 @@
+{
+  "pipeline": {
+    "source": "build\\channel_symmetry_20261016\\low_haze_02nm",
+    "physical": {
+      "wavelength_nm": 266.0,
+      "diameter_nm": 100.0,
+      "particle_n": 1.59,
+      "particle_k": 0.0,
+      "substrate_n": 5.57,
+      "substrate_k": 0.387,
+      "incidence_deg": 75.0,
+      "polarization": "p",
+      "gap_nm": 10,
+      "domain_radius_um": 0.22,
+      "pml_thickness_um": 0.16,
+      "pml_strength": 2.0,
+      "pml_power": 1,
+      "pml_mesh_scale": 1.0,
+      "air_mesh_um": 0.12,
+      "substrate_mesh_um": 0.06,
+      "particle_mesh_um": 0.0225,
+      "order": 1,
+      "threads": 2,
+      "max_dofs": 350000,
+      "static_condensation": false,
+      "direct_solver": "umfpack",
+      "integration_bonus": 0,
+      "pml_order": 0,
+      "pml_inner_fraction": 0.0,
+      "beam_waist_um": 0.0,
+      "beam_order": 41,
+      "beam_profile": "gaussian",
+      "beam_length_um": 12.49167305137908,
+      "beam_width_um": 17.665893445990797,
+      "beam_definition": "wafer_gaussian",
+      "beam_measurement_path": "",
+      "beam_measurement_sha256": "",
+      "beam_phase_assumption": "flat"
+    },
+    "far_field_angular_evaluation": {
+      "date": "2026-10-19",
+      "source": "build\\channel_symmetry_20261016\\low_haze_02nm",
+      "source_metadata_sha256": "f9a6a8242aaeea1759265e210e9ee2687e332874d1681d0fa46dd7c0ee90d280",
+      "coarse_grid_shape": [
+        19,
+        72
+      ],
+      "coarse_step_deg": 5,
+      "new_grid_shape": [
+        401,
+        401
+      ],
+      "evaluated_directions": 125609,
+      "cartesian_step": 0.0050000000000000044,
+      "finite_window_sampling_reference": 0.005736100109690774,
+      "coarse_direction_complex_relative_l2": 5.441272496487143e-15,
+      "coarse_direction_checks": 125,
+      "surface_fft_vs_direct_relative_l2": 0.00012791840444976017,
+      "surface_direct_direction_checks": 25,
+      "elapsed_seconds": 223.710109,
+      "field_combination": "A_whole_SPM + A_local_FEM_with - A_local_SPM",
+      "scope": "Same saved physical fields. Local volume and triangle radiation evaluated at every plotted direction. Whole-surface Fourier transform uses the existing padded FFT with selected direct-sum checks. No intensity-image smoothing, new FEM solve, forced symmetry or ensemble averaging. This is an angular-visualization refinement, not a FEM/rough-surface convergence certificate."
+    },
+    "scope": "Local FEM near fields; coherent hybrid far/image fields, not a global full-wave wafer solve."
+  },
+  "sweep": {
+    "parameters": {
+      "wafer_material": "Silicon (Si)",
+      "wafer_n": 5.57,
+      "wafer_k": 0.387,
+      "wafer_thickness_um": 725.0,
+      "particle_material": "PSL",
+      "particle_n": 1.59,
+      "particle_k": 0.0,
+      "particle_diameter_nm": 100.0,
+      "wavelength_nm": 266,
+      "incidence_deg": 75.0,
+      "polarization": "p",
+      "angular_step_deg": 4,
+      "display_floor_db": -35.0,
+      "coating_layers": [],
+      "roughness_enabled": false,
+      "haze_only": false,
+      "roughness_psd": "abc",
+      "roughness_interface_mode": "top_interface",
+      "roughness_rms_nm": 0.2,
+      "roughness_correlation_length_um": 0.2,
+      "roughness_exponent": 3.0,
+      "illumination_length_um": 2,
+      "illumination_width_um": 2
+    },
+    "objective": {
+      "numerical_aperture": 0.4,
+      "focal_length_mm": 20.0,
+      "tilt_degrees": [
+        45.0,
+        -45.0,
+        0.0
+      ],
+      "grid_size": 181,
+      "display_floor_db": -35.0,
+      "channel_numerical_apertures": [
+        0.4,
+        0.4,
+        0.4
+      ]
+    },
+    "rows": [
+      [
+        30,
+        4.1570665825791466e-07,
+        4.1570665825791476e-07,
+        7.882846967621211e-08
+      ],
+      [
+        40,
+        2.2890327781073683e-06,
+        2.2890327781073688e-06,
+        4.2891301715266883e-07
+      ],
+      [
+        50,
+        8.362841923767444e-06,
+        8.362841923767445e-06,
+        1.5550563092064359e-06
+      ],
+      [
+        60,
+        2.313316974867961e-05,
+        2.3133169748679614e-05,
+        4.331508432155076e-06
+      ],
+      [
+        70,
+        5.161352157762471e-05,
+        5.161352157762473e-05,
+        1.0044514806014123e-05
+      ],
+      [
+        80,
+        9.662428666381048e-05,
+        9.66242866638105e-05,
+        2.0597051865247204e-05
+      ],
+      [
+        90,
+        0.0001566097506125132,
+        0.00015660975061251322,
+        3.892332631882764e-05
+      ],
+      [
+        100,
+        0.00022589704015116475,
+        0.00022589704015116483,
+        6.824477644363627e-05
+      ],
+      [
+        110,
+        0.0002959478619918914,
+        0.00029594786199189146,
+        0.00010829124300343737
+      ],
+      [
+        120,
+        0.00035409002060189675,
+        0.0003540900206018969,
+        0.00015163653244639163
+      ],
+      [
+        130,
+        0.00038484626843842383,
+        0.000384846268438424,
+        0.00018954892344848174
+      ],
+      [
+        140,
+        0.0003768299931456669,
+        0.0003768299931456671,
+        0.00022969938384193974
+      ],
+      [
+        150,
+        0.000337338307527097,
+        0.00033733830752709717,
+        0.00032552202186825094
+      ],
+      [
+        160,
+        0.0003123647750765887,
+        0.00031236477507658894,
+        0.000594393293858576
+      ],
+      [
+        170,
+        0.00036787092958373373,
+        0.000367870929583734,
+        0.001120382842579044
+      ],
+      [
+        180,
+        0.0004906321204029557,
+        0.0004906321204029559,
+        0.001753690055183093
+      ],
+      [
+        190,
+        0.0005802478886995931,
+        0.0005802478886995933,
+        0.002224461633036949
+      ],
+      [
+        200,
+        0.0005995969905211089,
+        0.0005995969905211091,
+        0.0024781836555239026
+      ]
+    ],
+    "aperture_cases": [
+      {
+        "na": [
+          0.2,
+          0.2,
+          0.2
+        ],
+        "energy_union_fraction": 0.041398243150100225,
+        "geometric_union_fraction": 0.06047636086547831,
+        "energy_channel_fractions": [
+          0.018947235686072945,
+          0.018947235686072945,
+          0.003503771777954334
+        ]
+      },
+      {
+        "na": [
+          0.4,
+          0.4,
+          0.4
+        ],
+        "energy_union_fraction": 0.18568113375069112,
+        "geometric_union_fraction": 0.2485434595307874,
+        "energy_channel_fractions": [
+          0.08269846072425094,
+          0.08269846072425094,
+          0.020284212302189242
+        ]
+      },
+      {
+        "na": [
+          0.5,
+          0.3,
+          0.0
+        ],
+        "energy_union_fraction": 0.172734498385729,
+        "geometric_union_fraction": 0.18004416936008708,
+        "energy_channel_fractions": [
+          0.13006334211418127,
+          0.04267115627154771,
+          0.0
+        ]
+      }
+    ],
+    "scope": "New SCATMECH Bobbert-Vlieger calculations. 4-degree source grid; interpolated collection quadrature. No gap parameter in this SCATMECH setup. Illustrative n/k held fixed, not calibrated material dispersion."
+  },
+  "haze": {
+    "rms_nm": 0.2,
+    "correlation_length_um": 0.05,
+    "source": "D:\\code\\aptk_sim\\aptk\\build\\field_coverage_20261016\\result",
+    "parameters": {
+      "wavelength_nm": 266.0,
+      "diameter_nm": 100.0,
+      "particle_n": 1.59,
+      "particle_k": 0.0,
+      "substrate_n": 5.57,
+      "substrate_k": 0.387,
+      "incidence_deg": 75.0,
+      "polarization": "p",
+      "gap_nm": 10,
+      "domain_radius_um": 0.22,
+      "pml_thickness_um": 0.16,
+      "pml_strength": 2.0,
+      "pml_power": 1,
+      "pml_mesh_scale": 1.0,
+      "air_mesh_um": 0.12,
+      "substrate_mesh_um": 0.06,
+      "particle_mesh_um": 0.0225,
+      "order": 1,
+      "threads": 2,
+      "max_dofs": 350000,
+      "static_condensation": false,
+      "direct_solver": "umfpack",
+      "integration_bonus": 0,
+      "pml_order": 0,
+      "pml_inner_fraction": 0.0,
+      "beam_waist_um": 0.0,
+      "beam_order": 41,
+      "beam_profile": "gaussian",
+      "beam_length_um": 12.49167305137908,
+      "beam_width_um": 17.665893445990797,
+      "beam_definition": "wafer_gaussian",
+      "beam_measurement_path": "",
+      "beam_measurement_sha256": "",
+      "beam_phase_assumption": "flat"
+    },
+    "incident_power_in_window_w": 0.9909327675961958,
+    "rough_surface_power_coverage": 0.9909327675961958,
+    "plane_unit_kernel_relative_l2": 5.852748237423977e-16,
+    "plane_gaussian_psd_relative_l2": 7.444493178897429e-16,
+    "finite_hemisphere_power_w": 2.2403481979375983e-09,
+    "nist_hemisphere_power_w": 2.2452057216609993e-09,
+    "finite_vs_nist_hemisphere_relative": -0.0021635094176614134,
+    "channels": [
+      {
+        "channel": 1,
+        "finite_coherent_psd_power_w": 4.0546015474187284e-10,
+        "nist_plane_psd_power_w": 4.0639525252564323e-10,
+        "finite_vs_nist_relative": -0.0023009564653105885,
+        "scaled_128_surface_mean_w": 4.0530092732653623e-10,
+        "scaled_128_surface_ci_w": [
+          4.0339630192308706e-10,
+          4.072055527299854e-10
+        ],
+        "finite_reference_in_95ci": true,
+        "ensemble_vs_finite_relative": -0.00039270792326806525
+      },
+      {
+        "channel": 2,
+        "finite_coherent_psd_power_w": 4.0546015474187284e-10,
+        "nist_plane_psd_power_w": 4.063952525256432e-10,
+        "finite_vs_nist_relative": -0.0023009564653103665,
+        "scaled_128_surface_mean_w": 4.055051094659361e-10,
+        "scaled_128_surface_ci_w": [
+          4.034760586674298e-10,
+          4.0753416026444247e-10
+        ],
+        "finite_reference_in_95ci": true,
+        "ensemble_vs_finite_relative": 0.00011087334609216626
+      },
+      {
+        "channel": 3,
+        "finite_coherent_psd_power_w": 5.045909105328664e-10,
+        "nist_plane_psd_power_w": 5.055655445348594e-10,
+        "finite_vs_nist_relative": -0.0019278093860011225
+      }
+    ],
+    "scope": "Haze only. NIST Microroughness_BRDF_Model is plane-wave first-order Rayleigh-Rice. Finite Gaussian reference uses full coherent field covariance, not an incoherent sum of incident rays. 128 SPM surfaces are scaled by RMS^2 exactly within first-order SPM; they are not 128 fresh coupled FEM solves. Image-plane coherence is not validated by far-field intensity alone. No empirical intensity normalization or fitted scale.",
+    "references": [
+      "https://pages.nist.gov/SCATMECH/docs/microroughbrdf.htm",
+      "https://pages.nist.gov/SCATMECH/docs/psd.htm"
+    ]
+  },
+  "camera": {
+    "source": "build\\channel_symmetry_20261016\\low_haze_02nm",
+    "detector": {
+      "enabled": true,
+      "pixel_pitch_um": 5.0,
+      "pixels_x": 20,
+      "pixels_y": 20,
+      "exposure_ms": 0.01,
+      "quantum_efficiency": 0.639,
+      "read_noise_e": 12.1,
+      "dark_current_e_s": 1000.0,
+      "background_e_s": 0.0,
+      "full_well_e": 16000.0,
+      "seed": 0,
+      "gain_e_dn": 16.0,
+      "offset_dn": 64.0,
+      "bit_depth": 10,
+      "fill_factor": 1.0,
+      "prnu_fraction": 0.00124,
+      "dsnu_e": 5.6,
+      "dark_current_std_e_s": 0.0,
+      "fixed_pattern_seed": 0,
+      "reference_frames": 1,
+      "haze_mismatch_fraction": 0.0
+    },
+    "pairs": 1000,
+    "seed": 20261017,
+    "results": [
+      {
+        "exposure_us": 1.0,
+        "channels": [
+          {
+            "channel": 1,
+            "gray_snr": 3.4109131306955045,
+            "gray_valid": true,
+            "clipped_values": 0
+          },
+          {
+            "channel": 2,
+            "gray_snr": 3.1994830355760113,
+            "gray_valid": true,
+            "clipped_values": 0
+          },
+          {
+            "channel": 3,
+            "gray_snr": 0.7690460805971983,
+            "gray_valid": true,
+            "clipped_values": 0
+          }
+        ]
+      },
+      {
+        "exposure_us": 5.0,
+        "channels": [
+          {
+            "channel": 1,
+            "gray_snr": 16.1750499060726,
+            "gray_valid": true,
+            "clipped_values": 0
+          },
+          {
+            "channel": 2,
+            "gray_snr": 16.878987784485556,
+            "gray_valid": true,
+            "clipped_values": 0
+          },
+          {
+            "channel": 3,
+            "gray_snr": 3.497888087447659,
+            "gray_valid": true,
+            "clipped_values": 0
+          }
+        ]
+      },
+      {
+        "exposure_us": 10.0,
+        "channels": [
+          {
+            "channel": 1,
+            "gray_snr": 32.03630350828312,
+            "gray_valid": true,
+            "clipped_values": 0
+          },
+          {
+            "channel": 2,
+            "gray_snr": 31.960219205447434,
+            "gray_valid": true,
+            "clipped_values": 0
+          },
+          {
+            "channel": 3,
+            "gray_snr": 7.1264512209642765,
+            "gray_valid": true,
+            "clipped_values": 0
+          }
+        ]
+      }
+    ],
+    "scope": "New camera acquisition simulation on saved optical irradiance; no TDI, no new FEM solves. Same static haze in sample/reference, no spatial-background mismatch. Gain/offset assumptions are not camera calibration."
+  },
+  "patterns": {
+    "coarse": "D:\\code\\aptk_sim\\aptk\\build\\cross_2um_20261017\\preview_scale3",
+    "refined": "D:\\code\\aptk_sim\\aptk\\build\\cross_2um_20261017\\background_refined",
+    "channels": [
+      {
+        "channel": 1,
+        "image_relative_l2": 0.4857299858114156,
+        "power_relative_change": -0.1036821696693826
+      },
+      {
+        "channel": 2,
+        "image_relative_l2": 0.6288485845294522,
+        "power_relative_change": 0.05401912564980638
+      },
+      {
+        "channel": 3,
+        "image_relative_l2": 0.9392801712699411,
+        "power_relative_change": -0.1489576974472019
+      }
+    ],
+    "coarse_symmetry": {
+      "ch3_x_mirror_relative_l2": 0.812450439690133,
+      "side_power_relative_difference": 0.3003888295026745
+    },
+    "refined_symmetry": {
+      "ch3_x_mirror_relative_l2": 0.6732465295374921,
+      "side_power_relative_difference": 0.14037665895611953
+    },
+    "dofs": [
+      198780,
+      234214
+    ],
+    "scope": "Background mesh sensitivity only; local defect mesh fixed at 30 nm. No normalization, alignment, symmetrization or fitted scale. Not a full FEM/PML/local-mesh convergence proof."
+  },
+  "provenance": {
+    "showcase_date": "2026-10-17",
+    "inputs_sha256": {
+      "build\\channel_symmetry_20261016\\low_haze_02nm\\imaging_report.json": "ff49828676deb71c0a26d679abb79f1747950c466d74f070405b6651979ea2d0",
+      "build\\channel_symmetry_20261016\\low_haze_02nm\\local_scattering\\report.json": "cfb5f224174615a40b9c78ae703036e63ce17cfe188a3a4cee74beec9c86fb56",
+      "build\\field_coverage_20261016\\result\\imaging_report.json": "9553b53b1bfbf43866121028296717b10ce2d3a1b163068e8b79232ff0debda7",
+      "build\\channel_symmetry_20261016\\nist_haze_report.json": "cb096a69a6648a1217def27caae56121b66259158b7d12d656bec90100d936bf",
+      "build\\channel_symmetry_20261016\\ensemble_report.json": "a88229788686405a2080d09e3855ef41b5e17ae8f36beec72a9aa7f2bbe9bb55",
+      "build\\fullwave_ui\\20261017_164144_979822\\imaging_report.json": "fc67d7572ba0fa55c3be1f0e541c64b5c93f57b639b332f445bef6b81a4857ab",
+      "build\\cross_2um_20261017\\background_refined\\imaging_report.json": "c7b8b21107469474fe3206486ac38d5a3e92552611a3b40b08e911106edd08d9",
+      "build\\cross_2um_20261017\\mesh_sensitivity.json": "3473643b7c01c55aedaafcba08e913993e38cc6451ba6b6ef2632dfd70fbef1c"
+    },
+    "generated_now": [
+      "18 SCATMECH particle diameters",
+      "3 aperture configurations",
+      "3 camera exposures, 1000 pairs each"
+    ],
+    "archived_solves": "FEM, hybrid and statistical PSD examples use preserved actual solver results, not new FEM solves."
+  }
+}

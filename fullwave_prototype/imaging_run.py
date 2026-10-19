@@ -62,6 +62,10 @@ def build_parser():
     parser.add_argument('--output', default='build/fullwave_imaging/default')
     parser.add_argument('--source', help='Reuse a rough_run directory with source_format_version=1')
     add_options(parser)
+    from .defects import SHAPES
+    parser.add_argument('--defect-shape', choices=SHAPES)
+    for name in ('defect-length-nm', 'defect-width-nm', 'defect-height-nm', 'defect-rotation-deg'):
+        parser.add_argument('--'+name, type=float)
     parser.add_argument('--beam-waist-um', type=float)
     parser.add_argument('--beam-order', type=int)
     parser.add_argument('--beam-profile', choices=('plane', 'gaussian'))
@@ -131,7 +135,8 @@ def scattering_settings(args, particle_enabled=True):
         particle_mesh = .015*scale*local
     physical = {key: getattr(args, key) for key in ('wavelength_nm', 'diameter_nm', 'particle_n',
                 'particle_k', 'substrate_n', 'substrate_k', 'incidence_deg', 'domain_radius_um', 'polarization',
-                'beam_waist_um', 'beam_order')}
+                'beam_waist_um', 'beam_order', 'defect_shape', 'defect_length_nm',
+                'defect_width_nm', 'defect_height_nm', 'defect_rotation_deg')}
     p = numerical_parameters(args.accuracy or 'preview', scale, order=args.order, threads=args.threads,
         gap_nm=args.gap_nm if args.gap_nm is not None else 10,
         pml_power=args.pml_power, pml_mesh_scale=args.pml_mesh_scale,
@@ -196,7 +201,9 @@ def main():
                                                   args.direct_solver, args.wavelength_nm, args.diameter_nm,
                                                   args.particle_n, args.particle_k, args.substrate_n,
                                                   args.substrate_k, args.incidence_deg, args.domain_radius_um,
-                                                  args.polarization, args.roughness_seed,
+                                                  args.polarization, args.roughness_seed, args.defect_shape,
+                                                  args.defect_length_nm, args.defect_width_nm,
+                                                  args.defect_height_nm, args.defect_rotation_deg,
                                                   args.beam_waist_um, args.beam_order, args.beam_profile, args.beam_definition)):
         parser.error('FEM parameters cannot change with --source; omit --source to recompute scattering.')
     if args.source and args.beam_measurement_path:

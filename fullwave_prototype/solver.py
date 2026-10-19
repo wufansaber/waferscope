@@ -1,4 +1,4 @@
-"""Vector H(curl) scattered-field solve with a curved sphere and radial PML."""
+"""Vector H(curl) scattered-field solve with a finite defect and radial PML."""
 import time
 import numpy as np
 
@@ -9,24 +9,30 @@ from .absorbing_boundary import set_boundary
 def build_mesh(p):
     import ngsolve as ng
     from netgen.occ import Sphere, Box, Glue, OCCGeometry
-    outer_r = p.domain_radius_um + p.pml_thickness_um
+    from .defects import cad_solid
+    scale = 1. if p.defect_shape == 'sphere' else 1000.
+    outer_r = (p.domain_radius_um + p.pml_thickness_um)*scale
     outer = Sphere((0, 0, 0), outer_r)
     outer.faces.name = 'outer'
-    inner = Sphere((0, 0, 0), p.domain_radius_um)
+    inner = Sphere((0, 0, 0), p.domain_radius_um*scale)
     lower = Box((-2*outer_r, -2*outer_r, -2*outer_r), (2*outer_r, 2*outer_r, 0))
-    ball = Sphere((0, 0, (p.diameter_nm/2+p.gap_nm)/1000), p.diameter_nm/2000)
+    ball = cad_solid(p, scale)
     ball.mat('particle')
-    ball.maxh = p.particle_mesh_um
-    ball.faces.maxh = p.particle_mesh_um
+    ball.maxh = p.particle_mesh_um*scale
+    ball.faces.maxh = p.particle_mesh_um*scale
     regions = [(inner-lower-ball, 'air', p.air_mesh_um),
                (inner*lower, 'substrate', p.substrate_mesh_um),
                ((outer-inner)-lower, 'pml_air', p.air_mesh_um*p.pml_mesh_scale),
                ((outer-inner)*lower, 'pml_substrate', p.substrate_mesh_um*p.pml_mesh_scale)]
     for shape, name, h in regions:
         shape.mat(name)
-        shape.maxh = h
-    mesh = ng.Mesh(OCCGeometry(Glue([s for s, _, _ in regions]+[ball])).GenerateMesh(
-        maxh=p.air_mesh_um))
+        shape.maxh = h*scale
+    shape = Glue([s for s, _, _ in regions]+[ball])
+    native = OCCGeometry(shape).GenerateMesh(maxh=p.air_mesh_um*scale)
+    if scale != 1:
+        native.Scale(1/scale)
+        native.SetGeometry(OCCGeometry(shape.Scale((0, 0, 0), 1/scale)))
+    mesh = ng.Mesh(native)
     mesh.Curve(max(3, p.order+1))
     set_boundary(mesh, p)
     return mesh
@@ -106,7 +112,9 @@ def solve(p, mesh=None, particle_enabled=True):
         raise RuntimeError('Linear solve failed the true algebraic residual/finite-field check: {}'.format(rel))
     volume = (ng.Integrate(1, mesh, definedon=mesh.Materials('particle'))
               if 'particle' in mesh.GetMaterials() else 0.)
+    from .defects import metadata as defect_metadata
     metadata = dict(elements=mesh.ne, dofs=space.ndof, algebraic_residual=float(rel),
+                    defect_geometry=defect_metadata(p),
                     local_beam_quadrature_check=beam_check,
                     threads=p.threads,
                     assembly_seconds=assembly_seconds, factor_seconds=factor_seconds,

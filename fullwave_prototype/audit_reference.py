@@ -12,6 +12,8 @@ def main():
     args = parser.parse_args()
     request = json.loads(Path(args.request).read_text(encoding='utf-8'))
     p = request['parameters']
+    if p.get('defect_shape', 'sphere') != 'sphere':
+        raise ValueError('Mie/Bobbert-Vlieger references require a sphere, not a finite pattern')
     if p.get('beam_waist_um', 0):
         raise ValueError('This SCATMECH oracle is for plane-wave illumination only')
     with np.load(request['directions_file']) as data:

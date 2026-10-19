@@ -45,6 +45,24 @@ def export_licenses(destination):
         shutil.copy2(python_license, destination/'PYTHON_LICENSE.txt')
 
 
+def copy_release_manuals(app, root=ROOT):
+    """Keep Markdown image links and both reader-ready PDFs in the bundle."""
+    for relative in ('far_field_standalone/manual_assets', 'docs/showcase_20261017'):
+        source = root/relative
+        if not source.is_dir():
+            raise FileNotFoundError('Missing release documentation: '+str(source))
+        destination = (app/'docs'/relative if relative.startswith('far_field_standalone/')
+                       else app/relative)
+        shutil.copytree(source, destination, dirs_exist_ok=True)
+    for name in ('FarField_Simulation_中文操作手册.pdf', 'FarField_Simulation_功能与案例手册.pdf'):
+        source = root/'output/pdf'/name
+        if not source.is_file():
+            raise FileNotFoundError('Missing release manual: '+str(source))
+        destination = app/'docs'/name
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, destination)
+
+
 def build(args):
     output = HERE/'dist'/args.version
     app = output/'FarField_Simulation'
@@ -63,6 +81,7 @@ def build(args):
         target.mkdir(parents=True, exist_ok=True)
         for source in (ROOT/folder).glob('*.md'):
             shutil.copy2(source, target/source.name)
+    copy_release_manuals(app)
     shutil.copy2(HERE/'RELEASE_README_CN.md', app/'README_CN.md')
     shutil.copy2(HERE/'THIRD_PARTY_NOTICES.md', app/'THIRD_PARTY_NOTICES.md')
     for name in ('CAMERA_MODEL_EMVA1288_CN.md', 'DETECTION_SNR_UI_CN.md'):

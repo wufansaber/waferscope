@@ -108,7 +108,7 @@ def run(p, roughness, output, angular_step=10, quadrature_order=5, near_diagnost
                    source_format_version=1,
                    near_field_planes=[plane.metadata() for plane in planes],
                    angular_step_deg=angular_step, status='experimental; roughness not physically converged',
-                   scope='Finite triangulated rough patch on half-space, sphere entirely in air; same mesh in both solves.',
+                   scope='Finite triangulated rough patch on half-space, finite defect entirely in air; same mesh in both solves.',
                    units='E/E_inc; H*Z0/E_inc; amplitudes um; DSC um^2/sr; exp(-i omega t).',
                    surface_mean_height_nm=float(triangles[..., 2].mean()*1000),
                    surface_peak_height_nm=float(vertices[..., 2].max()*1000),

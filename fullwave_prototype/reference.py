@@ -9,6 +9,8 @@ from .far_field import angular_grid
 
 
 def calculate(p, theta, phi):
+    if p.defect_shape != 'sphere':
+        raise ValueError('Bobbert-Vlieger reference supports spheres only, not line or cross defects')
     from pySCATMECH.local import Local_BRDF_Model
     model = Local_BRDF_Model('Bobbert_Vlieger_BRDF_Model', {
         'lambda': p.wavelength_nm/1000, 'radius': p.diameter_nm/2000,

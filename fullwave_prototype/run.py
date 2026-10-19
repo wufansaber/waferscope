@@ -14,6 +14,8 @@ from .far_field import sphere_quadrature, radiation_amplitude, angular_grid
 
 
 def run(p, output, reference_python=None):
+    if p.defect_shape != 'sphere':
+        raise ValueError('This benchmark is sphere-only; use imaging_run for finite defect patterns')
     output = Path(output)
     output.mkdir(parents=True, exist_ok=True)
     start = time.perf_counter()

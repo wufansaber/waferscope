@@ -12,6 +12,7 @@ def plot_pair(output, data, report):
     import matplotlib.pyplot as plt
     from matplotlib.colors import PowerNorm
     from matplotlib.tri import Triangulation
+    from .defects import draw_section, description
     fig, axes = plt.subplots(2, 3, figsize=(16, 9), layout='constrained')
     triangles = data['surface_triangles_um']*1000
     triangulation = Triangulation(triangles[..., 0].ravel(), triangles[..., 1].ravel(),
@@ -33,8 +34,7 @@ def plot_pair(output, data, report):
         y = surface[0, :, 1]*1000
         z = [np.interp(0, surface[:, 0, 0], surface[:, j, 2])*1000 for j in range(len(y))]
         ax.plot(y, z, color='cyan', linewidth=.8)
-        ax.add_patch(plt.Circle((0, p['diameter_nm']/2+p['gap_nm']), p['diameter_nm']/2,
-                                fill=False, edgecolor='cyan', linewidth=.8))
+        draw_section(ax, p, 'yz', linewidth=.8)
         ax.set(title=title, xlabel='Y (nm)', ylabel='Z (nm)', aspect='equal')
     colors = dict(total='#174c78', background='#777777', change_field='#c45714', interference='#16816e')
     labels = dict(total='With particle', background='Without particle', change_field='Field-change power',
@@ -56,8 +56,8 @@ def plot_pair(output, data, report):
     ax.axhline(0, color='black', linewidth=.5)
     ax.set(title='Upper-hemisphere integral', ylabel='Integrated DSC (um^2)')
     sample_rms = report['surface_statistics']['triangle_rms_nm']
-    fig.suptitle('EXPERIMENTAL | {} nm, sphere {} nm, rough sample RMS {:.3g} nm, sphere bottom z={} nm\n'
+    fig.suptitle('EXPERIMENTAL | {} nm, {}, rough sample RMS {:.3g} nm, defect bottom z={} nm\n'
                  'Same geometry and phase reference; total = background + change-field power + interference'.format(
-                     p['wavelength_nm'], p['diameter_nm'], sample_rms, p['gap_nm']), fontsize=12)
+                     p['wavelength_nm'], description(p), sample_rms, p['gap_nm']), fontsize=12)
     fig.savefig(Path(output)/'rough_comparison.png', dpi=150)
     plt.close(fig)

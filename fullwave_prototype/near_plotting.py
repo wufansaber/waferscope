@@ -27,17 +27,13 @@ def surface_segments(triangles, fixed_axis, offset):
 
 def draw_plane(ax, data, report, plane, norm):
     from matplotlib.collections import LineCollection
-    from matplotlib.patches import Circle
+    from .defects import draw_section
     horizontal, vertical, fixed = PLANE_AXES[plane.name]
     value = np.sum(abs(electric_field(data, plane))**2, axis=-1)
     im = ax.pcolormesh(plane.u*1000, plane.v*1000, value,
                        norm=norm, cmap='magma', shading='auto')
     p = report['parameters']
-    center = np.array((0., 0., p['diameter_nm']/2+p['gap_nm']))
-    radius_squared = (p['diameter_nm']/2)**2-(plane.offset*1000-center[fixed])**2
-    if radius_squared > 0:
-        ax.add_patch(Circle(center[[horizontal, vertical]], np.sqrt(radius_squared),
-                            fill=False, edgecolor='cyan', linewidth=1))
+    draw_section(ax, p, plane.name, plane.offset*1000)
     if fixed != 2:
         ax.axhline(0, color='cyan', linewidth=.6, linestyle=':')
     segments = surface_segments(data['surface_triangles_um'], fixed, plane.offset)

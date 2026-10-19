@@ -100,6 +100,8 @@ def check_saved(source):
 
 
 def bv_reference(p, weights, directions, output, python, lmax=14):
+    if p.get('defect_shape', 'sphere') != 'sphere':
+        raise ValueError('The Bobbert-Vlieger image reference requires a sphere')
     output.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(output/'directions.npz', directions=directions, weights=weights)
     request = dict(parameters=p, kind='bv', lmax=lmax,

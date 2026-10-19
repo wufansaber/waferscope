@@ -22,6 +22,8 @@ FEM 结果默认保存在 `%LOCALAPPDATA%\FarField_Simulation\results`。
 完整计算参数显示在 `Result parameters` 页。示例仅包含图像和报告，不包含大体积复场缓存。
 
 - [用户指南](docs/far_field_standalone/USER_GUIDE_CN.md)
+- [完整操作手册 PDF](docs/FarField_Simulation_中文操作手册.pdf)
+- [软件功能与案例 PDF](docs/FarField_Simulation_功能与案例手册.pdf)
 - [理论模型](docs/fullwave_prototype/THEORETICAL_MODEL_CN.md)
 - [验证与限制](docs/fullwave_prototype/LOW_MEMORY_REFINEMENT_CN.md)
 
@@ -32,6 +34,12 @@ FEM 仍是实验模型，不是完备解析解：有限粗糙区域、几何尖�
 第三方依赖的许可和版本见 `THIRD_PARTY_NOTICES.md` 与 `licenses` 文件夹。
 
 ## 本次更新
+
+2026-10-19 重新打包，加入横线、竖线与十字有限缺陷、计算域自动扩展，以及
+适配缺陷尺寸的近场与像面显示范围。图案仍需做网格和尖角收敛验证，不能将预览图视为准确形貌预测。
+附带 21 页中文操作手册和 10 页功能与案例手册。案例混合远场已使用同一保存源，
+按 401×401 方向网格重算，消除旧 5° 采样的扇区色块，保留单张粗糙面的真实相干散斑。
+该加密是案例图更新，不代表主程序所有远场默认采样均已改为 401×401，也不是全模型收敛证明。
 
 2026-10-16 增加 Gemi 面阵近似预设、原始灰度帧采样和独立灰度 ROI SNR 指标、
 相机单独重算、低起伏 266 nm 预设，以及保存的 NIST/对称性报告查看。
