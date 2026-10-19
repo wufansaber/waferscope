@@ -1,6 +1,35 @@
-"""Simulation parameter model and validation."""
+"""Simulation parameter models and validation."""
 
 from dataclasses import dataclass
+from math import floor
+
+
+ROUGHNESS_INTERFACE_MODES = (
+    "top_interface",
+    "correlated_interfaces",
+    "uncorrelated_interfaces",
+)
+
+
+@dataclass(frozen=True)
+class CoatingLayerParameters:
+    material: str = "Fused silica (SiO2)"
+    n: float = 1.476
+    k: float = 0.0
+    thickness_nm: float = 100.0
+
+    def validate(self, layer_number=None):
+        prefix = (
+            "Coating layer {}: ".format(layer_number)
+            if layer_number is not None
+            else "Coating layer: "
+        )
+        if self.n <= 0.0:
+            raise ValueError(prefix + "refractive-index real part must be positive.")
+        if self.k < 0.0:
+            raise ValueError(prefix + "extinction coefficient cannot be negative.")
+        if self.thickness_nm <= 0.0:
+            raise ValueError(prefix + "thickness must be positive.")
 
 
 @dataclass(frozen=True)
@@ -18,6 +47,23 @@ class SimulationParameters:
     polarization: str = "p"
     angular_step_deg: float = 4.0
     display_floor_db: float = -35.0
+    coating_layers: tuple = ()
+    roughness_enabled: bool = False
+    haze_only: bool = False
+    roughness_psd: str = "abc"
+    roughness_interface_mode: str = "top_interface"
+    roughness_rms_nm: float = 0.2
+    roughness_correlation_length_um: float = 0.2
+    roughness_exponent: float = 3.0
+    illumination_length_um: float = 10.0
+    illumination_width_um: float = 10.0
+
+    def __post_init__(self):
+        object.__setattr__(self, "coating_layers", tuple(self.coating_layers))
+
+    @property
+    def illuminated_area_um2(self):
+        return self.illumination_length_um * self.illumination_width_um
 
     def validate(self):
         if self.wafer_n <= 0 or self.particle_n <= 0:
@@ -32,6 +78,31 @@ class SimulationParameters:
             raise ValueError("Incidence angle must be in [0, 90) degrees.")
         if not 2.0 <= self.angular_step_deg <= 15.0:
             raise ValueError("Angular step must be between 2 and 15 degrees.")
+        if len(self.coating_layers) > 32:
+            raise ValueError("At most 32 coating layers are supported.")
+        for index, layer in enumerate(self.coating_layers, start=1):
+            if not isinstance(layer, CoatingLayerParameters):
+                raise TypeError(
+                    "Coating layers must use CoatingLayerParameters instances."
+                )
+            layer.validate(index)
+        if self.roughness_interface_mode not in ROUGHNESS_INTERFACE_MODES:
+            raise ValueError("Unknown roughness interface mode.")
+        if self.roughness_psd not in ("abc", "gaussian"):
+            raise ValueError("Unknown roughness PSD model.")
+        if self.haze_only and not self.roughness_enabled:
+            raise ValueError("Haze-only mode requires roughness background.")
+        if self.roughness_enabled:
+            if self.roughness_rms_nm <= 0.0:
+                raise ValueError("Roughness RMS must be positive when enabled.")
+            if self.roughness_correlation_length_um <= 0.0:
+                raise ValueError("Roughness correlation length must be positive.")
+            if self.roughness_psd == "abc" and self.roughness_exponent <= 2.0:
+                raise ValueError("ABC PSD exponent C must be greater than 2.")
+            if self.illumination_length_um <= 0.0:
+                raise ValueError("Illumination footprint length must be positive.")
+            if self.illumination_width_um <= 0.0:
+                raise ValueError("Illumination footprint width must be positive.")
 
 
 @dataclass(frozen=True)
@@ -41,14 +112,27 @@ class ObjectiveCollectionParameters:
     tilt_degrees: tuple = (45.0, -45.0, 0.0)
     grid_size: int = 181
     display_floor_db: float = -35.0
+    channel_numerical_apertures: tuple = None
+
+    def __post_init__(self):
+        channel_na = self.channel_numerical_apertures
+        if channel_na is None:
+            channel_na = (self.numerical_aperture,) * 3
+        else:
+            channel_na = tuple(channel_na)
+        object.__setattr__(self, "channel_numerical_apertures", channel_na)
+        object.__setattr__(self, "numerical_aperture", channel_na[0])
 
     @property
     def tilt_deg(self):
         return self.tilt_degrees[0]
 
     def validate(self):
-        if not 0.0 < self.numerical_aperture < 1.0:
-            raise ValueError("Objective NA must be in the open interval (0, 1).")
+        if len(self.channel_numerical_apertures) != 3:
+            raise ValueError("Exactly three objective NA values are required.")
+        for numerical_aperture in self.channel_numerical_apertures:
+            if not 0.0 <= numerical_aperture < 1.0:
+                raise ValueError("Objective NA values must be in [0, 1).")
         if self.focal_length_mm <= 0.0:
             raise ValueError("Objective focal length must be positive.")
         if len(self.tilt_degrees) != 3:
@@ -60,3 +144,41 @@ class ObjectiveCollectionParameters:
                 )
         if self.grid_size < 51:
             raise ValueError("Objective example grid size must be at least 51.")
+
+
+@dataclass(frozen=True)
+class ParticleSizeSweepParameters:
+    start_diameter_nm: float = 30.0
+    end_diameter_nm: float = 200.0
+    step_diameter_nm: float = 10.0
+    maximum_points: int = 200
+
+    @property
+    def point_count(self):
+        if self.step_diameter_nm <= 0.0 or self.end_diameter_nm < self.start_diameter_nm:
+            return 0
+        span = self.end_diameter_nm - self.start_diameter_nm
+        return int(floor(span / self.step_diameter_nm + 1e-9)) + 1
+
+    @property
+    def diameters_nm(self):
+        return tuple(
+            self.start_diameter_nm + index * self.step_diameter_nm
+            for index in range(self.point_count)
+        )
+
+    def validate(self):
+        if self.start_diameter_nm <= 0.0 or self.end_diameter_nm <= 0.0:
+            raise ValueError("Sweep particle diameters must be positive.")
+        if self.end_diameter_nm < self.start_diameter_nm:
+            raise ValueError("Sweep end diameter must not be smaller than start diameter.")
+        if self.step_diameter_nm <= 0.0:
+            raise ValueError("Sweep diameter step must be positive.")
+        if self.point_count < 2:
+            raise ValueError("Particle-size sweep requires at least two points.")
+        if self.point_count > self.maximum_points:
+            raise ValueError(
+                "Particle-size sweep is limited to {} points.".format(
+                    self.maximum_points
+                )
+            )

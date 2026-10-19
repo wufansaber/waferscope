@@ -19,3 +19,13 @@ PARTICLE_MATERIALS = {
     "Gold (Au)": 1.48 + 1.86j,
     "Custom": 1.50 + 0.0j,
 }
+
+COATING_MATERIALS = {
+    "Fused silica (SiO2)": 1.476 + 0.0j,
+    "Alumina (Al2O3)": 1.79 + 0.0j,
+    "Silicon nitride (Si3N4)": 2.05 + 0.0j,
+    "Hafnia (HfO2)": 2.00 + 0.0j,
+    "Titania (TiO2)": 2.50 + 0.0j,
+    "Silicon (Si)": 5.57 + 0.387j,
+    "Custom": 1.50 + 0.0j,
+}

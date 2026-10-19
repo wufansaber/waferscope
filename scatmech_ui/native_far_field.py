@@ -2,17 +2,20 @@
 
 import numpy as np
 
-try:
-    from pySCATMECH.fresnel import Film, FilmStack, OpticalFunction
-    from pySCATMECH.local import Local_BRDF_Model
-    from pySCATMECH.mueller import Polarization
-
-    SCATMECH_IMPORT_ERROR = None
-except ModuleNotFoundError as error:
-    if error.name not in ("pySCATMECH", "SCATPY"):
-        raise
-    Film = FilmStack = OpticalFunction = Local_BRDF_Model = Polarization = None
-    SCATMECH_IMPORT_ERROR = error
+from .coordinate_geometry import (
+    INCIDENCE_PLANE,
+    ILLUMINATION_ROTATION_DEG,
+    SCATMECH_AZIMUTH_OFFSET_DEG,
+    incident_projection_direction,
+    incident_propagation_direction,
+    incident_source_direction,
+    scatmech_to_global_xy,
+)
+from .surface_model import (
+    Polarization,
+    SCATMECH_IMPORT_ERROR,
+    build_scattering_model,
+)
 
 
 def calculate_far_field(parameters, progress_callback=None):
@@ -24,60 +27,29 @@ def calculate_far_field(parameters, progress_callback=None):
         ) from SCATMECH_IMPORT_ERROR
 
     parameters.validate()
-    model, thickness_note = _build_particle_model(parameters)
+    model_bundle = build_scattering_model(parameters)
     theta_grid, phi_grid = _angular_grid(parameters.angular_step_deg)
-    intensity, q, u, v = _evaluate_mueller_grid(
-        model,
+    intensity, q, u, v, jones = _evaluate_mueller_grid(
+        model_bundle,
         parameters,
         theta_grid,
         phi_grid,
         progress_callback,
     )
-    return _format_far_field_result(
+    result = _format_far_field_result(
         parameters,
-        thickness_note,
+        model_bundle.thickness_note,
         theta_grid,
         phi_grid,
         intensity,
         q,
         u,
         v,
+        model_note=model_bundle.model_note,
     )
-
-
-def _build_particle_model(parameters):
-    wavelength_um = parameters.wavelength_nm / 1000.0
-    wafer_index = complex(parameters.wafer_n, parameters.wafer_k)
-    particle_index = complex(parameters.particle_n, parameters.particle_k)
-    thickness = parameters.wafer_thickness_um
-    optical_depth = 4.0 * np.pi * parameters.wafer_k * thickness / wavelength_um
-    coherent_limit = 100.0 * wavelength_um
-
-    model_parameters = {
-        "lambda": wavelength_um,
-        "radius": parameters.particle_diameter_nm / 2000.0,
-        "sphere": particle_index,
-        "type": 0,
-    }
-
-    if thickness <= coherent_limit and optical_depth < 60.0:
-        wafer_stack = FilmStack(
-            [Film(OpticalFunction(wafer_index), thickness=thickness)]
-        )
-        model_parameters["substrate"] = 1.0 + 0.0j
-        model_parameters["stack"] = wafer_stack
-        thickness_note = (
-            "Finite coherent wafer layer: {:.6g} um on air backing."
-        ).format(thickness)
-    else:
-        model_parameters["substrate"] = wafer_index
-        thickness_note = (
-            "Wafer is optically/geometrically thick at this wavelength; "
-            "the backside is negligible and the wafer is modeled as semi-infinite."
-        )
-
-    model = Local_BRDF_Model("Bobbert_Vlieger_BRDF_Model", model_parameters)
-    return model, thickness_note
+    if jones is not None:
+        result["jones_dsc_um"] = jones
+    return result
 
 
 def _angular_grid(step_deg):
@@ -100,7 +72,7 @@ def _validate_angular_grid(theta_grid, phi_grid):
 
 
 def _evaluate_mueller_grid(
-    model,
+    model_bundle,
     parameters,
     theta_grid,
     phi_grid,
@@ -111,30 +83,51 @@ def _evaluate_mueller_grid(
     q = np.empty(shape, dtype=float)
     u = np.empty(shape, dtype=float)
     v = np.empty(shape, dtype=float)
+    jones = np.empty(shape + (2, 2), dtype=complex) if model_bundle.output_kind == "dsc" else None
     incident = Polarization(
         {"p": "p", "s": "s", "unpolarized": "u"}[parameters.polarization]
     )
     incidence = np.deg2rad(parameters.incidence_deg)
+    incidence_cosine = abs(np.cos(incidence))
 
     for row in range(shape[0]):
         for column in range(shape[1]):
-            mueller = model.MuellerDSC(
-                incidence,
-                theta_grid[row, column],
-                phi_grid[row, column],
-                coords="psps",
-            )
+            scattering_theta = theta_grid[row, column]
+            if model_bundle.output_kind == "dsc":
+                mueller = model_bundle.model.MuellerDSC(
+                    incidence,
+                    scattering_theta,
+                    phi_grid[row, column],
+                    coords="psps",
+                )
+                output_scale = 1.0
+                jones[row, column] = model_bundle.model.JonesDSC(
+                    incidence, scattering_theta, phi_grid[row, column], coords="psps")
+            else:
+                mueller = model_bundle.model.MuellerBRDF(
+                    incidence,
+                    scattering_theta,
+                    phi_grid[row, column],
+                    coords="psps",
+                )
+                output_scale = (
+                    model_bundle.effective_area_um2
+                    * incidence_cosine
+                    * abs(np.cos(scattering_theta))
+                )
             output = mueller @ incident
-            intensity[row, column] = max(float(output[0]), 0.0)
-            q[row, column] = float(output[1])
-            u[row, column] = float(output[2])
-            v[row, column] = float(output[3])
+            intensity[row, column] = max(float(output[0]) * output_scale, 0.0)
+            q[row, column] = float(output[1]) * output_scale
+            u[row, column] = float(output[2]) * output_scale
+            v[row, column] = float(output[3]) * output_scale
         if progress_callback is not None:
             progress_callback(int(round(100.0 * (row + 1) / shape[0])))
 
     if not np.isfinite(intensity).all() or np.nanmax(intensity) <= 0:
         raise RuntimeError("SCATMECH returned invalid far-field intensity values.")
-    return intensity, q, u, v
+    if jones is not None and not np.isfinite(jones).all():
+        raise RuntimeError("SCATMECH returned non-finite Jones amplitudes.")
+    return intensity, q, u, v, jones
 
 
 def _format_far_field_result(
@@ -146,13 +139,15 @@ def _format_far_field_result(
     q,
     u,
     v,
+    model_note="",
 ):
     sin_theta = np.sin(theta_grid)
     cos_theta = np.cos(theta_grid)
     cos_phi = np.cos(phi_grid)
     sin_phi = np.sin(phi_grid)
-    x = sin_theta * cos_phi
-    y = sin_theta * sin_phi
+    local_x = sin_theta * cos_phi
+    local_y = sin_theta * sin_phi
+    x, y = scatmech_to_global_xy(local_x, local_y)
     z = cos_theta
 
     safe_intensity = np.maximum(intensity, np.nanmax(intensity) * 1e-15)
@@ -162,21 +157,30 @@ def _format_far_field_result(
     docp = np.clip(v / safe_intensity, -1.0, 1.0)
 
     alpha = 0.5 * np.arctan2(u, q)
-    s_x = -sin_phi
-    s_y = cos_phi
+    local_s_x = -sin_phi
+    local_s_y = cos_phi
+    s_x, s_y = scatmech_to_global_xy(local_s_x, local_s_y)
     s_z = np.zeros_like(s_x)
-    p_x = cos_theta * cos_phi
-    p_y = cos_theta * sin_phi
+    local_p_x = cos_theta * cos_phi
+    local_p_y = cos_theta * sin_phi
+    p_x, p_y = scatmech_to_global_xy(local_p_x, local_p_y)
     p_z = -sin_theta
     e_x = np.cos(alpha) * s_x + np.sin(alpha) * p_x
     e_y = np.cos(alpha) * s_y + np.sin(alpha) * p_y
     e_z = np.cos(alpha) * s_z + np.sin(alpha) * p_z
+    incident_direction = incident_propagation_direction(parameters.incidence_deg)
 
     return {
         "parameters": parameters,
         "thickness_note": thickness_note,
+        "model_note": model_note,
         "theta": theta_grid,
         "phi": phi_grid,
+        "scatmech_phi": phi_grid,
+        "global_phi": np.mod(
+            phi_grid + np.deg2rad(SCATMECH_AZIMUTH_OFFSET_DEG),
+            2.0 * np.pi,
+        ),
         "x": x,
         "y": y,
         "z": z,
@@ -190,4 +194,16 @@ def _format_far_field_result(
         "e_x": e_x,
         "e_y": e_y,
         "e_z": e_z,
+        "incidence_plane": INCIDENCE_PLANE,
+        "illumination_rotation_deg": ILLUMINATION_ROTATION_DEG,
+        "scatmech_azimuth_offset_deg": SCATMECH_AZIMUTH_OFFSET_DEG,
+        "incident_direction": np.asarray(incident_direction, dtype=float),
+        "incident_source_direction": np.asarray(
+            incident_source_direction(parameters.incidence_deg),
+            dtype=float,
+        ),
+        "incident_projection_direction": np.asarray(
+            incident_projection_direction(parameters.incidence_deg),
+            dtype=float,
+        ),
     }

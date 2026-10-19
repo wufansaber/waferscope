@@ -2,19 +2,22 @@
 
 import numpy as np
 
+from .coordinate_geometry import global_to_scatmech_xy
+
 
 def reference_energy(parameters, source_far_field):
     if source_far_field is not None:
         return max(float(np.nanmax(source_far_field["intensity"])), 1e-15)
-    return 4.0 / max(np.sqrt(1.0 - parameters.numerical_aperture**2), 1e-6)
+    maximum_na = max(parameters.channel_numerical_apertures)
+    return 4.0 / max(np.sqrt(1.0 - maximum_na**2), 1e-6)
 
 
-def local_pupil_directions(parameters):
-    pupil_radius_mm = parameters.focal_length_mm * parameters.numerical_aperture
+def local_pupil_directions(parameters, numerical_aperture):
+    pupil_radius_mm = parameters.focal_length_mm * numerical_aperture
     coordinate = np.linspace(-pupil_radius_mm, pupil_radius_mm, parameters.grid_size)
     x, y = np.meshgrid(coordinate, coordinate)
     sin_theta = np.clip(np.hypot(x, y) / parameters.focal_length_mm, 0.0, 1.0)
-    aperture = sin_theta <= parameters.numerical_aperture
+    aperture = sin_theta <= numerical_aperture
     return {
         "x": x,
         "y": y,
@@ -39,24 +42,54 @@ def relative_collected_power(pupil_energy_density, reference_value, aperture):
     return collected_power / max(reference_power, 1e-12)
 
 
-def pupil_polarization(intensity, far_field_per_sr, phi, kx, ky, aperture, q, u):
+def pupil_polarization(
+    intensity,
+    far_field_per_sr,
+    phi,
+    kx,
+    ky,
+    kz,
+    tilt_deg,
+    aperture,
+    q,
+    u,
+):
     if q is None or u is None:
         high_angle = np.clip(np.hypot(kx, ky), 0.0, 1.0)
         dolp = np.clip(0.20 + 0.70 * high_angle**2, 0.0, 0.95)
         aolp = phi + 0.5 * np.pi + 0.18 * np.sin(2.0 * phi)
+        pol_x = np.cos(aolp)
+        pol_y = np.sin(aolp)
         q = np.nan_to_num(intensity, nan=0.0) * dolp * np.cos(2.0 * aolp)
         u = np.nan_to_num(intensity, nan=0.0) * dolp * np.sin(2.0 * aolp)
     else:
         safe_far_field = np.maximum(far_field_per_sr, 1e-15)
         dolp = np.clip(np.sqrt(q**2 + u**2) / safe_far_field, 0.0, 1.0)
-        aolp = 0.5 * np.arctan2(u, q)
+        alpha = 0.5 * np.arctan2(u, q)
+        sin_theta = np.clip(np.hypot(kx, ky), 0.0, 1.0)
+        s_x = -np.sin(phi)
+        s_y = np.cos(phi)
+        p_x = kz * np.cos(phi)
+        p_y = kz * np.sin(phi)
+        p_z = -sin_theta
+        e_x = np.cos(alpha) * s_x + np.sin(alpha) * p_x
+        e_y = np.cos(alpha) * s_y + np.sin(alpha) * p_y
+        e_z = np.sin(alpha) * p_z
+
+        tilt = np.deg2rad(tilt_deg)
+        pol_x = np.cos(tilt) * e_x - np.sin(tilt) * e_z
+        pol_y = e_y
+        projected_norm = np.maximum(np.hypot(pol_x, pol_y), 1e-15)
+        pol_x = pol_x / projected_norm
+        pol_y = pol_y / projected_norm
+        aolp = np.arctan2(pol_y, pol_x)
 
     dolp[~aperture] = np.nan
     return {
         "dolp": dolp,
         "aolp": aolp,
-        "pol_x": np.cos(aolp),
-        "pol_y": np.sin(aolp),
+        "pol_x": pol_x,
+        "pol_y": pol_y,
         "q": q,
         "u": u,
     }
@@ -83,7 +116,8 @@ def synthetic_far_field(parameters):
     y = sin_theta * np.sin(phi_grid)
     z = np.cos(theta_grid)
     energy = dark_field_energy(x, y)
-    reference = 4.0 / max(np.sqrt(1.0 - parameters.numerical_aperture**2), 1e-6)
+    maximum_na = max(parameters.channel_numerical_apertures)
+    reference = 4.0 / max(np.sqrt(1.0 - maximum_na**2), 1e-6)
     intensity = np.clip(energy / reference, 0.0, 1.0)
     return far_field_view_dict("synthetic", theta_grid, x, y, z, energy, intensity)
 
@@ -92,7 +126,7 @@ def scatmech_far_field(source_far_field):
     energy = source_far_field["intensity"]
     reference = max(float(np.nanmax(energy)), 1e-15)
     intensity = np.clip(energy / reference, 0.0, 1.0)
-    return far_field_view_dict(
+    far_field = far_field_view_dict(
         "scatmech",
         source_far_field["theta"],
         source_far_field["x"],
@@ -101,6 +135,19 @@ def scatmech_far_field(source_far_field):
         energy,
         intensity,
     )
+    for key in (
+        "thickness_note",
+        "model_note",
+        "incidence_plane",
+        "illumination_rotation_deg",
+        "scatmech_azimuth_offset_deg",
+        "incident_direction",
+        "incident_source_direction",
+        "incident_projection_direction",
+    ):
+        if key in source_far_field:
+            far_field[key] = source_far_field[key]
+    return far_field
 
 
 def far_field_view_dict(source, theta, x, y, z, energy, intensity):
@@ -117,36 +164,63 @@ def far_field_view_dict(source, theta, x, y, z, energy, intensity):
 
 
 def collection_masks_and_energy(parameters, far_field):
+    mask_geometry = objective_collection_masks(
+        parameters,
+        far_field["x"],
+        far_field["y"],
+        far_field["z"],
+    )
+    energy_result = collection_energy(
+        far_field["theta"],
+        far_field["energy"],
+        mask_geometry["collection_mask"],
+        mask_geometry["channel_masks"],
+    )
+    return {
+        **mask_geometry,
+        **energy_result,
+        **collection_geometry(parameters),
+    }
+
+
+def objective_collection_masks(parameters, x, y, z):
     objective_axes = []
     cone_boundaries = []
     channel_masks = []
-    collection_mask = np.zeros_like(far_field["x"], dtype=bool)
-    cone_half_angle = np.arcsin(parameters.numerical_aperture)
-
-    for tilt_deg in parameters.tilt_degrees:
+    collection_mask = np.zeros_like(x, dtype=bool)
+    for tilt_deg, numerical_aperture in zip(
+        parameters.tilt_degrees,
+        parameters.channel_numerical_apertures,
+    ):
         axis, boundary = objective_axis_and_boundary(
             tilt_deg,
-            parameters.numerical_aperture,
+            numerical_aperture,
         )
         objective_axes.append(axis)
+        if numerical_aperture == 0.0:
+            cone_boundaries.append(None)
+            channel_masks.append(np.zeros_like(collection_mask))
+            continue
+
+        cone_half_angle = np.arcsin(numerical_aperture)
         cone_boundaries.append(boundary)
         direction_dot_axis = (
-            far_field["x"] * axis[0]
-            + far_field["y"] * axis[1]
-            + far_field["z"] * axis[2]
+            x * axis[0]
+            + y * axis[1]
+            + z * axis[2]
         )
         channel_mask = direction_dot_axis >= np.cos(cone_half_angle)
         channel_masks.append(channel_mask)
         collection_mask |= channel_mask
 
-    return collection_energy(
-        far_field["theta"],
-        far_field["energy"],
-        collection_mask,
-        channel_masks,
-        objective_axes,
-        cone_boundaries,
-    )
+    return {
+        "collection_mask": collection_mask,
+        "channel_masks": channel_masks,
+        "objective_axis": objective_axes[0],
+        "objective_axes": objective_axes,
+        "cone_boundary": cone_boundaries[0],
+        "cone_boundaries": cone_boundaries,
+    }
 
 
 def collection_energy(
@@ -154,8 +228,6 @@ def collection_energy(
     energy,
     collection_mask,
     channel_masks,
-    objective_axes,
-    cone_boundaries,
 ):
     solid_angle_weight = np.sin(theta_grid)
     hemisphere_energy = float(np.sum(energy * solid_angle_weight))
@@ -175,12 +247,53 @@ def collection_energy(
             for energy_value in channel_collected_energies
         ],
         "collection_fraction": collected_energy / max(hemisphere_energy, 1e-12),
+        "energy_channel_fractions": [
+            energy_value / max(hemisphere_energy, 1e-12)
+            for energy_value in channel_collected_energies
+        ],
+        "energy_collection_fraction": collected_energy
+        / max(hemisphere_energy, 1e-12),
         "collected_energy": collected_energy,
         "hemisphere_energy": hemisphere_energy,
-        "objective_axis": objective_axes[0],
-        "objective_axes": objective_axes,
-        "cone_boundary": cone_boundaries[0],
-        "cone_boundaries": cone_boundaries,
+    }
+
+
+def collection_geometry(parameters):
+    """Calculate unit-hemisphere cone volumes without intensity weighting."""
+    theta_count = 900
+    phi_count = 3600
+    theta_step = 0.5 * np.pi / theta_count
+    phi_step = 2.0 * np.pi / phi_count
+    theta = (np.arange(theta_count) + 0.5)[:, None] * theta_step
+    phi = (np.arange(phi_count) + 0.5)[None, :] * phi_step
+    sin_theta = np.sin(theta)
+    x = sin_theta * np.cos(phi)
+    y = sin_theta * np.sin(phi)
+    z = np.cos(theta)
+    geometry = objective_collection_masks(parameters, x, y, z)
+    solid_angle_weight = np.broadcast_to(sin_theta, x.shape)
+    solid_angle_scale = theta_step * phi_step
+    hemisphere_solid_angle = float(np.sum(solid_angle_weight) * solid_angle_scale)
+    channel_solid_angles = [
+        float(np.sum(solid_angle_weight[mask]) * solid_angle_scale)
+        for mask in geometry["channel_masks"]
+    ]
+    collected_solid_angle = float(
+        np.sum(solid_angle_weight[geometry["collection_mask"]])
+        * solid_angle_scale
+    )
+    return {
+        "geometric_channel_fractions": [
+            solid_angle / hemisphere_solid_angle
+            for solid_angle in channel_solid_angles
+        ],
+        "geometric_collection_fraction": collected_solid_angle
+        / hemisphere_solid_angle,
+        "channel_geometric_volumes": [
+            solid_angle / 3.0 for solid_angle in channel_solid_angles
+        ],
+        "geometric_collected_volume": collected_solid_angle / 3.0,
+        "hemisphere_geometric_volume": hemisphere_solid_angle / 3.0,
     }
 
 
@@ -202,9 +315,10 @@ def objective_axis_and_boundary(tilt_deg, numerical_aperture):
 
 def sample_far_field(source_far_field, kx, ky, kz):
     theta = np.arccos(np.clip(kz, -1.0, 1.0))
-    phi = np.mod(np.arctan2(ky, kx), 2.0 * np.pi)
+    local_kx, local_ky = global_to_scatmech_xy(kx, ky)
+    phi = np.mod(np.arctan2(local_ky, local_kx), 2.0 * np.pi)
     theta_axis = source_far_field["theta"][:, 0]
-    phi_axis = source_far_field["phi"][0, :]
+    phi_axis = source_far_field.get("scatmech_phi", source_far_field["phi"])[0, :]
     theta_flat = theta.ravel()
     phi_flat = phi.ravel()
 

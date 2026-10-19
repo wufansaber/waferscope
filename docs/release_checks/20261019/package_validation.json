@@ -1,0 +1,38 @@
+{
+  "status": "passed",
+  "tests": {
+    "nist2_tests.xml": {
+      "tests": 389,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 20
+    },
+    "native_tests.xml": {
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "extracted_directory": "build\\release_20261019\\final_extracted\\DFI_Simulation",
+  "gui_sha256": "7ad50f26be9206779981091d74c228617d0c85e2f1c62c0776a0725e41bae525",
+  "fem_sha256": "a362ca02223526c250d5ae6aefc68c8174d9d8231589d9817d5d6be8d64f96a5",
+  "cross_image_power_w": [
+    2.3722122556955383e-10,
+    2.3810656514752556e-10,
+    2.0725595989883874e-10
+  ],
+  "cross_gray_snr": [
+    5.3523267704549955,
+    4.951685917707866,
+    4.825677675084515
+  ],
+  "checks": [
+    "SCATMECH rendering",
+    "Frozen GUI to FEM calculation and cached re-imaging",
+    "Frozen camera raw-DN SNR replay",
+    "Frozen finite cross near/far/image/camera",
+    "Both PDF manuals match verified originals"
+  ],
+  "scope": "Runtime and regression acceptance, not proof of FEM mesh/physical convergence."
+}

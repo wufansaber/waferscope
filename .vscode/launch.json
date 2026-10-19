@@ -3,10 +3,49 @@
     "configurations": [
         {
             "name": "Run merged APTK + SCATMECH UI",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}\\main.py",
-            "console": "integratedTerminal"
+            "python": "C:\\Users\\admin\\anaconda3\\envs\\NIST2\\python.exe",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "MPLCONFIGDIR": "${workspaceFolder}\\.mplconfig"
+            },
+            "console": "internalConsole"
+        },
+        {
+            "name": "Run standalone Far-field UI",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}\\far_field_standalone\\main.py",
+            "python": "C:\\Users\\admin\\anaconda3\\envs\\NIST2\\python.exe",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "MPLCONFIGDIR": "${workspaceFolder}\\.mplconfig"
+            },
+            "console": "internalConsole"
+        },
+        {
+            "name": "Run unit tests",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "unittest",
+            "args": [
+                "discover",
+                "-v",
+                "-s",
+                "tests",
+                "-t",
+                ".",
+                "-p",
+                "test*.py"
+            ],
+            "python": "C:\\Users\\admin\\anaconda3\\envs\\NIST2\\python.exe",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "MPLCONFIGDIR": "${workspaceFolder}\\.mplconfig"
+            },
+            "console": "internalConsole"
         }
     ]
 }

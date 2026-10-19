@@ -1,0 +1,24 @@
+{
+  "date": "2026-10-19",
+  "source": "build\\channel_symmetry_20261016\\low_haze_02nm",
+  "source_metadata_sha256": "f9a6a8242aaeea1759265e210e9ee2687e332874d1681d0fa46dd7c0ee90d280",
+  "coarse_grid_shape": [
+    19,
+    72
+  ],
+  "coarse_step_deg": 5,
+  "new_grid_shape": [
+    401,
+    401
+  ],
+  "evaluated_directions": 125609,
+  "cartesian_step": 0.0050000000000000044,
+  "finite_window_sampling_reference": 0.005736100109690774,
+  "coarse_direction_complex_relative_l2": 5.441272496487143e-15,
+  "coarse_direction_checks": 125,
+  "surface_fft_vs_direct_relative_l2": 0.00012791840444976017,
+  "surface_direct_direction_checks": 25,
+  "elapsed_seconds": 223.710109,
+  "field_combination": "A_whole_SPM + A_local_FEM_with - A_local_SPM",
+  "scope": "Same saved physical fields. Local volume and triangle radiation evaluated at every plotted direction. Whole-surface Fourier transform uses the existing padded FFT with selected direct-sum checks. No intensity-image smoothing, new FEM solve, forced symmetry or ensemble averaging. This is an angular-visualization refinement, not a FEM/rough-surface convergence certificate."
+}

@@ -1,0 +1,20 @@
+{
+  "status": "passed",
+  "pdf_pages": 10,
+  "showcase_categories": 6,
+  "dense_far_field_grid": [
+    401,
+    401
+  ],
+  "dense_far_field_directions": 125609,
+  "particle_sweep_points": 18,
+  "camera_exposures": 3,
+  "camera_pairs_per_exposure_channel": 1000,
+  "valid_camera_metrics": 9,
+  "referenced_files": 14,
+  "source_report_hashes_checked": 8,
+  "visual_qa": "All 10 final rendered pages inspected",
+  "pdf_sha256": "d66d55562cbab31ae6f6bd1db1f781eead76c68205779f8bf2ebdbd02d00b75c",
+  "zip_sha256": "f24afe1ff707ee61784019a77fe3920426d6b69c52024f3327eb151730ca5436",
+  "zip_bytes": 5128355
+}
