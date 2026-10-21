@@ -1,4 +1,4 @@
-name: aptk-scatmech
+name: waferscope-scatmech
 channels:
   - defaults
 dependencies:

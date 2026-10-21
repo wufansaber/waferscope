@@ -13,7 +13,7 @@ from pypdf import PdfReader
 def main():
     root = Path(__file__).resolve().parents[1]
     folder = root/'docs/showcase_20261017'
-    pdf = root/'output/pdf/DFI_Simulation_功能与案例手册.pdf'
+    pdf = root/'output/pdf/WaferScope_功能与案例手册.pdf'
     data = json.loads((folder/'case_manifest.json').read_text(encoding='utf-8'))
     reader = PdfReader(pdf)
     assert len(reader.pages) == 10
@@ -43,7 +43,7 @@ def main():
     for name in ('build_showcase_cases.py', 'build_showcase_brochure.py', 'validate_showcase_brochure.py',
                  'refine_showcase_far_field.py'):
         compile((root/'tools'/name).read_text(encoding='utf-8'), name, 'exec')
-    package = root/'output/pdf/DFI_Simulation_案例与宣传资料.zip'
+    package = root/'output/pdf/WaferScope_案例与宣传资料.zip'
     with ZipFile(package, 'w', compression=ZIP_DEFLATED) as archive:
         archive.write(pdf, pdf.name)
         for file in sorted(folder.rglob('*')):

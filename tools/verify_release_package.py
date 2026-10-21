@@ -29,9 +29,9 @@ def unpack(archive, destination):
 
 
 def validate(app, built, evidence):
-    for name in ('DFI_Simulation.exe', 'fem/DFI_FEM.exe'):
+    for name in ('WaferScope.exe', 'fem/WaferScope_FEM.exe'):
         assert digest(app/name) == digest(built/name), name
-    for name in ('DFI_Simulation_中文操作手册.pdf', 'DFI_Simulation_功能与案例手册.pdf'):
+    for name in ('WaferScope_中文操作手册.pdf', 'WaferScope_功能与案例手册.pdf'):
         assert digest(app/'docs'/name) == digest(ROOT/'output/pdf'/name), name
     assert (app/'docs/far_field_standalone/manual_assets/fem_overview.png').is_file()
     assert (app/'docs/showcase_20261017/assets/case01_far_field_dense.png').is_file()
@@ -59,8 +59,8 @@ def validate(app, built, evidence):
     for name in ('manual_validation.json', 'showcase_validation.json'):
         assert json.loads((evidence/name).read_text(encoding='utf-8'))['status'] == 'passed'
     result = dict(status='passed', tests=tests, extracted_directory=str(app),
-        gui_sha256=digest(app/'DFI_Simulation.exe'),
-        fem_sha256=digest(app/'fem/DFI_FEM.exe'),
+        gui_sha256=digest(app/'WaferScope.exe'),
+        fem_sha256=digest(app/'fem/WaferScope_FEM.exe'),
         cross_image_power_w=[ch['with']['image_power_w'] for ch in report['channels']],
         cross_gray_snr=[ch['detector']['gray_snr'] for ch in report['channels']],
         checks=['SCATMECH rendering', 'Frozen GUI to FEM calculation and cached re-imaging',
@@ -87,17 +87,17 @@ def seal(archive, built):
             if entry.is_dir():
                 continue
             path = Path(entry.filename)
-            assert path.parts[0] == 'DFI_Simulation'
+            assert path.parts[0] == 'WaferScope'
             relative = Path(*path.parts[1:])
             assert '..' not in relative.parts
             assert hashlib.sha256(saved.read(entry)).hexdigest() == digest(built/relative), str(relative)
-        assert 'DFI_Simulation/verification/release_20261019/package_validation.json' in saved.namelist()
+        assert 'WaferScope/verification/release_20261019/package_validation.json' in saved.namelist()
     files = [archive]
     # GitHub strips Chinese asset names, which would collide for the two PDFs.
     for source, name in (
-            ('DFI_Simulation_中文操作手册.pdf', 'DFI_Simulation_Operation_Manual_CN.pdf'),
-            ('DFI_Simulation_功能与案例手册.pdf', 'DFI_Simulation_Features_and_Cases_CN.pdf'),
-            ('DFI_Simulation_案例与宣传资料.zip', 'DFI_Simulation_Case_Materials.zip')):
+            ('WaferScope_中文操作手册.pdf', 'WaferScope_Operation_Manual_CN.pdf'),
+            ('WaferScope_功能与案例手册.pdf', 'WaferScope_Features_and_Cases_CN.pdf'),
+            ('WaferScope_案例与宣传资料.zip', 'WaferScope_Case_Materials.zip')):
         target = archive.parent/name
         shutil.copy2(ROOT/'output/pdf'/source, target)
         files.append(target)

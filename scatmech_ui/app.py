@@ -17,7 +17,7 @@ class ScatmechStandaloneWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("DFI Simulation")
+        self.setWindowTitle("WaferScope")
         self.setMinimumSize(1200, 720)
         self._resize_for_screen()
         self.simulation_widget = ScatmechSimulationWidget()
@@ -168,6 +168,8 @@ def main():
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
     QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
     app = QApplication(sys.argv)
+    app.setApplicationName('WaferScope')
+    app.setApplicationDisplayName('WaferScope')
     window = ScatmechStandaloneWindow()
     window.show()
     sys.exit(app.exec_())

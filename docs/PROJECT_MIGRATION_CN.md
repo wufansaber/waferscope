@@ -1,4 +1,4 @@
-# DFI Simulation 项目迁移与继续开发
+# WaferScope 项目迁移与继续开发
 
 更新日期：2026-10-21。目标平台：Windows x64。
 
@@ -46,22 +46,22 @@ S4 和 AFMM 尚未完成实算。当前机器未检测到 S4 编译工具链或�
 
 ## 3. 获取项目
 
-GitHub 仓库：<https://github.com/wufansaber/aptk>，私有仓库需使用有权限的账号。
+GitHub 仓库：<https://github.com/wufansaber/waferscope>，私有仓库需使用有权限的账号。
 
-迁移发布标签：`migration-2026-10-21`。优先下载该发布中的 `DFI_Simulation_Migration_20261021.zip`；它比 GitHub 自动生成的源码 ZIP 多包含环境快照及逐文件 SHA-256 清单。
+当前更名迁移发布标签：`waferscope-2026-10-21`。优先下载该发布中的 `WaferScope_Migration_20261021.zip`；它比 GitHub 自动生成的源码 ZIP 多包含环境快照及逐文件 SHA-256 清单。旧 `migration-2026-10-21` 保留 DFI Simulation 名称及原提交，不是本次更名后的源码。
 
 也可以安装 Git 后克隆标签：
 
 ```powershell
-git clone --branch migration-2026-10-21 https://github.com/wufansaber/aptk.git D:\code\aptk
-Set-Location D:\code\aptk
+git clone --branch waferscope-2026-10-21 https://github.com/wufansaber/waferscope.git D:\code\waferscope
+Set-Location D:\code\waferscope
 git switch -c codex/migration-next
 ```
 
 从 ZIP 获取时，完整解压到可写目录，在包含 `main.py`、`fullwave_prototype` 的目录运行以下命令。源码 ZIP 不包含 `.git` 历史；继续开发并同步时优先使用 Git 克隆。
 
 ```powershell
-Get-FileHash .\DFI_Simulation_Migration_20261021.zip -Algorithm SHA256
+Get-FileHash .\WaferScope_Migration_20261021.zip -Algorithm SHA256
 ```
 
 将结果与同名 `.sha256` 文件比较。压缩包内 `MIGRATION_MANIFEST.json` 记录源码提交、文件大小、逐文件摘要和主动排除项；`ENVIRONMENT_SNAPSHOTS.json` 是原机环境版本记录，不包含凭据。

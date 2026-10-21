@@ -1,14 +1,16 @@
-# DFI Simulation Windows 分文件版
+# WaferScope Windows 分文件版
+
+本说明描述当前源码的构建目标。原 DFI Simulation 历史发行包保留原文件名，更新说明或仓库名称不会自动生成新的 EXE。
 
 ## 启动
 
-完整解压 ZIP 后，双击 `DFI_Simulation.exe`。不要从压缩包内部运行，
+完整解压 ZIP 后，双击 `WaferScope.exe`。不要从压缩包内部运行，
 也不要单独移动 EXE；请保留 `_internal` 和 `fem` 文件夹。
 本版附带两个独立运行时，不需要安装 Anaconda、Python 或 SCATMECH/NGSolve。
 
 - `SCATMECH`：颗粒远场、三路收集、独立像面和探测器。
 - `Full-wave FEM (experimental)`：近场、远场、三路独立像面和相干分解。
-- `fem/DFI_FEM.exe`：主界面自动调用的求解器，通常不用手动启动。
+- `fem/WaferScope_FEM.exe`：主界面自动调用的求解器，通常不用手动启动。
 
 FEM 结果默认保存在 `%LOCALAPPDATA%\FarField_Simulation\results`。
 默认使用三阶 balanced、128 点光瞳；粗糙面算例内存需求较大，本轮验收使用 32 GB RAM，
@@ -22,8 +24,8 @@ FEM 结果默认保存在 `%LOCALAPPDATA%\FarField_Simulation\results`。
 完整计算参数显示在 `Result parameters` 页。示例仅包含图像和报告，不包含大体积复场缓存。
 
 - [用户指南](docs/far_field_standalone/USER_GUIDE_CN.md)
-- [完整操作手册 PDF](docs/DFI_Simulation_中文操作手册.pdf)
-- [软件功能与案例 PDF](docs/DFI_Simulation_功能与案例手册.pdf)
+- [完整操作手册 PDF](docs/WaferScope_中文操作手册.pdf)
+- [软件功能与案例 PDF](docs/WaferScope_功能与案例手册.pdf)
 - [理论模型](docs/fullwave_prototype/THEORETICAL_MODEL_CN.md)
 - [验证与限制](docs/fullwave_prototype/LOW_MEMORY_REFINEMENT_CN.md)
 
@@ -35,7 +37,7 @@ FEM 仍是实验模型，不是完备解析解：有限粗糙区域、几何尖�
 
 ## 本次更新
 
-软件现更名为 **DFI Simulation**，主程序为 `DFI_Simulation.exe`，求解器为 `fem/DFI_FEM.exe`。
+2026-10-21 项目由 DFI Simulation 更名为 **WaferScope**，当前构建的主程序为 `WaferScope.exe`，求解器为 `fem/WaferScope_FEM.exe`。旧版 `DFI_FEM.exe` 和 `FarField_FEM.exe` 仍可被源码程序识别。
 为兼容已有结果，用户数据目录仍保留旧的 `FarField_Simulation` 名称；历史版本说明保留原名。
 
 2026-10-19 重新打包，加入横线、竖线与十字有限缺陷、计算域自动扩展，以及

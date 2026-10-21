@@ -13,10 +13,10 @@ from pages.page_results import ResultsPage
 from scatmech_ui.widgets import ScatmechSimulationWidget
 
 
-class APTKSimulationUI(QMainWindow):
+class WaferScopeMainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("APTK Optical Simulation & Defect Inspection System")
+        self.setWindowTitle("WaferScope")
         self.configure_window_size()
 
         # ---------------- Create Menu Bar (商业通用主菜单栏栏) ----------------
@@ -131,8 +131,8 @@ class APTKSimulationUI(QMainWindow):
         """Triggers standard informative industrial software dialog."""
         QMessageBox.about(
             self,
-            "About Platform",
-            "APTK Semiconductor Defect Optical Simulation Software\n"
+            "About WaferScope",
+            "WaferScope - Wafer Defect Optical Simulation\n"
             "Version 1.7 (Modular Release)\n\n"
             "Beijing Opto-Tech Co., Ltd. All Rights Reserved."
         )
@@ -140,3 +140,7 @@ class APTKSimulationUI(QMainWindow):
     def closeEvent(self, event):
         self.page_scatmech.wait_for_shutdown()
         super().closeEvent(event)
+
+
+# Retain imports used by existing launchers and notebooks.
+APTKSimulationUI = WaferScopeMainWindow

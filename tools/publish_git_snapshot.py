@@ -54,8 +54,8 @@ def api(repo, endpoint, payload=None):
 
 
 def publish(repo, branch):
-    if repo != 'wufansaber/aptk' or not branch.startswith('codex/'):
-        raise ValueError('This migration uploader is scoped to wufansaber/aptk and a new codex branch')
+    if repo != 'wufansaber/waferscope' or not branch.startswith('codex/'):
+        raise ValueError('This migration uploader is scoped to wufansaber/waferscope and a new codex branch')
     git('check-ref-format', '--branch', branch)
     commit = git('rev-parse', 'HEAD').decode().strip()
     tree = git('rev-parse', 'HEAD^{tree}').decode().strip()
@@ -120,7 +120,7 @@ def main():
     parser.add_argument('--branch', required=True)
     parser.add_argument('--receipt', type=Path, required=True)
     args = parser.parse_args()
-    result = publish('wufansaber/aptk', args.branch)
+    result = publish('wufansaber/waferscope', args.branch)
     args.receipt.parent.mkdir(parents=True, exist_ok=True)
     args.receipt.write_text(json.dumps(result, indent=2), encoding='utf-8')
     print(json.dumps(result, indent=2))

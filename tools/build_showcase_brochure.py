@@ -14,14 +14,14 @@ from reportlab.pdfbase.ttfonts import TTFont
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT/'docs/showcase_20261017'
 ASSETS = OUT/'assets'
-PDF = ROOT/'output/pdf/DFI_Simulation_功能与案例手册.pdf'
+PDF = ROOT/'output/pdf/WaferScope_功能与案例手册.pdf'
 W, H = landscape(A4)
 M = 40
 TEAL = '#007f86'
 INK = '#181b1e'
 GRAY = '#525b61'
 DATA = json.loads((OUT/'case_manifest.json').read_text(encoding='utf-8'))
-MD = ['# DFI Simulation 暗场光学仿真软件\n\n功能与案例手册 · 2026 年 10 月 · 当前源码功能展示\n']
+MD = ['# WaferScope 暗场光学仿真软件\n\n功能与案例手册 · 2026 年 10 月 · 当前源码功能展示\n']
 
 
 def main():
@@ -29,8 +29,8 @@ def main():
     pdfmetrics.registerFont(TTFont('CNB', 'C:/Windows/Fonts/msyhbd.ttc'))
     PDF.parent.mkdir(parents=True, exist_ok=True)
     c = canvas.Canvas(str(PDF), pagesize=(W, H))
-    c.setTitle('DFI Simulation 暗场光学仿真软件 功能与案例手册')
-    c.setAuthor('DFI Simulation')
+    c.setTitle('WaferScope 暗场光学仿真软件 功能与案例手册')
+    c.setAuthor('WaferScope')
     c.setSubject('六类真实计算案例与软件功能展示')
     page = 0
 
@@ -64,7 +64,7 @@ def main():
         paragraph(title, M, H-48, W-2*M, size=25, leading=32, bold=True)
         paragraph(subtitle, M, H-91, W-2*M, size=10, color=GRAY)
         c.setFont('CN', 8); c.setFillColor(HexColor(GRAY))
-        c.drawString(M, 20, 'DFI Simulation  |  功能与案例  |  2026.10')
+        c.drawString(M, 20, 'WaferScope  |  功能与案例  |  2026.10')
         c.drawRightString(W-M, 20, '%02d'%page)
         MD.append('\n## '+title+'\n\n'+subtitle+'\n')
 
@@ -109,7 +109,7 @@ def main():
         im.crop((0,0,im.width,mid)).save(ASSETS/'case01_near.png')
         im.crop((0,mid,im.width,im.height)).save(ASSETS/'case01_far_image.png')
 
-    begin('PRODUCT OVERVIEW', 'DFI Simulation 暗场光学仿真软件',
+    begin('PRODUCT OVERVIEW', 'WaferScope 暗场光学仿真软件',
           '面向晶圆颗粒检测研发的散射分析与成像评估工具')
     note('从缺陷散射到相机灰度图', M, H-135, W-2*M, size=27, bold=True)
     note('在同一套工作流中比较缺陷、照明、收光孔径和粗糙背景，连接电磁场、光学像面与相机读出。',
@@ -204,7 +204,7 @@ def main():
     y = table(rows, M, H-130, [150,335,W-2*M-485])
     y = body('在软件中复现', '选择模型入口，填写材料 n/k 和照明；设置各路 NA、倾角与倍率；查看近场、远场和像面；启用相机后检查灰度、噪声、饱和与 SNR。保存参数及原始数据，再进行收敛与统计比较。', M, y-18, W-2*M)
     y = body('可交付结果', '二维与三维远场、收光锥、三路独立出瞳与像面、相机 TIFF、CSV 曲线及 JSON/NPZ 参数和场数据。模型核对、独立传播检查与统计区间用于辅助判断，不替代完整实验验证。', M, y-14, W-2*M)
-    note('软件仓库  github.com/wufansaber/aptk<br/>适用于 DFI Simulation 2026.10.19 分文件发行版；旧版 EXE 不会自动更新。相机噪声按 EMVA 1288 相关量组织，不代表认证。', M, y-14, W-2*M, size=9, color=GRAY)
+    note('软件仓库  github.com/wufansaber/waferscope<br/>WaferScope 当前源码；案例沿用 2026.10.19 数据，旧版 EXE 不会自动更新。相机噪声按 EMVA 1288 相关量组织，不代表认证。', M, y-14, W-2*M, size=9, color=GRAY)
     MD.append('\n## 案例数据与复现\n\n'
               '- 2026-10-19：案例 01 远场在同一保存混合源上加密方向求值；不是重新求解 FEM 或对旧图做平滑。\n'
               '- [远场加密计算报告](assets/case01_dense_far_report.json)\n'
@@ -217,7 +217,7 @@ def main():
               '- 十字源：`build/fullwave_ui/20261017_164144_979822` 及 `build/cross_2um_20261017/background_refined`。\n'
               '- NIST 和统计归档：`build/channel_symmetry_20261016`。\n'
               '- 数据源路径指向本机归档；分享本手册无需附带完整 FEM 原始场。重新求解还需相应运行环境与源数据。\n'
-              '软件仓库：https://github.com/wufansaber/aptk\n')
+              '软件仓库：https://github.com/wufansaber/waferscope\n')
     c.showPage(); c.save()
     (OUT/'软件功能与案例手册.md').write_text('\n'.join(MD), encoding='utf-8')
     print(str(PDF)); print('Pages: '+str(page))

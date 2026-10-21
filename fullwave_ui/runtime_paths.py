@@ -10,7 +10,7 @@ def application_root():
 
 
 def default_engine(root):
-    for name in ('DFI_FEM.exe', 'FarField_FEM.exe'):
+    for name in ('WaferScope_FEM.exe', 'DFI_FEM.exe', 'FarField_FEM.exe'):
         bundled = root/'fem'/name
         if bundled.is_file():
             return bundled

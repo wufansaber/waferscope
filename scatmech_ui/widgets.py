@@ -100,7 +100,7 @@ class ControlsScrollArea(QScrollArea):
 
 
 class ScatmechSimulationWidget(QWidget):
-    """Embeddable SCATMECH simulation page used by the APTK main window."""
+    """Embeddable SCATMECH simulation page used by the WaferScope main window."""
 
     def __init__(self):
         super().__init__()

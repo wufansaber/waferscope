@@ -1,10 +1,10 @@
-# DFI Simulation 中文操作手册
+# WaferScope 中文操作手册
 
-适用范围：DFI Simulation 2026.10.19 Windows x64 分文件发行版。更新日期：2026-10-19。
+适用范围：WaferScope 当前源码与后续 Windows x64 分文件构建。更新日期：2026-10-21。
 
 本手册按当前界面的英文按钮和字段名称说明操作。SCATMECH、局部 FEM、整光斑 SPM 与混合模型的结果含义不同，请先选对计算入口。FEM/混合功能仍属实验模型，不是完整晶圆的解析解。
 
-本版更名为 DFI Simulation，包含 Gemi 面阵近似、灰度帧采集与 SNR，以及横线、竖线、十字、自动扩大缺陷物理域和大图案显示范围。旧版 EXE 不会自动更新；请以发行包 `build_manifest.json` 和随包发行说明为准。
+当前项目由 DFI Simulation 更名为 WaferScope，包含 Gemi 面阵近似、灰度帧采集与 SNR，以及横线、竖线、十字、自动扩大缺陷物理域和大图案显示范围。历史 `v2026.10.19-dfi` 等发行包仍使用原 EXE 名称，不会自动更新；请以实际发行包 `build_manifest.json` 和随包发行说明为准。
 
 首次使用建议先读第 2 节选择模型，再按第 17 节运行一个完整案例。只想查看结果时，用 `Load result` 打开完整结果目录，不必重新求解。只要更改了左侧参数，就须按第 12 节选择正确的计算动作；当前显示的图片不会随输入框自动重算。
 
@@ -31,18 +31,18 @@
 
 ## 1. 安装与启动
 
-1. 从 [GitHub Releases](https://github.com/wufansaber/aptk/releases) 选择 `v2026.10.19-dfi`，下载该版本 Windows x64 ZIP 和配套校验文件。历史相机版 `v2026.10.16-camera-snr` 使用旧名称。
+1. 从 [GitHub Releases](https://github.com/wufansaber/waferscope/releases) 下载对应 Windows x64 程序包和配套校验文件。迁移资料 ZIP 是源码，不是免安装 EXE；历史 `v2026.10.19-dfi` 运行 `DFI_Simulation.exe`。
 2. 完整解压到本地可访问的目录，不要直接在 ZIP 内运行。
-3. 双击 `DFI_Simulation.exe`。
+3. 新名称的程序包双击 `WaferScope.exe`；旧发行包按随包说明启动，不要只重命名旧 EXE。
 
 主要文件结构如下，实际目录还包含许可、示例和验证摘要：
 
 ```text
-DFI_Simulation/
-  DFI_Simulation.exe
+WaferScope/
+  WaferScope.exe
   _internal/
   fem/
-    DFI_FEM.exe
+    WaferScope_FEM.exe
     _internal/
   docs/
   verification/
@@ -52,7 +52,7 @@ DFI_Simulation/
 
 不要只移动一个 EXE，也不要删除任意 `_internal`。发行版附带界面和 FEM 两套运行时，无需另装 Anaconda、Python、SCATMECH 或 NGSolve。
 
-更新手册不会自动替换以前下载的 ZIP。请完整解压本版 DFI Simulation 安装包；为兼容已有结果，用户数据目录保留原来的 `FarField_Simulation` 名称。
+更新手册不会自动替换以前下载的 ZIP。请完整解压本版 WaferScope 安装包；为兼容已有结果，用户数据目录保留原来的 `FarField_Simulation` 名称。
 
 可用 PowerShell 核对 ZIP 的 SHA-256，与 Release 中同名 `.sha256` 文件比较：
 
@@ -80,7 +80,7 @@ FEM 页默认 `Memory limit = 10 GiB`、`Time limit = 30 min`、2 个 FEM 线程
 
 源码界面依赖 NIST2 中的 PyQt5/pySCATMECH，FEM 求解器使用另一个包含 NGSolve 的隔离环境，当前路径为 `build/ngsolve_env/Scripts/python.exe`。迁移电脑时需要重新配置这些环境和求解器路径；发行版 EXE 不需要这些开发环境。
 
-不要把 `FEM engine / Python` 指向只含界面依赖的 NIST2 解释器。源码运行时应选择含 NGSolve 的隔离解释器；发行版选择 `fem/DFI_FEM.exe`。若 VS Code 的终端激活受 PowerShell 脚本策略限制，可先使用上述绝对解释器路径启动，不必为了打开软件而放开系统范围的脚本策略。
+不要把 `FEM engine / Python` 指向只含界面依赖的 NIST2 解释器。源码运行时应选择含 NGSolve 的隔离解释器；发行版选择 `fem/WaferScope_FEM.exe`。若 VS Code 的终端激活受 PowerShell 脚本策略限制，可先使用上述绝对解释器路径启动，不必为了打开软件而放开系统范围的脚本策略。
 
 ## 2. 选择计算入口
 
@@ -131,7 +131,7 @@ FEM 页默认 `Memory limit = 10 GiB`、`Time limit = 30 min`、2 个 FEM 线程
 1. 打开 FEM 页，选择 `Parameter set = 10 nm PSL preview`，点击 `Apply preset`。
 2. 确认 `Defect shape=sphere`、`Sphere diameter=10 nm`。将 `Illumination sizing=manual`，再明确填写 `Wafer spot length=2 um`、`Wafer spot width=2 um`、`Laser power=1 W`。预设可能继承相机视野匹配，不能假设显示的光斑始终是 2×2 μm。
 3. 首次检查将 `Roughness RMS=0 nm`，关闭 `Camera response`，以排除粗糙背景和探测器噪声；保持 `Illumination=gaussian`、`Finite beam definition=wafer_gaussian`、`Beam waist=0`。
-4. 保持程序识别的 `fem/DFI_FEM.exe` 求解器路径，点击 `Calculate`。
+4. 保持程序识别的 `fem/WaferScope_FEM.exe` 求解器路径，点击 `Calculate`。
 5. 等待完成提示，查看 `Near field`、`Far field`、`Three image planes` 和 `Result parameters`。
 6. 需要局部粗糙背景时，再把 RMS 改为目标值并重新 `Calculate`；需要整光斑背景时按第 8 节运行 hybrid。
 

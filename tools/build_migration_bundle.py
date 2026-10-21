@@ -8,7 +8,7 @@ import tempfile
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
-PREFIX = 'DFI_Simulation_Migration_20261021'
+PREFIX = 'WaferScope_Migration_20261021'
 EXCLUDED = {'.git', '.codex', '.agents', '.idea', '.vscode', '__pycache__', 'build',
             'dist', '.pytest_cache', '.mplconfig', '.venv', 'venv', 'env', 'offline_wheels'}
 
@@ -111,7 +111,7 @@ def main():
             sha256=sha256(file.read_bytes())) for file in sorted((ROOT/'output').rglob('*'))
             if file.is_file() and file.relative_to(ROOT).as_posix() not in included]
         manifest = write_bundle(source, target, dict(source_commit=commit, source_tree=tree,
-            repository='https://github.com/wufansaber/aptk', date='2026-10-21'), environments, omissions)
+            repository='https://github.com/wufansaber/waferscope', date='2026-10-21'), environments, omissions)
     digest = sha256(target.read_bytes())
     target.with_suffix('.sha256').write_text(digest+'  '+target.name+'\n', encoding='ascii')
     (output/'MIGRATION_MANIFEST.json').write_text(json.dumps(manifest, indent=2), encoding='utf-8')

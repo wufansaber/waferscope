@@ -22,7 +22,7 @@
 最新公式与数值结果见 [理论模型](../fullwave_prototype/THEORETICAL_MODEL_CN.md)、
 [理论交叉校验结果](../fullwave_prototype/THEORY_VALIDATION_CN.md)。
 2026-09-28 分文件发行版已包含 FEM 界面和独立求解器，无需安装 Anaconda。
-完整解压后启动 `DFI_Simulation.exe`，保留同级 `fem` 和 `_internal` 目录。
+完整解压后启动 `WaferScope.exe`，保留同级 `fem` 和 `_internal` 目录。
 发行版 FEM 结果默认位于 `%LOCALAPPDATA%\FarField_Simulation\results`。
 
 ## 三路独立 20× 成像
@@ -78,7 +78,7 @@ ROI 超出计算像场会报错，请增加 `Pupil samples / axis` 或减小 ROI
 
 ## 1. 软件介绍
 
-DFI Simulation 是一个面向晶圆表面颗粒散射分析的独立桌面程序。
+WaferScope 是一个面向晶圆表面颗粒散射分析的独立桌面程序。
 程序使用 pySCATMECH 建立球形颗粒位于晶圆表面的散射模型，计算上半空间的
 远场强度和偏振分布，并分析三路理想物镜能够收集到的远场能量。
 
@@ -101,16 +101,16 @@ DFI Simulation 是一个面向晶圆表面颗粒散射分析的独立桌面程�
 打开发布目录：
 
 ```text
-DFI_Simulation\
-|-- DFI_Simulation.exe
+WaferScope\
+|-- WaferScope.exe
 `-- _internal\
 ```
 
-双击 `DFI_Simulation.exe` 启动程序。
+双击 `WaferScope.exe` 启动程序。
 
-注意：本程序采用目录式打包。`DFI_Simulation.exe` 必须和 `_internal`
+注意：本程序采用目录式打包。`WaferScope.exe` 必须和 `_internal`
 文件夹保持在同一目录中。移动或发送程序时，请复制整个
-`DFI_Simulation` 文件夹，不要只复制 EXE。
+`WaferScope` 文件夹，不要只复制 EXE。
 
 ## 3. 界面组成
 

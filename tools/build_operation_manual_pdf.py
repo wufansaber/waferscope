@@ -18,7 +18,7 @@ from reportlab.platypus.tableofcontents import TableOfContents
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT/'far_field_standalone/OPERATION_MANUAL_CN.md'
-OUTPUT = ROOT/'output/pdf/DFI_Simulation_中文操作手册.pdf'
+OUTPUT = ROOT/'output/pdf/WaferScope_中文操作手册.pdf'
 EVIDENCE = ROOT/'build/manual_pdf_20261017'
 WIDTH = A4[0]-96
 
@@ -103,7 +103,7 @@ def main():
                 and plain(t['children']) != '目录']
     anchors = {slug(plain(t['children'])): 'section-%d'%i for i, t in enumerate(headings)}
     heading_keys = {plain(t['children']): 'section-%d'%i for i, t in enumerate(headings)}
-    story = [Spacer(1,55), Paragraph('DFI Simulation<br/>中文操作手册', title),
+    story = [Spacer(1,55), Paragraph('WaferScope<br/>中文操作手册', title),
              Paragraph('模型入口  参数设置  成像与相机  数据保存', subheading), Spacer(1,20)]
     toc = TableOfContents(); toc.levelStyles = [contents]; toc.dotsMinLevel = 0
     toc_pending = False
@@ -201,14 +201,14 @@ def main():
     def frame(c, doc):
         c.saveState(); c.setFont('CN',8); c.setFillColor(colors.HexColor('#59646a'))
         if doc.page > 1:
-            c.drawString(48,A4[1]-30,'DFI Simulation 中文操作手册')
-        c.drawString(48,25,'2026-10-19  |  DFI Simulation 分文件发行版')
+            c.drawString(48,A4[1]-30,'WaferScope 中文操作手册')
+        c.drawString(48,25,'2026-10-21  |  WaferScope 源码与分文件构建')
         c.drawRightString(A4[0]-48,25,'第 %d 页'%doc.page)
         c.restoreState()
     OUTPUT.parent.mkdir(parents=True,exist_ok=True)
     doc = ManualDocument(str(OUTPUT), pagesize=A4, rightMargin=48,leftMargin=48,
-        topMargin=48,bottomMargin=46, title='DFI Simulation 中文操作手册',
-        author='DFI Simulation', subject='操作步骤 参数说明 模型边界与常见问题')
+        topMargin=48,bottomMargin=46, title='WaferScope 中文操作手册',
+        author='WaferScope', subject='操作步骤 参数说明 模型边界与常见问题')
     doc.multiBuild(story, onFirstPage=frame, onLaterPages=frame)
     EVIDENCE.mkdir(parents=True,exist_ok=True)
     evidence = dict(source=str(SOURCE.relative_to(ROOT)),

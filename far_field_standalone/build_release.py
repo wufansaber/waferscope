@@ -54,7 +54,7 @@ def copy_release_manuals(app, root=ROOT):
         destination = (app/'docs'/relative if relative.startswith('far_field_standalone/')
                        else app/relative)
         shutil.copytree(source, destination, dirs_exist_ok=True)
-    for name in ('DFI_Simulation_中文操作手册.pdf', 'DFI_Simulation_功能与案例手册.pdf'):
+    for name in ('WaferScope_中文操作手册.pdf', 'WaferScope_功能与案例手册.pdf'):
         source = root/'output/pdf'/name
         if not source.is_file():
             raise FileNotFoundError('Missing release manual: '+str(source))
@@ -65,15 +65,15 @@ def copy_release_manuals(app, root=ROOT):
 
 def build(args):
     output = HERE/'dist'/args.version
-    app = output/'DFI_Simulation'
-    engine = ROOT/'build/package_fem/dist/DFI_FEM'
+    app = output/'WaferScope'
+    engine = ROOT/'build/package_fem/dist/WaferScope_FEM'
     if not args.assemble_only:
         for python, spec, dist, work in (
-            (args.gui_python, 'FarField_Simulation.spec', output, ROOT/'build/package_gui/work'),
-            (args.fem_python, 'FarField_FEM.spec', engine.parent, ROOT/'build/package_fem/work')):
+            (args.gui_python, 'WaferScope.spec', output, ROOT/'build/package_gui/work'),
+            (args.fem_python, 'WaferScope_FEM.spec', engine.parent, ROOT/'build/package_fem/work')):
             subprocess.run([str(python), '-m', 'PyInstaller', str(HERE/spec), '--noconfirm',
                             '--distpath', str(dist), '--workpath', str(work)], cwd=str(HERE), check=True)
-    if not (app/'DFI_Simulation.exe').is_file() or not (engine/'DFI_FEM.exe').is_file():
+    if not (app/'WaferScope.exe').is_file() or not (engine/'WaferScope_FEM.exe').is_file():
         raise FileNotFoundError('Build both executables before assembly')
     shutil.copytree(engine, app/'fem', dirs_exist_ok=True)
     for folder in ('far_field_standalone', 'fullwave_prototype'):
@@ -140,9 +140,9 @@ def build(args):
     (app/'build_manifest.json').write_text(json.dumps(dict(version=args.version,
         source_commit=commit, source_dirty=dirty,
         platform='Windows x64', format='onedir', fem_status='experimental',
-        source='https://github.com/wufansaber/aptk',
+        source='https://github.com/wufansaber/waferscope',
         note='No local environments, credentials or computed field archives included.'), indent=2), encoding='utf-8')
-    archive = Path(shutil.make_archive(str(output/('DFI_Simulation-'+args.version+'-win64')),
+    archive = Path(shutil.make_archive(str(output/('WaferScope-'+args.version+'-win64')),
                                      'zip', root_dir=str(output), base_dir=app.name))
     digest = hashlib.sha256()
     with archive.open('rb') as stream:

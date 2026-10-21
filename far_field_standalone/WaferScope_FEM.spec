@@ -1,4 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
+# WaferScope native FEM runtime.
 from importlib.metadata import distribution
 from pathlib import Path
 import sys
@@ -28,6 +29,6 @@ a = Analysis([str(Path(SPECPATH)/'fem_entry.py')],
     excludes=['PyQt5', 'PySide6', 'tkinter', 'IPython', 'jupyter', 'numba', 'llvmlite', 'miepython'],
     noarchive=False)
 pyz = PYZ(a.pure)
-exe = EXE(pyz, a.scripts, [], exclude_binaries=True, name='DFI_FEM',
+exe = EXE(pyz, a.scripts, [], exclude_binaries=True, name='WaferScope_FEM',
           console=True, debug=False, strip=False, upx=False)
-coll = COLLECT(exe, a.binaries, a.datas, name='DFI_FEM', strip=False, upx=False)
+coll = COLLECT(exe, a.binaries, a.datas, name='WaferScope_FEM', strip=False, upx=False)
