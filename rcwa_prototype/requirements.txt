@@ -1,0 +1,8 @@
+# Independent trial environment; not the packaged application's runtime.
+grcwa @ git+https://github.com/weiliangjinca/grcwa.git@c52f10a138f4b2d5c897b7670967813c36af8d9b
+numpy==2.4.6
+scipy==1.17.1
+matplotlib==3.11.2
+psutil==7.2.2
+pytest==9.1.1
+autograd==1.9.1

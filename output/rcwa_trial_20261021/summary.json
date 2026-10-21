@@ -1,0 +1,472 @@
+{
+  "status": "EXPERIMENTAL_NOT_CONVERGED",
+  "resources": [
+    {
+      "trial": "grating_1d",
+      "actual_modes": 119,
+      "patterned_layers": 1,
+      "reflectance": 0.25622592499362956,
+      "status": "completed",
+      "elapsed_seconds": 0.7970000000059372,
+      "peak_rss_gib": 0.0584564208984375,
+      "peak_accounted_gib": 0.075531005859375,
+      "minimum_available_gib": 13.73300552368164
+    },
+    {
+      "trial": "grating_1d_laurent481",
+      "actual_modes": 479,
+      "patterned_layers": 1,
+      "reflectance": 0.27587649544443604,
+      "status": "completed",
+      "elapsed_seconds": 21.172000000005937,
+      "peak_rss_gib": 0.3587608337402344,
+      "peak_accounted_gib": 0.3998451232910156,
+      "minimum_available_gib": 13.58572006225586
+    },
+    {
+      "trial": "grating_1d_pol481",
+      "actual_modes": 479,
+      "patterned_layers": 1,
+      "reflectance": 0.27257965113856325,
+      "status": "completed",
+      "elapsed_seconds": 21.375,
+      "peak_rss_gib": 0.3584022521972656,
+      "peak_accounted_gib": 0.3988380432128906,
+      "minimum_available_gib": 13.595451354980469
+    },
+    {
+      "trial": "particle_121",
+      "actual_modes": 117,
+      "patterned_layers": 9,
+      "reflectance": 0.23821747618791098,
+      "status": "completed",
+      "elapsed_seconds": 2.360000000000582,
+      "peak_rss_gib": 0.08826446533203125,
+      "peak_accounted_gib": 0.10561370849609375,
+      "minimum_available_gib": 14.180835723876953
+    },
+    {
+      "trial": "particle_321",
+      "actual_modes": 319,
+      "patterned_layers": 9,
+      "reflectance": 0.2507516961340495,
+      "status": "completed",
+      "elapsed_seconds": 33.61000000000058,
+      "peak_rss_gib": 0.34470367431640625,
+      "peak_accounted_gib": 0.3711967468261719,
+      "minimum_available_gib": 13.555435180664062
+    },
+    {
+      "trial": "particle_641",
+      "actual_modes": 633,
+      "patterned_layers": 9,
+      "reflectance": 0.21274120442676497,
+      "status": "completed",
+      "elapsed_seconds": 375.9690000000119,
+      "peak_rss_gib": 1.313140869140625,
+      "peak_accounted_gib": 1.372894287109375,
+      "minimum_available_gib": 12.697315216064453
+    },
+    {
+      "trial": "reference_121",
+      "actual_modes": 117,
+      "patterned_layers": 1,
+      "reflectance": 0.26386514129646654,
+      "status": "completed",
+      "elapsed_seconds": 1.0469999999913853,
+      "peak_rss_gib": 0.058109283447265625,
+      "peak_accounted_gib": 0.07540512084960938,
+      "minimum_available_gib": 14.604007720947266
+    },
+    {
+      "trial": "reference_321",
+      "actual_modes": 319,
+      "patterned_layers": 1,
+      "reflectance": 0.267521748835036,
+      "status": "completed",
+      "elapsed_seconds": 7.937999999994645,
+      "peak_rss_gib": 0.18264389038085938,
+      "peak_accounted_gib": 0.2096405029296875,
+      "minimum_available_gib": 14.31557846069336
+    },
+    {
+      "trial": "reference_641",
+      "actual_modes": 633,
+      "patterned_layers": 1,
+      "reflectance": 0.22317402392501526,
+      "status": "completed",
+      "elapsed_seconds": 93.04699999999139,
+      "peak_rss_gib": 0.6876716613769531,
+      "peak_accounted_gib": 0.7463836669921875,
+      "minimum_available_gib": 13.99838638305664
+    }
+  ],
+  "hardware": {
+    "total_memory_gib": 31.49742889404297,
+    "available_at_report_gib": 14.745365142822266
+  },
+  "memory_scaling": {
+    "based_on_trial": "particle_641",
+    "patterned_layers": 9,
+    "estimates": [
+      {
+        "total_modes": 1200,
+        "estimated_process_gib": 4.933920755093102
+      },
+      {
+        "total_modes": 2400,
+        "estimated_process_gib": 19.73568302037241
+      },
+      {
+        "total_modes": 4000,
+        "estimated_process_gib": 54.821341723256694
+      }
+    ],
+    "note": "Unmeasured quadratic extrapolation at fixed layers/backend; add OS/workspace headroom."
+  },
+  "nist_comparisons": [
+    {
+      "trial": "grating_1d",
+      "actual_modes": 119,
+      "relative_total_reflectance_difference": -0.07766662912108147,
+      "per_order": [
+        {
+          "order": -3,
+          "nist": 0.04655900250858981,
+          "rcwa": 0.04441803436686425,
+          "relative_difference": -0.04598397788549202
+        },
+        {
+          "order": -2,
+          "nist": 0.00022872596373065684,
+          "rcwa": 0.00029925582455649243,
+          "relative_difference": 0.30835966182173413
+        },
+        {
+          "order": -1,
+          "nist": 0.103381322264141,
+          "rcwa": 0.09573136426500865,
+          "relative_difference": -0.07399748650521776
+        },
+        {
+          "order": 0,
+          "nist": 0.12763280820469816,
+          "rcwa": 0.1157772705372002,
+          "relative_difference": -0.09288785410475331
+        }
+      ]
+    },
+    {
+      "trial": "grating_1d_laurent481",
+      "actual_modes": 479,
+      "relative_total_reflectance_difference": -0.006930707749984388,
+      "per_order": [
+        {
+          "order": -3,
+          "nist": 0.04655900250858981,
+          "rcwa": 0.04609857102617739,
+          "relative_difference": -0.009889204184034495
+        },
+        {
+          "order": -2,
+          "nist": 0.00022872596373065684,
+          "rcwa": 0.0002461705679046012,
+          "relative_difference": 0.07626857873681003
+        },
+        {
+          "order": -1,
+          "nist": 0.103381322264141,
+          "rcwa": 0.1027128034254429,
+          "relative_difference": -0.006466534032037452
+        },
+        {
+          "order": 0,
+          "nist": 0.12763280820469816,
+          "rcwa": 0.1268189504249113,
+          "relative_difference": -0.006376556241570741
+        }
+      ]
+    },
+    {
+      "trial": "grating_1d_pol481",
+      "actual_modes": 479,
+      "relative_total_reflectance_difference": -0.01879831842198887,
+      "per_order": [
+        {
+          "order": -3,
+          "nist": 0.04655900250858981,
+          "rcwa": 0.04604710939456909,
+          "relative_difference": -0.010994503456689841
+        },
+        {
+          "order": -2,
+          "nist": 0.00022872596373065684,
+          "rcwa": 0.00024388597306723708,
+          "relative_difference": 0.06628022935967315
+        },
+        {
+          "order": -1,
+          "nist": 0.103381322264141,
+          "rcwa": 0.10152952541947571,
+          "relative_difference": -0.01791229599418276
+        },
+        {
+          "order": 0,
+          "nist": 0.12763280820469816,
+          "rcwa": 0.12475913035145139,
+          "relative_difference": -0.022515197257416353
+        }
+      ]
+    },
+    {
+      "trial": "reference_121",
+      "actual_modes": 117,
+      "relative_total_reflectance_difference": -0.05016783436155825,
+      "per_order": [
+        {
+          "order": -3,
+          "nist": 0.04655900250858981,
+          "rcwa": 0.00148386049522145,
+          "relative_difference": -0.9681294612154183
+        },
+        {
+          "order": -2,
+          "nist": 0.00022872596373065684,
+          "rcwa": 0.011861118780260369,
+          "relative_difference": 50.85733436990908
+        },
+        {
+          "order": -1,
+          "nist": 0.103381322264141,
+          "rcwa": 0.0902981517708562,
+          "relative_difference": -0.1265525552077683
+        },
+        {
+          "order": 0,
+          "nist": 0.12763280820469816,
+          "rcwa": 0.16022201025012858,
+          "relative_difference": 0.2553356186691724
+        }
+      ]
+    },
+    {
+      "trial": "reference_321",
+      "actual_modes": 319,
+      "relative_total_reflectance_difference": -0.03700518832129562,
+      "per_order": [
+        {
+          "order": -3,
+          "nist": 0.04655900250858981,
+          "rcwa": 0.014404629322236712,
+          "relative_difference": -0.6906155942756902
+        },
+        {
+          "order": -2,
+          "nist": 0.00022872596373065684,
+          "rcwa": 0.008361992693737986,
+          "relative_difference": 35.55900081192751
+        },
+        {
+          "order": -1,
+          "nist": 0.103381322264141,
+          "rcwa": 0.10474890575422412,
+          "relative_difference": 0.013228535485248605
+        },
+        {
+          "order": 0,
+          "nist": 0.12763280820469816,
+          "rcwa": 0.14000622106483718,
+          "relative_difference": 0.09694539385433298
+        }
+      ]
+    },
+    {
+      "trial": "reference_641",
+      "actual_modes": 633,
+      "relative_total_reflectance_difference": -0.19664315863240822,
+      "per_order": [
+        {
+          "order": -3,
+          "nist": 0.04655900250858981,
+          "rcwa": 0.03251986940326016,
+          "relative_difference": -0.30153423288524117
+        },
+        {
+          "order": -2,
+          "nist": 0.00022872596373065684,
+          "rcwa": 0.0015069982652288758,
+          "relative_difference": 5.588662872587071
+        },
+        {
+          "order": -1,
+          "nist": 0.103381322264141,
+          "rcwa": 0.08694233038835843,
+          "relative_difference": -0.159013171003759
+        },
+        {
+          "order": 0,
+          "nist": 0.12763280820469816,
+          "rcwa": 0.1022048258681679,
+          "relative_difference": -0.19922763350743433
+        }
+      ]
+    }
+  ],
+  "pair_comparisons": [
+    {
+      "trial": "particle_121",
+      "channels": [
+        {
+          "tilt_deg": 45.0,
+          "na": 0.6,
+          "collected_orders": 4,
+          "sample_efficiency": 0.002953596449117253,
+          "reference_efficiency": 2.23721017118048e-30,
+          "actual_power_difference": 0.002953596449117253,
+          "difference_field_efficiency": 0.0029535964491172765,
+          "interference_efficiency": -2.3418766925686896e-17,
+          "periodic_difference_field_cross_section_um2": 0.00038222350628936476
+        },
+        {
+          "tilt_deg": -45.0,
+          "na": 0.6,
+          "collected_orders": 4,
+          "sample_efficiency": 0.0029535964582466834,
+          "reference_efficiency": 4.958991465941336e-31,
+          "actual_power_difference": 0.0029535964582466834,
+          "difference_field_efficiency": 0.002953596458246688,
+          "interference_efficiency": -4.7704895589362195e-18,
+          "periodic_difference_field_cross_section_um2": 0.00038222350747079754
+        },
+        {
+          "tilt_deg": 0.0,
+          "na": 0.6,
+          "collected_orders": 8,
+          "sample_efficiency": 0.10833751071077342,
+          "reference_efficiency": 0.10215927055111658,
+          "actual_power_difference": 0.006178240159656845,
+          "difference_field_efficiency": 0.004902356147677923,
+          "interference_efficiency": 0.001275884011978922,
+          "periodic_difference_field_cross_section_um2": 0.0006344115684472361
+        }
+      ],
+      "hemisphere_difference_field_efficiency": 0.02046622621066228,
+      "scope": "Periodic array, discrete diffraction orders; not isolated-particle DSC.",
+      "normalization": "Efficiencies relative to unit plane-wave power incident on this supercell.",
+      "cross_section_definition": "Lx*Ly*cos(theta_i)*difference_field_efficiency; periodic, not isolated."
+    },
+    {
+      "trial": "particle_321",
+      "channels": [
+        {
+          "tilt_deg": 45.0,
+          "na": 0.6,
+          "collected_orders": 4,
+          "sample_efficiency": 0.0026537229817524006,
+          "reference_efficiency": 3.279402439167819e-29,
+          "actual_power_difference": 0.0026537229817524006,
+          "difference_field_efficiency": 0.00265372298175253,
+          "interference_efficiency": -1.2923689896027213e-16,
+          "periodic_difference_field_cross_section_um2": 0.0003434170240519019
+        },
+        {
+          "tilt_deg": -45.0,
+          "na": 0.6,
+          "collected_orders": 4,
+          "sample_efficiency": 0.002653723210412507,
+          "reference_efficiency": 6.442053438772562e-29,
+          "actual_power_difference": 0.002653723210412507,
+          "difference_field_efficiency": 0.002653723210412187,
+          "interference_efficiency": 3.200564813177209e-16,
+          "periodic_difference_field_cross_section_um2": 0.000343417053642639
+        },
+        {
+          "tilt_deg": 0.0,
+          "na": 0.6,
+          "collected_orders": 8,
+          "sample_efficiency": 0.1195476732641458,
+          "reference_efficiency": 0.1131108984479621,
+          "actual_power_difference": 0.006436774816183696,
+          "difference_field_efficiency": 0.00439197478285149,
+          "interference_efficiency": 0.002044800033332206,
+          "periodic_difference_field_cross_section_um2": 0.0005683633597059868
+        }
+      ],
+      "hemisphere_difference_field_efficiency": 0.018737296665273285,
+      "scope": "Periodic array, discrete diffraction orders; not isolated-particle DSC.",
+      "normalization": "Efficiencies relative to unit plane-wave power incident on this supercell.",
+      "cross_section_definition": "Lx*Ly*cos(theta_i)*difference_field_efficiency; periodic, not isolated."
+    },
+    {
+      "trial": "particle_641",
+      "channels": [
+        {
+          "tilt_deg": 45.0,
+          "na": 0.6,
+          "collected_orders": 4,
+          "sample_efficiency": 0.0023457883684778417,
+          "reference_efficiency": 8.977707578827503e-29,
+          "actual_power_difference": 0.0023457883684778417,
+          "difference_field_efficiency": 0.0023457883684774943,
+          "interference_efficiency": 3.473783760643556e-16,
+          "periodic_difference_field_cross_section_um2": 0.00030356735277097257
+        },
+        {
+          "tilt_deg": -45.0,
+          "na": 0.6,
+          "collected_orders": 4,
+          "sample_efficiency": 0.0023457883696509723,
+          "reference_efficiency": 1.655987665978942e-28,
+          "actual_power_difference": 0.0023457883696509723,
+          "difference_field_efficiency": 0.002345788369651243,
+          "interference_efficiency": -2.706168622523819e-16,
+          "periodic_difference_field_cross_section_um2": 0.0003035673529228668
+        },
+        {
+          "tilt_deg": 0.0,
+          "na": 0.6,
+          "collected_orders": 8,
+          "sample_efficiency": 0.09214332123958173,
+          "reference_efficiency": 0.0884493286535873,
+          "actual_power_difference": 0.0036939925859944267,
+          "difference_field_efficiency": 0.0035522034890658506,
+          "interference_efficiency": 0.00014178909692857608,
+          "periodic_difference_field_cross_section_um2": 0.00045968895752493297
+        }
+      ],
+      "hemisphere_difference_field_efficiency": 0.016876882832985503,
+      "scope": "Periodic array, discrete diffraction orders; not isolated-particle DSC.",
+      "normalization": "Efficiencies relative to unit plane-wave power incident on this supercell.",
+      "cross_section_definition": "Lx*Ly*cos(theta_i)*difference_field_efficiency; periodic, not isolated."
+    }
+  ],
+  "truncation_changes": [
+    {
+      "coarse": "particle_121",
+      "fine": "particle_321",
+      "difference_field": {
+        "comparable": true,
+        "common_propagating_orders": 20,
+        "relative_power_weighted_complex_field_change": 0.1837575875988596,
+        "caveat": "Adjacent truncation change, not an error bound or proof of convergence."
+      }
+    },
+    {
+      "coarse": "particle_321",
+      "fine": "particle_641",
+      "difference_field": {
+        "comparable": true,
+        "common_propagating_orders": 20,
+        "relative_power_weighted_complex_field_change": 0.1571273182805772,
+        "caveat": "Adjacent truncation change, not an error bound or proof of convergence."
+      }
+    }
+  ],
+  "limitations": [
+    "Periodic particle copies; isolated-defect limit not demonstrated.",
+    "Backend is grcwa; S4 and AFMM have not been run.",
+    "Legacy Si optical constants are not a calibrated 266 nm material input.",
+    "Resource monitoring is sampled, not an OS hard allocation limit.",
+    "Sparse order amplitudes have not been converted into a camera prediction."
+  ]
+}

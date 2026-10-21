@@ -1,0 +1,51 @@
+{
+  "status": "not_converged",
+  "channels": [
+    {
+      "channel": 1,
+      "flux_relative_l2": {
+        "with": 3.369354068346906,
+        "without": 3.4820539443873053,
+        "difference": 1.590716547975718
+      },
+      "power_relative_error": {
+        "with": 1.9828122991481163,
+        "without": 2.0564456012643397
+      }
+    },
+    {
+      "channel": 2,
+      "flux_relative_l2": {
+        "with": 3.3693540683469054,
+        "without": 3.482053944387305,
+        "difference": 1.5907165479757186
+      },
+      "power_relative_error": {
+        "with": 1.9828122991481163,
+        "without": 2.0564456012643375
+      }
+    },
+    {
+      "channel": 3,
+      "flux_relative_l2": {
+        "with": 1.2509700759994051,
+        "without": 1.2689181283397046,
+        "difference": 1.2232667682866314
+      },
+      "power_relative_error": {
+        "with": 1.1255901194007256,
+        "without": 1.146525405921495
+      }
+    }
+  ],
+  "quadrature_relative_l2": {
+    "with": 0.052953988704442796,
+    "without": 0.0532091678632623
+  },
+  "mesh_dofs": [
+    127432,
+    218454
+  ],
+  "symmetry_scope": "Left/right optical equality imposed by physically valid PMC mirror boundary for this synthetic symmetric input; not an independent convergence test.",
+  "limitations": "Two finite trenches, P1 tetrahedra, unvalidated domain/PML truncation and substrate optical constants. Even passing selected checks would not establish agreement with a real SEM specimen."
+}

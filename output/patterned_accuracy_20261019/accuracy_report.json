@@ -1,0 +1,436 @@
+{
+  "status": "not_converged_do_not_use_for_quantitative_camera_prediction",
+  "comparisons": {
+    "underintegration_0_vs_10": {
+      "with": {
+        "complex_relative_l2": 1.1149936189825933,
+        "intensity_relative_l2": 2.4883876680135417,
+        "cap_dsc_coarse_um2": 0.08482925520207686,
+        "cap_dsc_fine_um2": 0.02609891482589987,
+        "cap_power_relative_error": 2.2502981740027965
+      },
+      "without": {
+        "complex_relative_l2": 1.1592399664560813,
+        "intensity_relative_l2": 2.504849519488043,
+        "cap_dsc_coarse_um2": 0.08521510924399789,
+        "cap_dsc_fine_um2": 0.025143719350213166,
+        "cap_power_relative_error": 2.3891210785915584
+      },
+      "change": {
+        "complex_relative_l2": 0.3510271630496168,
+        "intensity_relative_l2": 0.5341431590329447,
+        "cap_dsc_coarse_um2": 0.0006804527535457547,
+        "cap_dsc_fine_um2": 0.0005514948122209962,
+        "cap_power_relative_error": 0.2338334621959819
+      }
+    },
+    "integration_6_vs_10": {
+      "with": {
+        "complex_relative_l2": 0.002340431206121543,
+        "intensity_relative_l2": 0.001697989845112617,
+        "cap_dsc_coarse_um2": 0.026083222128054178,
+        "cap_dsc_fine_um2": 0.02609891482589987,
+        "cap_power_relative_error": -0.0006012777906810873
+      },
+      "without": {
+        "complex_relative_l2": 0.002676318096998836,
+        "intensity_relative_l2": 0.0016699891585310505,
+        "cap_dsc_coarse_um2": 0.02513098004033022,
+        "cap_dsc_fine_um2": 0.025143719350213166,
+        "cap_power_relative_error": -0.0005066597230707348
+      },
+      "change": {
+        "complex_relative_l2": 0.0027473972057627566,
+        "intensity_relative_l2": 0.003509037575451041,
+        "cap_dsc_coarse_um2": 0.0005513370407014177,
+        "cap_dsc_fine_um2": 0.0005514948122209962,
+        "cap_power_relative_error": -0.00028607978911565635
+      }
+    },
+    "p1_vs_p2": {
+      "with": {
+        "complex_relative_l2": 0.5451498925721731,
+        "intensity_relative_l2": 0.20443649477991502,
+        "cap_dsc_coarse_um2": 0.02609891482589987,
+        "cap_dsc_fine_um2": 0.02538059868316845,
+        "cap_power_relative_error": 0.02830178088776858
+      },
+      "without": {
+        "complex_relative_l2": 0.5443070935113502,
+        "intensity_relative_l2": 0.19331554548629837,
+        "cap_dsc_coarse_um2": 0.025143719350213166,
+        "cap_dsc_fine_um2": 0.024179649206859447,
+        "cap_power_relative_error": 0.03987113853910773
+      },
+      "change": {
+        "complex_relative_l2": 0.4960886866790493,
+        "intensity_relative_l2": 0.438936475863408,
+        "cap_dsc_coarse_um2": 0.0005514948122209962,
+        "cap_dsc_fine_um2": 0.00045883644936836946,
+        "cap_power_relative_error": 0.2019420274482977
+      }
+    },
+    "mesh_factor_1_vs_08": {
+      "with": {
+        "complex_relative_l2": 0.16844479201844859,
+        "intensity_relative_l2": 0.16516508262444668,
+        "cap_dsc_coarse_um2": 0.02609891482589987,
+        "cap_dsc_fine_um2": 0.023176107420376183,
+        "cap_power_relative_error": 0.1261129555757059
+      },
+      "without": {
+        "complex_relative_l2": 0.17872619572208254,
+        "intensity_relative_l2": 0.18728039173821237,
+        "cap_dsc_coarse_um2": 0.025143719350213166,
+        "cap_dsc_fine_um2": 0.021884865047928602,
+        "cap_power_relative_error": 0.14890904262592253
+      },
+      "change": {
+        "complex_relative_l2": 0.29552419037132394,
+        "intensity_relative_l2": 0.22515321604421665,
+        "cap_dsc_coarse_um2": 0.0005514948122209962,
+        "cap_dsc_fine_um2": 0.0004910194075702908,
+        "cap_power_relative_error": 0.1231629620302701
+      }
+    },
+    "pml_02_vs_03": {
+      "with": {
+        "complex_relative_l2": 0.3111764580199886,
+        "intensity_relative_l2": 0.2378046157625315,
+        "cap_dsc_coarse_um2": 0.02609891482589987,
+        "cap_dsc_fine_um2": 0.03153143491644733,
+        "cap_power_relative_error": -0.17228902220728837
+      },
+      "without": {
+        "complex_relative_l2": 0.31110744545839425,
+        "intensity_relative_l2": 0.22152736369736434,
+        "cap_dsc_coarse_um2": 0.025143719350213166,
+        "cap_dsc_fine_um2": 0.03035355590062075,
+        "cap_power_relative_error": -0.17163842574045962
+      },
+      "change": {
+        "complex_relative_l2": 0.21525262707768603,
+        "intensity_relative_l2": 0.20499607640906017,
+        "cap_dsc_coarse_um2": 0.0005514948122209962,
+        "cap_dsc_fine_um2": 0.0005299657637950063,
+        "cap_power_relative_error": 0.040623470225366276
+      }
+    },
+    "p2_h1_vs_p3_h18": {
+      "with": {
+        "complex_relative_l2": 0.21209877655336856,
+        "intensity_relative_l2": 0.08057510145454023,
+        "cap_dsc_coarse_um2": 0.02538059868316845,
+        "cap_dsc_fine_um2": 0.024230146852352565,
+        "cap_power_relative_error": 0.04748018399666387
+      },
+      "without": {
+        "complex_relative_l2": 0.22248346049709433,
+        "intensity_relative_l2": 0.05851856393369906,
+        "cap_dsc_coarse_um2": 0.024179649206859447,
+        "cap_dsc_fine_um2": 0.02338266156150582,
+        "cap_power_relative_error": 0.0340845563392016
+      },
+      "change": {
+        "complex_relative_l2": 0.1315389077653939,
+        "intensity_relative_l2": 0.15264129682270353,
+        "cap_dsc_coarse_um2": 0.00045883644936836946,
+        "cap_dsc_fine_um2": 0.0004997044123678051,
+        "cap_power_relative_error": -0.08178427483917217
+      }
+    }
+  },
+  "input_checks": "Physical defect, trench geometry, illumination and imaging inputs unchanged across patterned probes.",
+  "case_parameters": {
+    "p1_integration": {
+      "parameters": {
+        "wavelength_nm": 266,
+        "diameter_nm": 100,
+        "particle_n": 1.59,
+        "particle_k": 0.0,
+        "substrate_n": 5.57,
+        "substrate_k": 0.387,
+        "incidence_deg": 75.0,
+        "polarization": "p",
+        "gap_nm": 10,
+        "domain_radius_um": 1.5,
+        "pml_thickness_um": 0.2,
+        "pml_strength": 2.0,
+        "pml_power": 1,
+        "pml_mesh_scale": 1.8,
+        "air_mesh_um": 0.09,
+        "substrate_mesh_um": 0.035,
+        "particle_mesh_um": 0.015,
+        "order": 1,
+        "threads": 2,
+        "max_dofs": 1500000,
+        "static_condensation": false,
+        "direct_solver": "sparsecholesky",
+        "integration_bonus": 10,
+        "pml_order": 0,
+        "pml_inner_fraction": 0.0,
+        "beam_waist_um": 0.0,
+        "beam_order": 5,
+        "beam_profile": "plane",
+        "beam_length_um": 0.0,
+        "beam_width_um": 0.0,
+        "beam_definition": "wafer_gaussian",
+        "beam_measurement_path": "",
+        "beam_measurement_sha256": "",
+        "beam_phase_assumption": "flat",
+        "defect_shape": "sphere",
+        "defect_length_nm": 200.0,
+        "defect_width_nm": 50.0,
+        "defect_height_nm": 50.0,
+        "defect_rotation_deg": 0.0
+      },
+      "pattern": {
+        "pitch_um": 0.5,
+        "trench_width_um": 0.25,
+        "trench_depth_um": 0.1,
+        "line_length_um": 0.8,
+        "half_width_um": 0.55,
+        "air_height_um": 0.35,
+        "substrate_depth_um": 0.18
+      }
+    },
+    "p1_fine": {
+      "parameters": {
+        "wavelength_nm": 266,
+        "diameter_nm": 100,
+        "particle_n": 1.59,
+        "particle_k": 0.0,
+        "substrate_n": 5.57,
+        "substrate_k": 0.387,
+        "incidence_deg": 75.0,
+        "polarization": "p",
+        "gap_nm": 10,
+        "domain_radius_um": 1.5,
+        "pml_thickness_um": 0.2,
+        "pml_strength": 2.0,
+        "pml_power": 1,
+        "pml_mesh_scale": 1.8,
+        "air_mesh_um": 0.072,
+        "substrate_mesh_um": 0.028000000000000004,
+        "particle_mesh_um": 0.012,
+        "order": 1,
+        "threads": 2,
+        "max_dofs": 1500000,
+        "static_condensation": false,
+        "direct_solver": "sparsecholesky",
+        "integration_bonus": 10,
+        "pml_order": 0,
+        "pml_inner_fraction": 0.0,
+        "beam_waist_um": 0.0,
+        "beam_order": 5,
+        "beam_profile": "plane",
+        "beam_length_um": 0.0,
+        "beam_width_um": 0.0,
+        "beam_definition": "wafer_gaussian",
+        "beam_measurement_path": "",
+        "beam_measurement_sha256": "",
+        "beam_phase_assumption": "flat",
+        "defect_shape": "sphere",
+        "defect_length_nm": 200.0,
+        "defect_width_nm": 50.0,
+        "defect_height_nm": 50.0,
+        "defect_rotation_deg": 0.0
+      },
+      "pattern": {
+        "pitch_um": 0.5,
+        "trench_width_um": 0.25,
+        "trench_depth_um": 0.1,
+        "line_length_um": 0.8,
+        "half_width_um": 0.55,
+        "air_height_um": 0.35,
+        "substrate_depth_um": 0.18
+      }
+    },
+    "p2": {
+      "parameters": {
+        "wavelength_nm": 266,
+        "diameter_nm": 100,
+        "particle_n": 1.59,
+        "particle_k": 0.0,
+        "substrate_n": 5.57,
+        "substrate_k": 0.387,
+        "incidence_deg": 75.0,
+        "polarization": "p",
+        "gap_nm": 10,
+        "domain_radius_um": 1.5,
+        "pml_thickness_um": 0.2,
+        "pml_strength": 2.0,
+        "pml_power": 1,
+        "pml_mesh_scale": 1.8,
+        "air_mesh_um": 0.09,
+        "substrate_mesh_um": 0.035,
+        "particle_mesh_um": 0.015,
+        "order": 2,
+        "threads": 2,
+        "max_dofs": 1500000,
+        "static_condensation": true,
+        "direct_solver": "sparsecholesky",
+        "integration_bonus": 8,
+        "pml_order": 1,
+        "pml_inner_fraction": 0.0,
+        "beam_waist_um": 0.0,
+        "beam_order": 5,
+        "beam_profile": "plane",
+        "beam_length_um": 0.0,
+        "beam_width_um": 0.0,
+        "beam_definition": "wafer_gaussian",
+        "beam_measurement_path": "",
+        "beam_measurement_sha256": "",
+        "beam_phase_assumption": "flat",
+        "defect_shape": "sphere",
+        "defect_length_nm": 200.0,
+        "defect_width_nm": 50.0,
+        "defect_height_nm": 50.0,
+        "defect_rotation_deg": 0.0
+      },
+      "pattern": {
+        "pitch_um": 0.5,
+        "trench_width_um": 0.25,
+        "trench_depth_um": 0.1,
+        "line_length_um": 0.8,
+        "half_width_um": 0.55,
+        "air_height_um": 0.35,
+        "substrate_depth_um": 0.18
+      }
+    },
+    "p1_pml03": {
+      "parameters": {
+        "wavelength_nm": 266,
+        "diameter_nm": 100,
+        "particle_n": 1.59,
+        "particle_k": 0.0,
+        "substrate_n": 5.57,
+        "substrate_k": 0.387,
+        "incidence_deg": 75.0,
+        "polarization": "p",
+        "gap_nm": 10,
+        "domain_radius_um": 1.5,
+        "pml_thickness_um": 0.3,
+        "pml_strength": 2.0,
+        "pml_power": 1,
+        "pml_mesh_scale": 1.8,
+        "air_mesh_um": 0.09,
+        "substrate_mesh_um": 0.035,
+        "particle_mesh_um": 0.015,
+        "order": 1,
+        "threads": 2,
+        "max_dofs": 1500000,
+        "static_condensation": false,
+        "direct_solver": "sparsecholesky",
+        "integration_bonus": 10,
+        "pml_order": 0,
+        "pml_inner_fraction": 0.0,
+        "beam_waist_um": 0.0,
+        "beam_order": 5,
+        "beam_profile": "plane",
+        "beam_length_um": 0.0,
+        "beam_width_um": 0.0,
+        "beam_definition": "wafer_gaussian",
+        "beam_measurement_path": "",
+        "beam_measurement_sha256": "",
+        "beam_phase_assumption": "flat",
+        "defect_shape": "sphere",
+        "defect_length_nm": 200.0,
+        "defect_width_nm": 50.0,
+        "defect_height_nm": 50.0,
+        "defect_rotation_deg": 0.0
+      },
+      "pattern": {
+        "pitch_um": 0.5,
+        "trench_width_um": 0.25,
+        "trench_depth_um": 0.1,
+        "line_length_um": 0.8,
+        "half_width_um": 0.55,
+        "air_height_um": 0.35,
+        "substrate_depth_um": 0.18
+      }
+    },
+    "p3": {
+      "parameters": {
+        "wavelength_nm": 266,
+        "diameter_nm": 100,
+        "particle_n": 1.59,
+        "particle_k": 0.0,
+        "substrate_n": 5.57,
+        "substrate_k": 0.387,
+        "incidence_deg": 75.0,
+        "polarization": "p",
+        "gap_nm": 10,
+        "domain_radius_um": 1.5,
+        "pml_thickness_um": 0.2,
+        "pml_strength": 2.0,
+        "pml_power": 1,
+        "pml_mesh_scale": 1.8,
+        "air_mesh_um": 0.162,
+        "substrate_mesh_um": 0.06300000000000001,
+        "particle_mesh_um": 0.027,
+        "order": 3,
+        "threads": 2,
+        "max_dofs": 1500000,
+        "static_condensation": true,
+        "direct_solver": "sparsecholesky",
+        "integration_bonus": 10,
+        "pml_order": 1,
+        "pml_inner_fraction": 0.0,
+        "beam_waist_um": 0.0,
+        "beam_order": 5,
+        "beam_profile": "plane",
+        "beam_length_um": 0.0,
+        "beam_width_um": 0.0,
+        "beam_definition": "wafer_gaussian",
+        "beam_measurement_path": "",
+        "beam_measurement_sha256": "",
+        "beam_phase_assumption": "flat",
+        "defect_shape": "sphere",
+        "defect_length_nm": 200.0,
+        "defect_width_nm": 50.0,
+        "defect_height_nm": 50.0,
+        "defect_rotation_deg": 0.0
+      },
+      "pattern": {
+        "pitch_um": 0.5,
+        "trench_width_um": 0.25,
+        "trench_depth_um": 0.1,
+        "line_length_um": 0.8,
+        "half_width_um": 0.55,
+        "air_height_um": 0.35,
+        "substrate_depth_um": 0.18
+      }
+    }
+  },
+  "flat_oracle": {
+    "flat_p1": {
+      "intensity_relative_l2": 0.1062037716712389,
+      "cap_power_relative_error": -0.09535029270859086,
+      "bv_multipole_relative_l2": 9.12553083370116e-11,
+      "bv_cap_quadrature_relative_error": -4.9420609675943084e-05,
+      "scope": "Flat silicon wafer and sphere only. No fitted amplitude; intensity comparison is independent of Jones global phase conventions."
+    },
+    "flat_p2": {
+      "intensity_relative_l2": 0.020553098066808207,
+      "cap_power_relative_error": -0.01637251374341986,
+      "bv_multipole_relative_l2": 9.12553083370116e-11,
+      "bv_cap_quadrature_relative_error": -4.9420609675943084e-05,
+      "scope": "Flat silicon wafer and sphere only. No fitted amplitude; intensity comparison is independent of Jones global phase conventions."
+    }
+  },
+  "thresholds": {
+    "complex_relative_l2": 0.05,
+    "cap_power_relative_error": 0.05,
+    "source_quadrature_relative_l2": 0.01
+  },
+  "limitations": [
+    "48 CH3 directions are probes, not a hemisphere integral convergence test.",
+    "P2 physical region uses P1 PML: its order must be checked independently.",
+    "Changing PML thickness regenerates the mesh; the sensitivity is not an isolated PML reflection estimate.",
+    "No fitted field phase, amplitude scaling or forced image symmetry in the comparisons.",
+    "Silicon 5.57+0.387i and sphere 1.59+0i are legacy illustrative inputs, not calibrated at 266 nm.",
+    "Two finite trenches do not represent an infinite grating or a reconstruction of SEM.",
+    "No domain-size or energy-balance certification. Low algebraic residual is not a physical error estimate."
+  ]
+}

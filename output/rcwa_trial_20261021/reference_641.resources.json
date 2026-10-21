@@ -1,0 +1,31 @@
+{
+  "command": [
+    "D:\\code\\aptk_sim\\aptk\\build\\rcwa_env\\Scripts\\python.exe",
+    "-m",
+    "tools.rcwa_trial",
+    "--worker",
+    "--output",
+    "output/rcwa_trial_20261021/reference_641",
+    "--near",
+    "--modes",
+    "641",
+    "--factorization",
+    "laurent",
+    "--timeout",
+    "600"
+  ],
+  "limits": {
+    "maximum_gib": 8.0,
+    "reserve_gib": 3.0,
+    "timeout_seconds": 600.0
+  },
+  "peak_rss_gib": 0.6876716613769531,
+  "peak_accounted_gib": 0.7463836669921875,
+  "minimum_available_gib": 13.99838638305664,
+  "status": "completed",
+  "sampling_seconds": 0.25,
+  "note": "Sampled limits, not an OS hard memory cap. Windows accounting includes private committed bytes; shared RSS may be counted twice.",
+  "elapsed_seconds": 93.04699999999139,
+  "returncode": 0,
+  "surviving_owned_pids": []
+}

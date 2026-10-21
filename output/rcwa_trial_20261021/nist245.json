@@ -1,0 +1,17 @@
+{
+  "inputs": {
+    "wavelength_um": 0.266,
+    "period_um": 0.5,
+    "ridge_width_um": 0.25,
+    "depth_um": 0.1,
+    "substrate_n": 5.57,
+    "substrate_k": 0.387,
+    "incidence_deg": 75.0
+  },
+  "fourier_order": 245,
+  "polarization": "p",
+  "particle": false,
+  "order_mapping": "canonical m=-NIST index; canonical transverse k/k0=sin(theta)+m*lambda/period",
+  "reflectance": 0.2778018589411596,
+  "scope": "Infinite 1D rectangular silicon ridges, invariant along the lines; not a finite SEM reconstruction."
+}

@@ -1,0 +1,23 @@
+{
+  "status": "passed_metadata_and_data_checks",
+  "particle_nm": 100.0,
+  "pitch_nm": 500.0,
+  "line_nm": 250.0,
+  "magnification": 40.0,
+  "numerical_apertures": [
+    0.6,
+    0.6,
+    0.6
+  ],
+  "random_haze": false,
+  "algebraic_residuals": {
+    "with": 1.0991178521723645e-12,
+    "without": 5.219913052750556e-13
+  },
+  "radiation_quadrature_errors": {
+    "with": 0.008668082903660656,
+    "without": 0.008719358034428032
+  },
+  "mesh_and_pml_convergence_validated": false,
+  "elapsed_seconds": 196.0779999999795
+}

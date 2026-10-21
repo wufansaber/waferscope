@@ -55,9 +55,12 @@ def background_coefficient(p):
     return ng.IfPos(ng.z, above, below)
 
 
-def solve(p, mesh=None, particle_enabled=True):
+def solve(p, mesh=None, particle_enabled=True, *, space=None):
+    """Solve on a standard mesh, or an explicit validation-only periodic space."""
     import ngsolve as ng
     p.validate()
+    if space is not None and mesh is None:
+        raise ValueError('An explicit validation space requires its mesh')
     from .beam_validation import check_local_beam
     beam_check = check_local_beam(p)
     ng.SetNumThreads(p.threads)
@@ -69,8 +72,12 @@ def solve(p, mesh=None, particle_enabled=True):
     eps = mesh.MaterialCF({'particle': p.eps_particle if particle_enabled else 1,
                            'substrate': p.eps_substrate, 'bump': p.eps_substrate,
                            'pml_substrate': p.eps_substrate}, default=1)
-    from .field_space import make_space
-    space = make_space(mesh, p)
+    external_space = space is not None
+    if not external_space:
+        from .field_space import make_space
+        space = make_space(mesh, p)
+    elif p.direct_solver != 'umfpack':
+        raise ValueError('An explicit periodic space requires the nonsymmetric UMFPACK solver')
     print('Elements: {}; degrees of freedom: {}'.format(mesh.ne, space.ndof), flush=True)
     if space.ndof > p.max_dofs:
         raise ValueError('FEM has {} DOFs, above the limit of {}. Use first-order preview or '
@@ -78,7 +85,7 @@ def solve(p, mesh=None, particle_enabled=True):
                              space.ndof, p.max_dofs))
     e_bg = background_coefficient(p)
     u, v = space.TnT()
-    a = ng.BilinearForm(space, symmetric=True, condense=p.static_condensation)
+    a = ng.BilinearForm(space, symmetric=not external_space, condense=p.static_condensation)
     a += (ng.curl(u)*ng.curl(v)-p.k0**2*eps*u*v)*ng.dx(bonus_intorder=p.integration_bonus)
     rhs = ng.LinearForm(space)
     for material, contrast in contrast_materials(p, particle_enabled).items():
@@ -90,7 +97,7 @@ def solve(p, mesh=None, particle_enabled=True):
         a.Assemble()
         rhs.Assemble()
         assembly_seconds = time.perf_counter()-assembly_start
-        print('Assembly complete in {:.1f}s; factoring with {}...'.format(
+        print('Assembly complete in {:.1f}s; solving with {}...'.format(
             assembly_seconds, p.direct_solver), flush=True)
         solve_rhs = rhs.vec.CreateVector()
         solve_rhs.data = rhs.vec
@@ -98,9 +105,9 @@ def solve(p, mesh=None, particle_enabled=True):
             solve_rhs.data += a.harmonic_extension_trans*rhs.vec
         factor_start = time.perf_counter()
         inverse = a.mat.Inverse(space.FreeDofs(coupling=p.static_condensation), inverse=p.direct_solver)
-        factor_seconds = time.perf_counter()-factor_start
-        print('Factorization complete in {:.1f}s; recovering the full field...'.format(factor_seconds), flush=True)
         field.vec.data = inverse*solve_rhs
+        factor_seconds = time.perf_counter()-factor_start
+        print('Linear solve complete in {:.1f}s; recovering the full field...'.format(factor_seconds), flush=True)
         residual = rhs.vec.CreateVector()
         residual.data = a.mat*field.vec-solve_rhs
         if p.static_condensation:

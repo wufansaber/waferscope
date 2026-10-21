@@ -1,0 +1,405 @@
+{
+  "scope": "Numerical verification with unchanged illustrative optical constants, not experimental calibration.",
+  "inputs": {
+    "wavelength_um": 0.266,
+    "period_um": 0.5,
+    "ridge_width_um": 0.25,
+    "depth_um": 0.1,
+    "substrate_n": 5.57,
+    "substrate_k": 0.387,
+    "incidence_deg": 75.0
+  },
+  "reference_convergence": {
+    "orders": [
+      -3,
+      -2,
+      -1,
+      0
+    ],
+    "fem_efficiency": [
+      0.046558588075722815,
+      0.00022887107806044034,
+      0.10338135207097132,
+      0.12761582061934532
+    ],
+    "nist_efficiency": [
+      0.04655900250858981,
+      0.00022872596373065684,
+      0.103381322264141,
+      0.12763280820469816
+    ],
+    "relative_power_error": [
+      -8.90124024714498e-06,
+      0.0006344462491996653,
+      2.8831929859853955e-07,
+      -0.00013309732498873516
+    ],
+    "absolute_efficiency_error": [
+      -4.144328669963837e-07,
+      1.4511432978349392e-07,
+      2.980683032338671e-08,
+      -1.6987585352845613e-05
+    ],
+    "total_reflectance_relative_error": -6.201217344414811e-05,
+    "ch3_efficiency": 0.10361022314903176,
+    "nist_ch3_efficiency": 0.10361004822787165,
+    "ch3_relative_power_error": 1.6882644406912561e-06,
+    "complex_relative_l2": 7.329820781549963e-05
+  },
+  "scalar": {
+    "orders": [
+      -3,
+      -2,
+      -1,
+      0
+    ],
+    "fem_efficiency": [
+      0.04652448270764221,
+      0.00022878857700522318,
+      0.10335079761274596,
+      0.12761556012886136
+    ],
+    "nist_efficiency": [
+      0.04655900250858981,
+      0.00022872596373065684,
+      0.103381322264141,
+      0.12763280820469816
+    ],
+    "relative_power_error": [
+      -0.0007414205435615793,
+      0.00027374799758221727,
+      -0.0002952627295387859,
+      -0.00013513826170105095
+    ],
+    "absolute_efficiency_error": [
+      -3.4519800947603596e-05,
+      6.261327456633017e-08,
+      -3.0524651395039126e-05,
+      -1.7248075836806542e-05
+    ],
+    "total_reflectance_relative_error": -0.0002960020325936119,
+    "ch3_efficiency": 0.10357958618975119,
+    "nist_ch3_efficiency": 0.10361004822787165,
+    "ch3_relative_power_error": -0.0002940066011113407,
+    "complex_relative_l2": 0.00021498157693402618
+  },
+  "vector_plane": {
+    "orders": [
+      -3,
+      -2,
+      -1,
+      0
+    ],
+    "fem_efficiency": [
+      0.046905966370653564,
+      0.0002447094881374341,
+      0.10307605414917026,
+      0.12931869590382383
+    ],
+    "nist_efficiency": [
+      0.04655900250858981,
+      0.00022872596373065684,
+      0.103381322264141,
+      0.12763280820469816
+    ],
+    "relative_power_error": [
+      0.007452132635353175,
+      0.06988067356270546,
+      -0.0029528362404842683,
+      0.01320888980536913
+    ],
+    "absolute_efficiency_error": [
+      0.00034696386206375246,
+      1.598352440677724e-05,
+      -0.0003052681149707387,
+      0.001685887699125671
+    ],
+    "total_reflectance_relative_error": 0.006276296988332319,
+    "ch3_efficiency": 0.10332076363730769,
+    "nist_ch3_efficiency": 0.10361004822787165,
+    "ch3_relative_power_error": -0.002792051499944548,
+    "complex_relative_l2": 0.007816212858000611
+  },
+  "vector_volume": {
+    "orders": [
+      -3,
+      -2,
+      -1,
+      0
+    ],
+    "fem_efficiency": [
+      0.04609551326188792,
+      0.00024504950448973786,
+      0.10208219865542695,
+      0.125709834478987
+    ],
+    "nist_efficiency": [
+      0.04655900250858981,
+      0.00022872596373065684,
+      0.103381322264141,
+      0.12763280820469816
+    ],
+    "relative_power_error": [
+      -0.009954879222689145,
+      0.07136724004933384,
+      -0.012566328039360614,
+      -0.015066453153855842
+    ],
+    "absolute_efficiency_error": [
+      -0.0004634892467018925,
+      1.6323540759081013e-05,
+      -0.0012991236087140506,
+      -0.0019229737257111523
+    ],
+    "total_reflectance_relative_error": -0.013208201897400351,
+    "ch3_efficiency": 0.10232724815991669,
+    "nist_ch3_efficiency": 0.10361004822787165,
+    "ch3_relative_power_error": -0.012381039193550714,
+    "complex_relative_l2": 0.014470599558708785
+  },
+  "scalar_checks": {
+    "reflectance": 0.27771962902625474,
+    "absorption_to_cut": 0.7165479492233324,
+    "downward_flux_at_cut": 0.00573424068839908,
+    "energy_closure_error": -1.8189379861937097e-06,
+    "modal_plane_relative_l2": 2.3942596872178607e-05,
+    "absorption_cut_z_um": -0.2999999
+  },
+  "vector_checks": {
+    "bloch_trace_relative_l2": 0.00023603828840195812,
+    "line_invariance_relative_l2": 0.0001956971746783815,
+    "modal_plane_relative_l2": 0.001288505929678743,
+    "reflectance": 0.2795454259117851,
+    "absorption_to_cut": 0.715407705980209,
+    "downward_flux_at_cut": 0.005157778640932729,
+    "energy_closure_error": -0.00011091053292680911,
+    "volume_vs_plane_relative_l2": 0.0157046858491011,
+    "volume_quadrature_relative_l2": 4.835836502143625e-05
+  },
+  "provenance": {
+    "root": "D:\\code\\aptk_sim\\aptk\\build\\grating_validation_20261020",
+    "scalar": "explicit_p4_refine",
+    "vector": "vector_p3_densepml",
+    "nist_fourier_orders": [
+      145,
+      245
+    ]
+  },
+  "scalar_mesh_sensitivity": {
+    "orders": [
+      -3,
+      -2,
+      -1,
+      0
+    ],
+    "fem_efficiency": [
+      0.04650566695634947,
+      0.0002286815546917754,
+      0.10333126513001355,
+      0.1275970174642854
+    ],
+    "nist_efficiency": [
+      0.04652448270764221,
+      0.00022878857700522318,
+      0.10335079761274596,
+      0.12761556012886136
+    ],
+    "relative_power_error": [
+      -0.00040442687801543374,
+      -0.00046777822061166773,
+      -0.00018899208504998875,
+      -0.00014530096923319084
+    ],
+    "absolute_efficiency_error": [
+      -1.8815751292734773e-05,
+      -1.0702231344777882e-07,
+      -1.953248273241226e-05,
+      -1.85426645759601e-05
+    ],
+    "total_reflectance_relative_error": -0.00020523547836504008,
+    "ch3_efficiency": 0.10355994668470532,
+    "nist_ch3_efficiency": 0.10357958618975119,
+    "ch3_relative_power_error": -0.00018960787321442574,
+    "complex_relative_l2": 0.0001334409897553224
+  },
+  "scalar_domain_and_remesh_sensitivity": {
+    "orders": [
+      -3,
+      -2,
+      -1,
+      0
+    ],
+    "fem_efficiency": [
+      0.04650002216762818,
+      0.00022873023206703444,
+      0.10332582561121599,
+      0.12759022894351577
+    ],
+    "nist_efficiency": [
+      0.04652448270764221,
+      0.00022878857700522318,
+      0.10335079761274596,
+      0.12761556012886136
+    ],
+    "relative_power_error": [
+      -0.0005257563027135504,
+      -0.0002550168323631085,
+      -0.00024162369431862977,
+      -0.0001984960558102089
+    ],
+    "absolute_efficiency_error": [
+      -2.4460540014030474e-05,
+      -5.834493818873514e-08,
+      -2.49720015299687e-05,
+      -2.5331185345589535e-05
+    ],
+    "total_reflectance_relative_error": -0.0002694158568846694,
+    "ch3_efficiency": 0.10355455584328302,
+    "nist_ch3_efficiency": 0.10357958618975119,
+    "ch3_relative_power_error": -0.00024165327733893793,
+    "complex_relative_l2": 0.00017717471859813333
+  },
+  "normalization": "Efficiencies per infinite periodic cell, not finite-particle DSC in um^2. CH3 is NA 0.6 about the normal and includes only propagating orders within this cone.",
+  "coordinate_mapping": "NIST grating transverse +x maps to application global +KY; canonical m=-NIST index.",
+  "independent_references": [
+    "https://pages.nist.gov/SCATMECH/docs/rcwmodel.htm",
+    "https://pages.nist.gov/pySCATMECH/UsingRCW.html"
+  ],
+  "limitations": [
+    "Infinite periodic lines without a particle are not the previous finite two-trench scene.",
+    "No reconstruction or radiometric fitting to the supplied SEM/dark-field screenshots.",
+    "Legacy optical constants remain 5.57+0.387i at 266 nm solely for controlled numerical comparison.",
+    "Camera images, finite defects and phase-sensitive particle/pattern coupling remain unverified."
+  ],
+  "status": {
+    "scalar_periodic": "passed_selected_checks",
+    "vector_periodic": "not_all_orders_within_5pct",
+    "finite_pattern": "not_certified"
+  },
+  "finite_surface_consistency": {
+    "without": [
+      {
+        "order": 32,
+        "volume_vs_surface_relative_l2": 0.16633140373101019,
+        "surface_change_relative_l2": null
+      },
+      {
+        "order": 48,
+        "volume_vs_surface_relative_l2": 0.1677674500544232,
+        "surface_change_relative_l2": 0.022345332942336676
+      },
+      {
+        "order": 72,
+        "volume_vs_surface_relative_l2": 0.16708014580457115,
+        "surface_change_relative_l2": 0.011918225559174428
+      }
+    ],
+    "with": [
+      {
+        "order": 32,
+        "volume_vs_surface_relative_l2": 0.16226116771648194,
+        "surface_change_relative_l2": null
+      },
+      {
+        "order": 48,
+        "volume_vs_surface_relative_l2": 0.16455754625706118,
+        "surface_change_relative_l2": 0.02154166633235171
+      },
+      {
+        "order": 72,
+        "volume_vs_surface_relative_l2": 0.16421263054401872,
+        "surface_change_relative_l2": 0.011873743082236737
+      }
+    ]
+  },
+  "finite_parameters": {
+    "wavelength_nm": 266,
+    "diameter_nm": 100,
+    "particle_n": 1.59,
+    "particle_k": 0.0,
+    "substrate_n": 5.57,
+    "substrate_k": 0.387,
+    "incidence_deg": 75.0,
+    "polarization": "p",
+    "gap_nm": 10,
+    "domain_radius_um": 1.5,
+    "pml_thickness_um": 0.2,
+    "pml_strength": 2.0,
+    "pml_power": 1,
+    "pml_mesh_scale": 1.8,
+    "air_mesh_um": 0.11699999999999999,
+    "substrate_mesh_um": 0.045500000000000006,
+    "particle_mesh_um": 0.0195,
+    "order": 2,
+    "threads": 2,
+    "max_dofs": 1500000,
+    "static_condensation": true,
+    "direct_solver": "sparsecholesky",
+    "integration_bonus": 10,
+    "pml_order": 2,
+    "pml_inner_fraction": 0.0,
+    "beam_waist_um": 0.0,
+    "beam_order": 5,
+    "beam_profile": "plane",
+    "beam_length_um": 0.0,
+    "beam_width_um": 0.0,
+    "beam_definition": "wafer_gaussian",
+    "beam_measurement_path": "",
+    "beam_measurement_sha256": "",
+    "beam_phase_assumption": "flat",
+    "defect_shape": "sphere",
+    "defect_length_nm": 200.0,
+    "defect_width_nm": 50.0,
+    "defect_height_nm": 50.0,
+    "defect_rotation_deg": 0.0
+  },
+  "finite_geometry": {
+    "pitch_um": 0.5,
+    "trench_width_um": 0.25,
+    "trench_depth_um": 0.1,
+    "line_length_um": 0.8,
+    "half_width_um": 0.55,
+    "air_height_um": 0.35,
+    "substrate_depth_um": 0.18
+  },
+  "finite_interpretation": "This is a same-field consistency discrepancy, not an absolute FEM error bound. Surface quadrature is not fully converged; inspect its 48-to-72 change separately. Mesh, corner refinement, enclosure position and PML convergence remain required.",
+  "corner_refinement_resource_attempt": {
+    "command": [
+      "D:\\code\\aptk_sim\\aptk\\build\\ngsolve_env\\Scripts\\python.exe",
+      "-m",
+      "tools.vector_grating_audit",
+      "--worker",
+      "--output",
+      "build/grating_validation_20261020/vector_p3_corner",
+      "--order",
+      "3",
+      "--pml-order",
+      "3",
+      "--line-period",
+      ".02",
+      "--corner-mesh",
+      ".008"
+    ],
+    "limits": {
+      "maximum_gib": 8,
+      "reserve_gib": 3,
+      "timeout_seconds": 600
+    },
+    "peak_rss_gib": 4.3116607666015625,
+    "peak_accounted_gib": 9.50510025024414,
+    "minimum_available_gib": 5.111347198486328,
+    "status": "stopped_memory_limit",
+    "sampling_seconds": 0.25,
+    "note": "Sampled limits, not an OS hard memory cap. Windows accounting includes private committed bytes; shared RSS may be counted twice.",
+    "elapsed_seconds": 61.18800000002375,
+    "returncode": 15,
+    "surviving_owned_pids": []
+  },
+  "corner_refinement_note": "Stopped at the configured 8 GiB private-commit accounting limit, not an observed operating-system out-of-memory event. No result from this run is used as validation evidence.",
+  "next_checks": [
+    "Converge the closed-surface quadrature and repeat with another enclosure.",
+    "Refine physical substrate and trench corners with a solver/memory strategy that completes safely.",
+    "Require finite sample/reference mesh and PML convergence before quantitative camera or SNR claims.",
+    "Calibrate 266 nm optical constants and SEM dimensions before experimental comparison."
+  ]
+}

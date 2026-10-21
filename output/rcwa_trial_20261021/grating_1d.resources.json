@@ -1,0 +1,35 @@
+{
+  "command": [
+    "D:\\code\\aptk_sim\\aptk\\build\\rcwa_env\\Scripts\\python.exe",
+    "-m",
+    "tools.rcwa_trial",
+    "--worker",
+    "--output",
+    "output/rcwa_trial_20261021/grating_1d",
+    "--lx",
+    ".005",
+    "--periods-y",
+    "1",
+    "--modes",
+    "121",
+    "--grid",
+    "16",
+    "512",
+    "--slices",
+    "2"
+  ],
+  "limits": {
+    "maximum_gib": 8.0,
+    "reserve_gib": 3.0,
+    "timeout_seconds": 600.0
+  },
+  "peak_rss_gib": 0.0584564208984375,
+  "peak_accounted_gib": 0.075531005859375,
+  "minimum_available_gib": 13.73300552368164,
+  "status": "completed",
+  "sampling_seconds": 0.25,
+  "note": "Sampled limits, not an OS hard memory cap. Windows accounting includes private committed bytes; shared RSS may be counted twice.",
+  "elapsed_seconds": 0.7970000000059372,
+  "returncode": 0,
+  "surviving_owned_pids": []
+}

@@ -1,0 +1,131 @@
+{
+  "parameters": {
+    "wavelength_nm": 266.0,
+    "diameter_nm": 100.0,
+    "particle_n": 1.59,
+    "particle_k": 0.0,
+    "substrate_n": 5.57,
+    "substrate_k": 0.387,
+    "incidence_deg": 75.0,
+    "polarization": "p",
+    "gap_nm": 0.0,
+    "domain_radius_um": 1.5,
+    "pml_thickness_um": 0.2,
+    "pml_strength": 2.0,
+    "pml_power": 1,
+    "pml_mesh_scale": 1.5,
+    "air_mesh_um": 0.126,
+    "substrate_mesh_um": 0.049,
+    "particle_mesh_um": 0.015,
+    "order": 2,
+    "threads": 2,
+    "max_dofs": 650000,
+    "static_condensation": true,
+    "direct_solver": "sparsecholesky",
+    "integration_bonus": 10,
+    "pml_order": 0,
+    "pml_inner_fraction": 0.0,
+    "beam_waist_um": 0.0,
+    "beam_order": 5,
+    "beam_profile": "plane",
+    "beam_length_um": 0.0,
+    "beam_width_um": 0.0,
+    "beam_definition": "wafer_gaussian",
+    "beam_measurement_path": "",
+    "beam_measurement_sha256": "",
+    "beam_phase_assumption": "flat",
+    "defect_shape": "sphere",
+    "defect_length_nm": 200.0,
+    "defect_width_nm": 50.0,
+    "defect_height_nm": 50.0,
+    "defect_rotation_deg": 0.0
+  },
+  "geometry": {
+    "trench_count": 2,
+    "pitch_um": 0.5,
+    "top_width_um": 0.25,
+    "bottom_width_um": 0.25,
+    "depth_um": 0.1,
+    "length_um": 0.8,
+    "margin_um": 0.15,
+    "air_height_um": 0.35,
+    "substrate_depth_um": 0.18,
+    "corner_mesh_um": 0
+  },
+  "solver": {
+    "elements": 17085,
+    "dofs": 169623,
+    "algebraic_residual": 5.441726948318959e-14,
+    "defect_geometry": {
+      "shape": "sphere",
+      "description": "sphere 100 nm",
+      "expected_volume_um3": 0.0005235987755982989,
+      "bottom_z_nm": 0.0,
+      "center_height_um": 0.05,
+      "required_radius_um": 0.1,
+      "scope": "Finite solid above nominal wafer; not an etched groove or infinite grating"
+    },
+    "local_beam_quadrature_check": null,
+    "threads": 2,
+    "assembly_seconds": 18.202795899997,
+    "factor_seconds": 47.63799249997828,
+    "factored_dofs": 159684,
+    "static_condensation": true,
+    "direct_solver": "sparsecholesky",
+    "integration_bonus": 10,
+    "pml_order": 2,
+    "residual_system": "Schur complement",
+    "solve_seconds": 65.99839729996165,
+    "particle_volume_um3": 0.0,
+    "ngsolve_version": "6.2.2607"
+  },
+  "checks": {
+    "surface_checks": [
+      {
+        "clearance_fraction": 0.35,
+        "order": 48,
+        "volume_vs_surface_relative_l2": 0.21324830128235073,
+        "quadrature_change_relative_l2": null
+      },
+      {
+        "clearance_fraction": 0.35,
+        "order": 96,
+        "volume_vs_surface_relative_l2": 0.20985376357148788,
+        "quadrature_change_relative_l2": 0.011201091981374343
+      },
+      {
+        "clearance_fraction": 0.35,
+        "order": 144,
+        "volume_vs_surface_relative_l2": 0.20881293383162336,
+        "quadrature_change_relative_l2": 0.0032339952046374887
+      },
+      {
+        "clearance_fraction": 0.65,
+        "order": 48,
+        "volume_vs_surface_relative_l2": 0.21010155226282054,
+        "quadrature_change_relative_l2": null
+      },
+      {
+        "clearance_fraction": 0.65,
+        "order": 96,
+        "volume_vs_surface_relative_l2": 0.2104970471534696,
+        "quadrature_change_relative_l2": 0.0076844407042253775
+      },
+      {
+        "clearance_fraction": 0.65,
+        "order": 144,
+        "volume_vs_surface_relative_l2": 0.2089952520070706,
+        "quadrature_change_relative_l2": 0.0036981125632965586
+      }
+    ],
+    "numerical_status": "mesh_and_PML_convergence_pending",
+    "volume_quadrature_relative_l2": 0.007810152896991711,
+    "trench_volume_um3": 0.039999999999999335,
+    "CH3_NA_0p6_DSC_um2": 0.02371934694710755,
+    "two_surface_relative_l2": 0.06465753043825591
+  },
+  "scope": "Finite 3D bare etched grating; plane illumination; no particle or random roughness.",
+  "material_caveat": "Legacy Si n=5.57 k=0.387 retained for numerical comparisons, not calibrated at 266 nm.",
+  "power_caveat": "DSC is differential cross section, not a finite-beam collection efficiency.",
+  "certification": "Independent extraction diagnostics only; mesh and PML convergence still required."
+}

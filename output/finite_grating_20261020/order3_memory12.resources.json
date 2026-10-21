@@ -1,0 +1,39 @@
+{
+  "command": [
+    "D:\\code\\aptk_sim\\aptk\\build\\ngsolve_env\\Scripts\\python.exe",
+    "-m",
+    "tools.finite_grating_run",
+    "--worker",
+    "--output",
+    "output/finite_grating_20261020/order3_memory12",
+    "--order",
+    "3",
+    "--factor",
+    "1.8",
+    "--source-order",
+    "11",
+    "--surface-orders",
+    "72",
+    "144",
+    "--disk-samples",
+    "64",
+    "--max-memory-gib",
+    "12",
+    "--timeout-seconds",
+    "900"
+  ],
+  "limits": {
+    "maximum_gib": 12.0,
+    "reserve_gib": 3.0,
+    "timeout_seconds": 900.0
+  },
+  "peak_rss_gib": 7.1036376953125,
+  "peak_accounted_gib": 8.380069732666016,
+  "minimum_available_gib": 2.7978858947753906,
+  "status": "stopped_system_memory_reserve",
+  "sampling_seconds": 0.25,
+  "note": "Sampled limits, not an OS hard memory cap. Windows accounting includes private committed bytes; shared RSS may be counted twice.",
+  "elapsed_seconds": 51.15600000001723,
+  "returncode": 15,
+  "surviving_owned_pids": []
+}

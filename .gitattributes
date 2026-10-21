@@ -1,0 +1,5 @@
+# Preserve binary artifacts byte-for-byte across Windows and Unix checkouts.
+*.pdf binary
+*.npz binary
+*.png binary
+*.zip binary

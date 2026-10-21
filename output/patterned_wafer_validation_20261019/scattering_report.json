@@ -1,0 +1,156 @@
+{
+  "parameters": {
+    "wavelength_nm": 266,
+    "diameter_nm": 100.0,
+    "particle_n": 1.59,
+    "particle_k": 0.0,
+    "substrate_n": 5.57,
+    "substrate_k": 0.387,
+    "incidence_deg": 75.0,
+    "polarization": "p",
+    "gap_nm": 10,
+    "domain_radius_um": 1.5,
+    "pml_thickness_um": 0.2,
+    "pml_strength": 2.0,
+    "pml_power": 1,
+    "pml_mesh_scale": 1.8,
+    "air_mesh_um": 0.09,
+    "substrate_mesh_um": 0.035,
+    "particle_mesh_um": 0.015,
+    "order": 1,
+    "threads": 2,
+    "max_dofs": 450000,
+    "static_condensation": false,
+    "direct_solver": "sparsecholesky",
+    "integration_bonus": 0,
+    "pml_order": 0,
+    "pml_inner_fraction": 0.0,
+    "beam_waist_um": 0.0,
+    "beam_order": 5,
+    "beam_profile": "plane",
+    "beam_length_um": 0.0,
+    "beam_width_um": 0.0,
+    "beam_definition": "wafer_gaussian",
+    "beam_measurement_path": "",
+    "beam_measurement_sha256": "",
+    "beam_phase_assumption": "flat",
+    "defect_shape": "sphere",
+    "defect_length_nm": 200.0,
+    "defect_width_nm": 50.0,
+    "defect_height_nm": 50.0,
+    "defect_rotation_deg": 0.0
+  },
+  "pattern": {
+    "pitch_um": 1.0,
+    "trench_width_um": 0.5,
+    "trench_depth_um": 0.1,
+    "line_length_um": 1.4,
+    "half_width_um": 0.9,
+    "air_height_um": 0.3,
+    "substrate_depth_um": 0.18
+  },
+  "metrics": {
+    "without": {
+      "elements": 90140,
+      "dofs": 218454,
+      "algebraic_residual": 2.211989047405912e-13,
+      "defect_geometry": {
+        "shape": "sphere",
+        "description": "sphere 100 nm",
+        "expected_volume_um3": 0.0005235987755982989,
+        "bottom_z_nm": 10,
+        "center_height_um": 0.06,
+        "required_radius_um": 0.11,
+        "scope": "Finite solid above nominal wafer; not an etched groove or infinite grating"
+      },
+      "local_beam_quadrature_check": null,
+      "threads": 2,
+      "assembly_seconds": 0.67099660000531,
+      "factor_seconds": 54.37455459998455,
+      "factored_dofs": 207544,
+      "static_condensation": false,
+      "direct_solver": "sparsecholesky",
+      "integration_bonus": 0,
+      "pml_order": 1,
+      "residual_system": "full Maxwell matrix",
+      "solve_seconds": 55.699663499952294,
+      "particle_volume_um3": 0.00026180730737217125,
+      "ngsolve_version": "6.2.2607",
+      "radiation_quadrature_relative_l2": 0.0532091678632623,
+      "contrast_volumes_um3": {
+        "particle": 0.0,
+        "pit": 0.07000000000000127
+      }
+    },
+    "with": {
+      "elements": 90140,
+      "dofs": 218454,
+      "algebraic_residual": 2.466773125565924e-13,
+      "defect_geometry": {
+        "shape": "sphere",
+        "description": "sphere 100 nm",
+        "expected_volume_um3": 0.0005235987755982989,
+        "bottom_z_nm": 10,
+        "center_height_um": 0.06,
+        "required_radius_um": 0.11,
+        "scope": "Finite solid above nominal wafer; not an etched groove or infinite grating"
+      },
+      "local_beam_quadrature_check": null,
+      "threads": 2,
+      "assembly_seconds": 0.8501740000210702,
+      "factor_seconds": 53.512900799978524,
+      "factored_dofs": 207544,
+      "static_condensation": false,
+      "direct_solver": "sparsecholesky",
+      "integration_bonus": 0,
+      "pml_order": 1,
+      "residual_system": "full Maxwell matrix",
+      "solve_seconds": 55.04729099996621,
+      "particle_volume_um3": 0.00026180730737217125,
+      "ngsolve_version": "6.2.2607",
+      "radiation_quadrature_relative_l2": 0.052953988704442796,
+      "contrast_volumes_um3": {
+        "particle": 0.0002618073073721713,
+        "pit": 0.07000000000000127
+      }
+    }
+  },
+  "half_domain_pmc_symmetry": true,
+  "near_field_planes": [
+    {
+      "plane": "XY",
+      "horizontal_axis": "X",
+      "vertical_axis": "Y",
+      "fixed_axis": "Z",
+      "position_um": 0.06,
+      "shape": [
+        161,
+        161
+      ]
+    },
+    {
+      "plane": "XZ",
+      "horizontal_axis": "X",
+      "vertical_axis": "Z",
+      "fixed_axis": "Y",
+      "position_um": 0.0,
+      "shape": [
+        101,
+        161
+      ]
+    },
+    {
+      "plane": "YZ",
+      "horizontal_axis": "Y",
+      "vertical_axis": "Z",
+      "fixed_axis": "X",
+      "position_um": 0.0,
+      "shape": [
+        101,
+        161
+      ]
+    }
+  ],
+  "status": "synthetic finite-patch FEM preview; not SEM reconstruction or mesh-converged prediction",
+  "scope": "Two finite trenches on homogeneous half-space; 100 nm sphere above central ridge. Shared mesh and phase for sample and reference; flat specular excluded. No random haze, coating, periodic boundary or infinite-grating approximation. Plane-wave illumination; 1 W / 2 x 2 um wafer area is irradiance normalization, not a finite beam."
+}
