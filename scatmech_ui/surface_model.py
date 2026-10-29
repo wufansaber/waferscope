@@ -59,6 +59,7 @@ def build_scattering_model(parameters):
         "sphere": complex(parameters.particle_n, parameters.particle_k),
         "substrate": substrate,
         "type": 0,
+        "delta": 0.0,
     }
     if stack is not None:
         particle_parameters["stack"] = stack

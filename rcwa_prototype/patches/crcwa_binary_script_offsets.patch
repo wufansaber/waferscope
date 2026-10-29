@@ -1,0 +1,8 @@
+--- a/src/parsefile.cpp
++++ b/src/parsefile.cpp
+@@ -124,1 +124,1 @@
+-        obj->fstack[++(obj->act)] = obj->pFin = fopen(argv[1], "r");
++        obj->fstack[++(obj->act)] = obj->pFin = fopen(argv[1], "rb");
+@@ -772,1 +772,1 @@
+-        pFin=fopen(name, "r");
++        pFin=fopen(name, "rb");

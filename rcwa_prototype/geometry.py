@@ -26,6 +26,9 @@ class Scene:
     modes: int = 121
     factorization: str = 'laurent'
     kind: str = 'grating'
+    grating_method: str = 'fft'
+    harmonics_x: int = None
+    harmonics_y: int = None
 
     def validate(self):
         numeric = [v for v in asdict(self).values() if isinstance(v, (float, int))]
@@ -44,6 +47,19 @@ class Scene:
                 raise ValueError(key+' must be a positive integer')
         if self.kind not in ('flat', 'grating') or self.factorization not in ('pol', 'laurent'):
             raise ValueError('Unsupported scene or Fourier factorization')
+        if self.grating_method not in ('fft', 'analytic_li'):
+            raise ValueError('Unsupported straight-grating material rule')
+        if (self.harmonics_x is None) != (self.harmonics_y is None):
+            raise ValueError('Both rectangular Fourier half-widths are required')
+        if self.harmonics_x is not None:
+            for value in (self.harmonics_x, self.harmonics_y):
+                if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+                    raise ValueError('Fourier half-widths must be nonnegative integers')
+
+    @property
+    def requested_modes(self):
+        return ((2*self.harmonics_x+1)*(2*self.harmonics_y+1)
+                if self.harmonics_x is not None else self.modes)
 
     @property
     def ly_um(self):

@@ -7,7 +7,8 @@ from tools.build_migration_bundle import PREFIX, allowed, verify_bundle, write_b
 
 
 @pytest.mark.parametrize('name', ['build/env/python.exe', '.vscode/settings.json', '.env',
-    'docs/../private.txt', '/outside.txt', 'keys/private.pem', 'x\\outside.txt'])
+    'docs/../private.txt', '/outside.txt', 'keys/private.pem', 'x\\outside.txt',
+    'output/history/modes.npz', 'output/history/report.json'])
 def test_package_excludes_local_or_unsafe_paths(name):
     assert not allowed(name)
 

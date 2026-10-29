@@ -3,3 +3,6 @@
 *.npz binary
 *.png binary
 *.zip binary
+
+# Preserve byte-level hashes in saved native inputs, reports and raw results.
+/output/** -text

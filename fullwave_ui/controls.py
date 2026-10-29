@@ -18,7 +18,7 @@ class SimulationControls(QWidget):
         self.form.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
         self.form.setRowWrapPolicy(QFormLayout.WrapLongRows)
         self.preset = QComboBox()
-        self.preset.addItems(('10 nm PSL preview', '100 nm standard', '266 nm low-haze camera',
+        self.preset.addItems(('10 nm PSL preview', '100 nm standard', '266 nm low-haze camera (10 nm gap)',
                              '266 nm line X preview', '266 nm line Y preview', '266 nm cross preview', 'Custom'))
         self.preset_button = QPushButton('Apply preset')
         self.form.addRow('Parameter set', self.preset)
@@ -31,8 +31,8 @@ class SimulationControls(QWidget):
             ('substrate-n', 'Wafer n', 5.57, .01, 20, 4),
             ('substrate-k', 'Wafer k', .387, 0, 20, 4),
             ('incidence-deg', 'Incidence / normal (deg)', 75, 0, 89, 1),
-            ('gap-nm', 'Defect bottom / wafer gap (nm)', 10, 0, 500, 1),
-            ('rms-nm', 'Roughness RMS (nm)', 2, 0, 30, 2),
+            ('gap-nm', 'Defect bottom / wafer gap (nm)', 0, 0, 500, 1),
+            ('rms-nm', 'Roughness RMS (nm)', 0, 0, 30, 2),
             ('correlation-length-um', 'PSD length B / L (um)', .05, .001, 1, 4),
             ('psd-exponent', 'ABC exponent C', 3, 2.01, 10, 3),
             ('rough-width-um', 'Rough patch width (um)', .2, .05, 2, 3),
@@ -46,6 +46,8 @@ class SimulationControls(QWidget):
             ('transmission', 'Power transmission', 1, 0, 1, 8),
         ):
             self.number(name, label, value, low, high, decimals)
+        self.fields['gap-nm'].setToolTip('0: contact with the nominal wafer plane. Sphere center = radius + gap; '
+            'changing diameter preserves the bottom gap. Explicit rough geometry still requires no overlap.')
         from .defect_controls import DefectControls
         self.defect_controls = DefectControls(self)
         self.choice('beam-profile', 'Illumination', ('gaussian', 'plane'))
@@ -142,7 +144,7 @@ class SimulationControls(QWidget):
         self.update_beam_profile()
         for key in ('astigmatism', 'coma', 'spherical'):
             self.number(key+'-nm', key.capitalize()+' RMS (nm)', 0, -1000, 1000, 2)
-        self.choice('archive-mode', 'Image archive', ('compact', 'full'))
+        self.choice('archive-mode', 'Image archive', ('full',))
         detector = QCheckBox()
         self.fields['detector'] = detector
         self.form.addRow('Camera response', detector)
@@ -195,7 +197,7 @@ class SimulationControls(QWidget):
             'threads': 2, 'pml-inner-fraction': 0, 'mesh-scale': 1.5,
             'particle-mesh-um': .0015, 'quadrature-order': '7'})
         from camera_profiles import profile_values
-        low_haze = dict(small_particle, **{'diameter-nm': 100, 'wavelength-nm': 266,
+        low_haze = dict(small_particle, **{'diameter-nm': 100, 'wavelength-nm': 266, 'gap-nm': 10,
             'rms-nm': .2, 'correlation-length-um': .05, 'rough-grid-points': 9,
             'particle-mesh-um': .0225, 'order': '1', 'direct-solver': 'umfpack',
             'pml-order': '0', 'transmission': .0001, 'illumination-fit': 'camera',
@@ -204,7 +206,7 @@ class SimulationControls(QWidget):
                          for name, value in profile_values('gemi_area').items()})
         pattern = dict(low_haze, **{'defect-length-nm': 200, 'defect-width-nm': 50,
             'defect-height-nm': 50, 'defect-rotation-deg': 0, 'particle-mesh-um': .015,
-            'rms-nm': 0, 'illumination-fit': 'manual', 'beam-profile': 'plane',
+            'rms-nm': 0, 'gap-nm': 0, 'illumination-fit': 'manual', 'beam-profile': 'plane',
             'illumination-length-um': 2, 'illumination-width-um': 2, 'transmission': .000001,
             'pupil-samples': '32', 'padding': '4', 'gray-snr-pairs': 100})
         self._presets = (small_particle, standard, low_haze)+tuple(

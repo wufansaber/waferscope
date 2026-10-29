@@ -29,12 +29,14 @@ def calculate_far_field(parameters, progress_callback=None):
     parameters.validate()
     model_bundle = build_scattering_model(parameters)
     theta_grid, phi_grid = _angular_grid(parameters.angular_step_deg)
+    raw = {}
     intensity, q, u, v, jones = _evaluate_mueller_grid(
         model_bundle,
         parameters,
         theta_grid,
         phi_grid,
         progress_callback,
+        raw=raw,
     )
     result = _format_far_field_result(
         parameters,
@@ -49,6 +51,9 @@ def calculate_far_field(parameters, progress_callback=None):
     )
     if jones is not None:
         result["jones_dsc_um"] = jones
+    result.update(raw)
+    result['scatmech_output_kind'] = model_bundle.output_kind
+    result['mueller_raw_units'] = 'um^2/sr' if model_bundle.output_kind == 'dsc' else '1/sr'
     return result
 
 
@@ -77,6 +82,7 @@ def _evaluate_mueller_grid(
     theta_grid,
     phi_grid,
     progress_callback,
+    raw=None,
 ):
     shape = theta_grid.shape
     intensity = np.empty(shape, dtype=float)
@@ -89,6 +95,11 @@ def _evaluate_mueller_grid(
     )
     incidence = np.deg2rad(parameters.incidence_deg)
     incidence_cosine = abs(np.cos(incidence))
+    if raw is not None:
+        raw.update(mueller_raw=np.empty(shape+(4, 4), float),
+                   stokes_raw=np.empty(shape+(4,), float),
+                   mueller_to_dsc_scale=np.empty(shape, float),
+                   incident_stokes=np.asarray(incident).copy())
 
     for row in range(shape[0]):
         for column in range(shape[1]):
@@ -116,6 +127,10 @@ def _evaluate_mueller_grid(
                     * abs(np.cos(scattering_theta))
                 )
             output = mueller @ incident
+            if raw is not None:
+                raw['mueller_raw'][row, column] = np.asarray(mueller)
+                raw['stokes_raw'][row, column] = np.asarray(output)
+                raw['mueller_to_dsc_scale'][row, column] = output_scale
             intensity[row, column] = max(float(output[0]) * output_scale, 0.0)
             q[row, column] = float(output[1]) * output_scale
             u[row, column] = float(output[2]) * output_scale

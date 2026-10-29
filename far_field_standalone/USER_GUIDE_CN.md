@@ -596,7 +596,7 @@ XZ 固定 Y=0，YZ 固定 X=0，XY 固定在颗粒中心高度（粒径/2+间隙
 `Direct solver = umfpack`、`FEM order = 1`、`PML order = 0`、
 `PML full-order fraction = 0`、`FEM threads = 2`，粗糙面为 Gaussian PSD、9x9 节点。
 其余采用默认值：355 nm、颗粒 n=1.59/k=0、晶圆 n=5.57/k=0.387、
-入射角 75°、P 偏振、间隙 10 nm、粗糙度 RMS 2 nm（种子 7），
+入射角 75°、P 偏振、间隙 0 nm、粗糙度 RMS 0 nm（平整晶圆；种子字段保留 7），
 三路 NA=0.5、倾角 +45°/-45°/0°、20 倍、物镜焦距 20 mm、128 个出瞳采样点。
 `Memory limit` 保持 12 GiB，随后点击 `Calculate`。
 `Particle mesh = 0` 表示由全局和局部比例自动计算；10 nm 示例必须显式填入 0.00150 um。

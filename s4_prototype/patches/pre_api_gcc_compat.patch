@@ -1,0 +1,6 @@
+diff --git a/S4/S4.cpp b/S4/S4.cpp
+--- a/S4/S4.cpp
++++ b/S4/S4.cpp
+@@ -461,1 +461,1 @@
+-	if(thick < 0){ ret = -3; }
++	if(NULL == thick || *thick < 0){ ret = -3; }

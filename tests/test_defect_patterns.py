@@ -121,17 +121,20 @@ def test_pattern_presets_have_bounded_preview_settings(name, shape):
 
 
 @pytest.mark.parametrize('shape', ['line_x', 'line_y', 'cross'])
-def test_native_cad_volume(shape):
+@pytest.mark.parametrize('gap', [0., 10.])
+def test_native_cad_volume(shape, gap):
     pytest.importorskip('netgen.occ')
-    p = Parameters(defect_shape=shape, defect_rotation_deg=17, gap_nm=10)
+    p = Parameters(defect_shape=shape, defect_rotation_deg=17, gap_nm=gap)
     solid = cad_solid(p, 1000)
     assert solid.mass/1e9 == pytest.approx(metadata(p)['expected_volume_um3'], rel=1e-12)
 
 
-def test_native_cross_mesh_material_volume():
+@pytest.mark.parametrize('shape', ['line_x', 'line_y', 'cross'])
+@pytest.mark.parametrize('gap', [0., 10.])
+def test_native_contact_pattern_mesh_material_volume(shape, gap):
     ng = pytest.importorskip('ngsolve')
     from fullwave_prototype.solver import build_mesh
-    p = Parameters(defect_shape='cross', gap_nm=10, order=1, particle_mesh_um=.02,
+    p = Parameters(defect_shape=shape, gap_nm=gap, order=1, particle_mesh_um=.02,
                    air_mesh_um=.12, substrate_mesh_um=.06)
     mesh = build_mesh(p)
     volume = ng.Integrate(1, mesh, definedon=mesh.Materials('particle'))

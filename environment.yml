@@ -5,7 +5,8 @@ dependencies:
   - python=3.8
   - pip
   - numpy=1.24
-  - matplotlib=3.4
+  - matplotlib=3.7
+  - scipy=1.10
   - pyqt=5
   - pip:
       - pySCATMECH==0.1.9

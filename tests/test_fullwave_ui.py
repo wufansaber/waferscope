@@ -57,6 +57,7 @@ class FullwaveUiTests(unittest.TestCase):
         from fullwave_ui.convergence_dialog import ConvergenceDialog
         from fullwave_prototype.haze_convergence import default_plan
         controls = SimulationControls()
+        controls.fields['rms-nm'].setValue(2)
         args = build_parser().parse_args(controls.arguments(particle_enabled=False))
         parameters, roughness = scattering_settings(args, particle_enabled=False)
         dialog = ConvergenceDialog(default_plan(parameters, roughness, 4, (.4, 0, .5), (45, -45, 0)))
@@ -112,6 +113,7 @@ class FullwaveUiTests(unittest.TestCase):
             engine = root/'fem.exe'
             engine.touch()
             widget = FullwaveWidget()
+            widget.controls.fields['rms-nm'].setValue(2)
             widget.controls.fields['illumination-fit'].setCurrentText('manual')
             widget.interpreter.setText(str(engine))
             widget.ensemble_count.setValue(2)
@@ -133,6 +135,8 @@ class FullwaveUiTests(unittest.TestCase):
             engine = root/'fem.exe'
             engine.touch()
             widget = FullwaveWidget()
+            widget.controls.fields['gap-nm'].setValue(10)
+            widget.controls.fields['rms-nm'].setValue(2)
             widget.interpreter.setText(str(engine))
             widget.controls.fields['na2'].setValue(0)
             with patch('fullwave_ui.hybrid_job.application_root', return_value=root), \
@@ -244,6 +248,7 @@ class FullwaveUiTests(unittest.TestCase):
             engine = root/'fem.exe'
             engine.touch()
             widget = FullwaveWidget()
+            widget.controls.fields['rms-nm'].setValue(2)
             self.assertEqual(widget.ensemble_count.value(), 16)
             widget.interpreter.setText(str(engine))
             widget.ensemble_count.setValue(2)
@@ -380,6 +385,7 @@ class FullwaveUiTests(unittest.TestCase):
         self.assertEqual(reproduction.quadrature_order, 7)
         self.assertNotIn('--particle-mesh-um', controls.arguments(imaging_only=True))
         self.assertNotIn('--quadrature-order', controls.arguments(imaging_only=True))
+        controls.fields['rms-nm'].setValue(2)
         controls.fields['gap-nm'].setValue(0)
         with self.assertRaises(ValueError):
             controls.arguments()
@@ -390,6 +396,8 @@ class FullwaveUiTests(unittest.TestCase):
         self.assertEqual(controls.fields['rough-grid-points'].value(), 9)
         self.assertEqual(controls.fields['accuracy'].currentText(), 'preview')
         self.assertEqual(controls.fields['order'].currentText(), '1')
+        controls.fields['gap-nm'].setValue(10)
+        controls.fields['rms-nm'].setValue(2)
         controls.fields['correlation-length-um'].setValue(.06)
         controls.fields['rough-width-um'].setValue(.24)
         _, surface = scattering_settings(build_parser().parse_args(controls.arguments()))
@@ -429,7 +437,7 @@ class FullwaveUiTests(unittest.TestCase):
         args = build_parser().parse_args(controls.arguments())
         p, roughness = scattering_settings(args)
         from fullwave_prototype.numerical_settings import numerical_parameters
-        expected = numerical_parameters('preview', mesh_scale=1.5, diameter_nm=10., gap_nm=10.,
+        expected = numerical_parameters('preview', mesh_scale=1.5, diameter_nm=10., gap_nm=0.,
             particle_mesh_um=.0015, threads=2, direct_solver='umfpack', order=1,
             pml_inner_fraction=0)
         from dataclasses import replace
@@ -441,7 +449,7 @@ class FullwaveUiTests(unittest.TestCase):
         self.assertEqual(p, expected)
         self.assertEqual((roughness.model, roughness.grid_points), ('gaussian', 9))
         self.assertAlmostEqual(roughness.mesh_um, .0375)
-        self.assertEqual((roughness.rms_nm, roughness.seed), (2, 7))
+        self.assertEqual((roughness.rms_nm, roughness.seed), (0, 7))
         self.assertEqual(args.quadrature_order, 7)
         self.assertEqual((args.pupil_samples, args.magnification, args.na, args.tilts),
                          (128, 20, [.5, .5, .5], [45, -45, 0]))
@@ -619,6 +627,7 @@ class FullwaveUiTests(unittest.TestCase):
             python = root/'python.exe'
             python.touch()
             widget = FullwaveWidget()
+            widget.controls.fields['rms-nm'].setValue(2)
             widget.controls.fields['detector'].setChecked(True)
             widget.interpreter.setText(str(python))
             widget.controls.fields['na1'].setValue(0)

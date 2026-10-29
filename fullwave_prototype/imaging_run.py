@@ -37,10 +37,12 @@ def image_saved_sources(source, output, settings, archive_mode='full', cache_dir
             raise ValueError('Saved finite-beam scattering and imaging illumination differ')
     arrays, report = calculate_images(data, p, settings, retain_complex_fields=archive_mode == 'full',
                                       cache_directory=cache_directory)
+    from .source_snapshot import snapshot_sources
+    snapshot_sources(source, output/'scattering')
     report.update(scattering_parameters=asdict(p), roughness=scattering['roughness'],
                   image_channel_figures=[1, 2, 3],
                   near_field_planes=[plane.metadata() for plane in saved_planes(data)],
-                  source_directory=str(source.resolve()),
+                  source_directory='scattering',
                   status='experimental full pipeline; selected Mie/BV/Airy benchmarks tested separately; '
                          'this rough-surface result is not a certified convergence result')
     output.mkdir(parents=True, exist_ok=True)
@@ -138,7 +140,7 @@ def scattering_settings(args, particle_enabled=True):
                 'beam_waist_um', 'beam_order', 'defect_shape', 'defect_length_nm',
                 'defect_width_nm', 'defect_height_nm', 'defect_rotation_deg')}
     p = numerical_parameters(args.accuracy or 'preview', scale, order=args.order, threads=args.threads,
-        gap_nm=args.gap_nm if args.gap_nm is not None else 10,
+        gap_nm=args.gap_nm if args.gap_nm is not None else Parameters().gap_nm,
         pml_power=args.pml_power, pml_mesh_scale=args.pml_mesh_scale,
         pml_strength=args.pml_strength, integration_bonus=args.integration_bonus,
         pml_order=args.pml_order, pml_inner_fraction=args.pml_inner_fraction,
@@ -171,7 +173,7 @@ def scattering_settings(args, particle_enabled=True):
             from .finite_illumination import power_area
             args.illumination_power_w = (1. if args.irradiance_w_um2 is None else
                                          args.irradiance_w_um2*power_area(p))
-    roughness = Roughness(rms_nm=args.rms_nm if args.rms_nm is not None else 2,
+    roughness = Roughness(rms_nm=args.rms_nm if args.rms_nm is not None else 0,
                          seed=args.roughness_seed if args.roughness_seed is not None else 7,
                          mesh_um=.025*scale*local, model=args.roughness_model,
                          correlation_length_um=args.correlation_length_um,

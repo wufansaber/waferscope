@@ -1,0 +1,27 @@
+{
+  "detector": {
+    "enabled": true,
+    "pixel_pitch_um": 5.0,
+    "pixels_x": 4,
+    "pixels_y": 8,
+    "exposure_ms": 0.01,
+    "quantum_efficiency": 0.639,
+    "read_noise_e": 12.1,
+    "dark_current_e_s": 1000.0,
+    "background_e_s": 0.0,
+    "full_well_e": 16000.0,
+    "seed": 20261027,
+    "gain_e_dn": 16.0,
+    "offset_dn": 64.0,
+    "bit_depth": 10,
+    "fill_factor": 1.0,
+    "prnu_fraction": 0.00124,
+    "dsnu_e": 5.6,
+    "dark_current_std_e_s": 0.0,
+    "fixed_pattern_seed": 20261027,
+    "reference_frames": 1,
+    "haze_mismatch_fraction": 0.0
+  },
+  "gray_pairs": 5000,
+  "gray_seed": 20261027
+}

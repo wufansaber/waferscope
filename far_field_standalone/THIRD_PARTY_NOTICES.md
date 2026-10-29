@@ -1,7 +1,7 @@
 # Third-party components
 
-This distribution bundles unmodified third-party shared libraries and Python
-modules. Their licenses and version inventories are copied from the installed
+This distribution bundles third-party shared libraries and Python modules,
+plus an explicitly modified S4 native solver. Python package licenses and version inventories are copied from the installed
 distributions into `licenses/gui` and `licenses/fem`. License terms remain those
 of the original projects; this notice does not replace them.
 
@@ -22,6 +22,14 @@ Main upstream projects and source locations:
 - Matplotlib: https://github.com/matplotlib/matplotlib
 - psutil: https://github.com/giampaolo/psutil
 - PyInstaller: https://github.com/pyinstaller/pyinstaller
+- S4 (GPL v2-or-later), pinned source plus documented project adapter:
+  https://github.com/victorliu/S4
+- Lua 5.2.4: https://www.lua.org/license.html
+
+The modified S4 runtime is a separate command-line process in `s4/`.
+Its license texts, modified corresponding source, pristine S4/Lua archives,
+patches and build instructions are included under `s4/licenses` and `s4/source`.
+It does not become an unmodified upstream build by being packaged here.
 
 NGSolve/Netgen/OCCT libraries remain separate DLLs, not statically linked into
 application code. The directories must remain intact for normal operation.

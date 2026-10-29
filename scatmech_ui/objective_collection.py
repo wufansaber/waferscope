@@ -73,6 +73,8 @@ def _objective_channel_pupil(
         "intensity": intensity,
         "intensity_db": intensity_db,
         "pupil_energy_density": pupil_energy_density,
+        "sampled_dsc_um2_sr": far_field_per_sr,
+        "aperture_mask": aperture,
         "relative_collected_power": relative_collected_power(
             pupil_energy_density,
             reference_value,
@@ -107,6 +109,7 @@ def _format_collection_result(parameters, channel_pupils, far_field):
         **_primary_pupil_aliases(primary_pupil),
         **_far_field_aliases(far_field),
         "plot_kind": "objective_collection",
+        "source_kind": far_field["source"],
         "parameters": parameters,
         "thickness_note": _collection_note(parameters, far_field),
         "channel_pupils": channel_pupils,

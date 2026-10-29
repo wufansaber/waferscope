@@ -55,7 +55,7 @@ def main():
     end = fields['gap-nm'].mapTo(viewport, fields['gap-nm'].rect().bottomLeft()).y()+8
     assert viewport.grab().copy(0, top, viewport.width(), min(end-top, viewport.height()-top)).save(str(out/'pattern_controls.png'))
     snapshots = {}
-    for label in ('10 nm PSL preview', '266 nm low-haze camera', '266 nm cross preview'):
+    for label in ('10 nm PSL preview', '266 nm low-haze camera (10 nm gap)', '266 nm cross preview'):
         widget.controls.preset.setCurrentText(label)
         widget.controls.preset_button.click()
         snapshots[label] = {name: (f.currentText() if hasattr(f, 'currentText') else f.isChecked()

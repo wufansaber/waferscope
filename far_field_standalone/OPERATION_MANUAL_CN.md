@@ -1,6 +1,10 @@
 # WaferScope 中文操作手册
 
-适用范围：WaferScope 当前源码与后续 Windows x64 分文件构建。更新日期：2026-10-21。
+适用范围：WaferScope 当前源码与后续 Windows x64 分文件构建。更新日期：2026-10-26。
+
+接触条件更新：SCATMECH 显式使用 `delta=0`；FEM 默认及平整晶圆预设使用 `gap_nm=0`、RMS=0。
+改变粒径时，球底始终在 z=0，球心高度为直径的一半。历史结果保留原有间隙，需要重新 Calculate 才能改变散射。
+`266 nm low-haze camera (10 nm gap)` 仍是带间隙的独立粗糙几何示例，不是接触模型，见 [接触条件说明](PARTICLE_CONTACT_CN.md)。
 
 本手册按当前界面的英文按钮和字段名称说明操作。SCATMECH、局部 FEM、整光斑 SPM 与混合模型的结果含义不同，请先选对计算入口。FEM/混合功能仍属实验模型，不是完整晶圆的解析解。
 
@@ -133,7 +137,7 @@ FEM 页默认 `Memory limit = 10 GiB`、`Time limit = 30 min`、2 个 FEM 线程
 3. 首次检查将 `Roughness RMS=0 nm`，关闭 `Camera response`，以排除粗糙背景和探测器噪声；保持 `Illumination=gaussian`、`Finite beam definition=wafer_gaussian`、`Beam waist=0`。
 4. 保持程序识别的 `fem/WaferScope_FEM.exe` 求解器路径，点击 `Calculate`。
 5. 等待完成提示，查看 `Near field`、`Far field`、`Three image planes` 和 `Result parameters`。
-6. 需要局部粗糙背景时，再把 RMS 改为目标值并重新 `Calculate`；需要整光斑背景时按第 8 节运行 hybrid。
+6. 需要局部粗糙背景时，显式设置目标 RMS 和避免实体交叠的间隙，再重新 `Calculate`；这不再是平整晶圆零间隙接触条件。任意随机粗糙面的真实接触尚未实现。需要整光斑背景时按第 8 节运行 hybrid，并同样检查局部几何。
 
 | 参数 | 本节首次运行条件 |
 | --- | --- |
@@ -141,7 +145,7 @@ FEM 页默认 `Memory limit = 10 GiB`、`Time limit = 30 min`、2 个 FEM 线程
 | Particle n / k | 1.59 / 0 |
 | Wafer n / k | 5.57 / 0.387 |
 | Incidence / normal | 75°，p 偏振 |
-| Sphere / wafer gap | 10 nm |
+| Sphere / wafer gap | 0 nm，球与平整晶圆接触 |
 | Illumination / Finite beam definition | `gaussian` / `wafer_gaussian` |
 | Laser power / wafer spot | 1 W / 2×2 μm 目标强度直径 |
 | Rough surface model / RMS / PSD length | Gaussian / 0 nm / 0.05 μm；RMS=0 时关闭粗糙贡献 |
@@ -439,7 +443,7 @@ SCATMECH 页用 `Export figures and data` 导出 PNG、NPZ 和参数；粒径扫
 
 ## 15. 相机参数与原始灰度 SNR
 
-FEM 页的 `Parameter set` 增加 `266 nm low-haze camera`：100 nm PSL、266 nm、RMS=0.2 nm、L=0.05 μm、三路 NA=0.5、20 倍、1 W，透过率 0.0001，Gemi 面阵近似 10 μs 曝光、20×20 个 5 μm 像元。光斑采用相机视野匹配，不是沿用旧 2×2 μm 光斑。
+FEM 页的 `Parameter set` 提供 `266 nm low-haze camera (10 nm gap)`：100 nm PSL、266 nm、RMS=0.2 nm、gap=10 nm、L=0.05 μm、三路 NA=0.5、20 倍、1 W，透过率 0.0001，Gemi 面阵近似 10 μs 曝光、20×20 个 5 μm 像元。光斑采用相机视野匹配，不是沿用旧 2×2 μm 光斑；此预设不是接触几何。
 
 相机预设也可用 `Apply Gemi area parameters` 单独应用，不会修改材料、波长、照明或光路透过率。QE=0.639 仅有 266 nm 的手册依据；使用此预设时其他波长会提示改为自定义 QE。手动改动探测器参数后标为 custom。
 
@@ -519,7 +523,7 @@ FEM 页 `Defect shape` 可选 `cross`、`line_x`、`line_y`。它们是有限尺
 ### 16.1 运行图案预设
 
 1. 使用包含图案功能的当前源码，在 FEM 页选择 `266 nm cross preview`、`266 nm line X preview` 或 `266 nm line Y preview`，点击 `Apply preset`。
-2. 确认 `Defect shape`、`Line / arm length`、`Line / arm width`、`Defect height`、`Rotation about +Z`。默认图案 L=200 nm、W=50 nm、H=50 nm、gap=10 nm；长度是每臂端到端总长，不是半臂长度。
+2. 确认 `Defect shape`、`Line / arm length`、`Line / arm width`、`Defect height`、`Rotation about +Z`。默认图案 L=200 nm、W=50 nm、H=50 nm、gap=0 nm；长度是每臂端到端总长，不是半臂长度。
 3. 非球体时直径框禁用；材料仍由 Defect n/k 决定。图案是有限凸起实体，不是凹槽、无限划痕或周期光栅。
 4. 保持预览的 `Illumination sizing=manual`、`Illumination=plane`、RMS=0、三路 NA=0.5。1 W 与 2×2 μm 在这里用于平面波参考辐照度，不是求解了有限矩形光束。
 5. 检查几何栏中的体积与所需 Domain radius；点击 Calculate，完成后看近场、远场、三路像面及相机。

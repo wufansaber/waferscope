@@ -1,0 +1,26 @@
+{
+  "scene": {
+    "wavelength_um": 0.266,
+    "incidence_deg": 75.0,
+    "pitch_um": 0.5,
+    "ridge_width_um": 0.25,
+    "depth_um": 0.1,
+    "substrate_n": 5.57,
+    "substrate_k": 0.387,
+    "particle_n": 1.59,
+    "particle_k": 0.0,
+    "diameter_um": 0.1,
+    "gap_um": 0.0,
+    "lx_um": 0.5,
+    "periods_y": 2,
+    "slices": 4,
+    "harmonics_x": 3,
+    "harmonics_y": 16,
+    "grating_method": "analytic_li"
+  },
+  "numerical_apertures": [0.6, 0.6, 0.6],
+  "tilts_deg": [45.0, -45.0, 0.0],
+  "magnification": 20.0,
+  "near_samples": 25,
+  "image_samples": 128
+}

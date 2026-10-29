@@ -616,7 +616,10 @@ class ScatmechSimulationWidget(QWidget):
             for key, value in self.result.items()
             if isinstance(value, np.ndarray)
         }
-        np.savez_compressed(str(directory / "far_field_data.npz"), **arrays)
+        from result_archive import save_result_archive
+        source = self.far_field_result if self.far_field_result is not self.result else None
+        save_result_archive(directory / "far_field_data.npz", self.result,
+                            source=source, legacy_arrays=arrays)
         with (directory / "simulation_parameters.json").open(
             "w", encoding="utf-8"
         ) as stream:

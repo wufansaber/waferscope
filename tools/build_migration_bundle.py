@@ -8,7 +8,9 @@ import tempfile
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
-PREFIX = 'WaferScope_Migration_20261021'
+PREFIX = 'WaferScope_Source_20261029'
+DOCUMENT_PDFS = {'output/pdf/WaferScope_中文操作手册.pdf',
+                 'output/pdf/WaferScope_功能与案例手册.pdf'}
 EXCLUDED = {'.git', '.codex', '.agents', '.idea', '.vscode', '__pycache__', 'build',
             'dist', '.pytest_cache', '.mplconfig', '.venv', 'venv', 'env', 'offline_wheels'}
 
@@ -17,12 +19,21 @@ def allowed(name):
     path = PurePosixPath(name)
     return (not path.is_absolute() and '..' not in path.parts and '\\' not in name
             and not EXCLUDED.intersection(path.parts) and path.name != '.env'
+            and (path.parts[0] != 'output' or name in DOCUMENT_PDFS)
             and not path.name.startswith('.env.')
             and path.suffix.lower() not in ('.pem', '.pfx', '.key', '.pyc'))
 
 
 def sha256(data):
     return hashlib.sha256(data).hexdigest()
+
+
+def sha256_file(path):
+    digest = hashlib.sha256()
+    with Path(path).open('rb') as stream:
+        for block in iter(lambda: stream.read(1024*1024), b''):
+            digest.update(block)
+    return digest.hexdigest()
 
 
 def git(*arguments):
@@ -34,10 +45,11 @@ def environment_snapshot(python):
     names = ['numpy', 'scipy', 'matplotlib', 'PyQt5', 'PyQt5-Qt5', 'PyQt5-sip',
         'pySCATMECH', 'ngsolve', 'netgen-mesher', 'netgen-occt', 'ngsolve-openblas',
         'psutil', 'pytest', 'miepython', 'grcwa', 'autograd', 'pyinstaller']
-    probe = ("import importlib.metadata as m,json,platform,sys; "
-        "names="+repr(names)+"; installed={d.metadata['Name'].lower():d.version for d in m.distributions()}; "
+    probe = ("import importlib.metadata as m,json,platform,sys,re; "
+        "canonical=lambda n:re.sub(r'[-_.]+','-',n.lower()); "
+        "names="+repr(names)+"; installed={canonical(d.metadata['Name']):d.version for d in m.distributions()}; "
         "print(json.dumps(dict(python=sys.version,platform=platform.platform(),"
-        "packages={n:installed.get(n.lower()) for n in names})))")
+        "packages={n:installed.get(canonical(n)) for n in names})))")
     return json.loads(subprocess.check_output([str(python), '-c', probe], text=True, timeout=60))
 
 
@@ -59,7 +71,7 @@ def write_bundle(source_zip, target, metadata, environments, omissions):
         records.append(dict(path='ENVIRONMENT_SNAPSHOTS.json', bytes=len(data), sha256=sha256(data)))
         manifest = dict(**metadata, files=records, excluded_tracked_paths=excluded,
             omitted_local_outputs=omissions,
-            note='Source-only migration; no EXE, portable venv, credentials or Git history. '
+            note='Source-only migration; no historical simulation data, EXE, portable venv, credentials or Git history. '
                  'The manifest does not hash itself. Omitted outputs remain on the original PC.')
         out.writestr(PREFIX+'/MIGRATION_MANIFEST.json', json.dumps(manifest, indent=2).encode('utf-8'))
     verify_bundle(target)
@@ -108,11 +120,11 @@ def main():
         with zipfile.ZipFile(source) as archive:
             included = set(archive.namelist())
         omissions = [dict(path=file.relative_to(ROOT).as_posix(), bytes=file.stat().st_size,
-            sha256=sha256(file.read_bytes())) for file in sorted((ROOT/'output').rglob('*'))
+            sha256=sha256_file(file)) for file in sorted((ROOT/'output').rglob('*'))
             if file.is_file() and file.relative_to(ROOT).as_posix() not in included]
         manifest = write_bundle(source, target, dict(source_commit=commit, source_tree=tree,
-            repository='https://github.com/wufansaber/waferscope', date='2026-10-21'), environments, omissions)
-    digest = sha256(target.read_bytes())
+            repository='https://github.com/wufansaber/waferscope', date='2026-10-29'), environments, omissions)
+    digest = sha256_file(target)
     target.with_suffix('.sha256').write_text(digest+'  '+target.name+'\n', encoding='ascii')
     (output/'MIGRATION_MANIFEST.json').write_text(json.dumps(manifest, indent=2), encoding='utf-8')
     (output/'ENVIRONMENT_SNAPSHOTS.json').write_text(json.dumps(environments, indent=2), encoding='utf-8')

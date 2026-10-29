@@ -93,6 +93,14 @@ class ScatmechSurfaceModelTests(unittest.TestCase):
         self.assertEqual(bundle.model.getModelName(), "Bobbert_Vlieger_BRDF_Model")
         self.assertEqual(bundle.output_kind, "dsc")
         self.assertEqual(bundle.stack_layer_count, 0)
+        self.assertEqual(float(bundle.model.getParameters()['delta']), 0.)
+
+    def test_all_particle_sizes_keep_contact_with_the_top_wafer_interface(self):
+        for diameter in (10., 50., 100.):
+            model = build_scattering_model(SimulationParameters(particle_diameter_nm=diameter)).model
+            params = model.getParameters()
+            self.assertEqual(float(params['delta']), 0.)
+            self.assertAlmostEqual(float(params['radius']), diameter/2000.)
 
     def test_multilayer_roughness_uses_two_source_brdf(self):
         parameters = SimulationParameters(
@@ -130,6 +138,7 @@ class ScatmechSurfaceModelTests(unittest.TestCase):
             "Roughness_Stack_BRDF_Model",
         )
         self.assertEqual(model_parameters["source2.this_layer"], "2")
+        self.assertEqual(float(model_parameters['source1.delta']), 0.)
 
 
 if __name__ == "__main__":

@@ -40,6 +40,10 @@ dist\YYYY-MM-DD\WaferScope\
 |-- _internal\
 |-- fem\WaferScope_FEM.exe
 |-- fem\_internal\
+|-- s4\S4.exe
+|-- s4\openblas.dll
+|-- s4\source\
+|-- examples\grating\
 |-- docs\
 |-- licenses\
 `-- README_CN.md
@@ -48,7 +52,14 @@ dist\YYYY-MM-DD\WaferScope\
 Keep the executable and `_internal` directory together when distributing or
 moving the application. The executable is not a one-file package and will not
 run if it is copied away from its `_internal` dependencies. Keep `fem` alongside
-the GUI as well. The frozen application writes FEM results to
+the GUI as well, along with `s4` for periodic calculations. The frozen application writes results to
 `%LOCALAPPDATA%\FarField_Simulation\results`, not the installation directory.
 Release usage: [RELEASE_README_CN.md](RELEASE_README_CN.md).
 Packaging checks: [PACKAGING_VALIDATION_CN.md](PACKAGING_VALIDATION_CN.md).
+
+The S4 Grating (periodic) page includes parameter presets and complete saved
+contact-sphere/grating demonstrations. Apply parameters prepares a new run;
+Open example loads the original computed near/far/image/camera data. The
+bundled FEM worker also hosts the isolated S4 process protocol, so no separate
+Python environment is needed. These mixed-scene examples are exploratory,
+not certified isolated-defect or finite-grating solutions.

@@ -140,7 +140,7 @@ def export_images(source, output, settings_values):
     change_error = float(np.linalg.norm(change-local_change)/max(np.linalg.norm(local_change), 1e-300))
     spm_check = float(np.linalg.norm(terms['local_fem_without']-terms['local_spm'])/
                       max(np.linalg.norm(terms['local_spm']), 1e-300))
-    arrays, report = calculate_images(data, p, settings, retain_complex_fields=False,
+    arrays, report = calculate_images(data, p, settings, retain_complex_fields=True,
                                       amplitude_provider=radiation.amplitude)
     del radiation
     from .hybrid_surface_audit import audit_surface
@@ -152,13 +152,15 @@ def export_images(source, output, settings_values):
         mother_surface_sha256=metadata['mother_surface']['sha256'],
         source_physical_signature=metadata['physical_signature'], surface_convergence=surface_audit,
         image_channel_figures=[1, 2, 3], near_field_planes=[plane.metadata() for plane in saved_planes(data)],
-        source_directory=str(Path(source).resolve()), local_change_relative_l2_error=change_error,
+        source_directory='.', local_change_relative_l2_error=change_error,
         local_fem_vs_spm_complex_relative_l2=spm_check,
         subtraction='A_hybrid = A_whole_SPM + A_local_FEM - A_same_local_SPM; '
                     'amplitudes share coordinates/polarization/incident flux; NOT intensity subtraction',
         status='experimental coherent hybrid; higher-order outer/local coupling and convergence unverified')
     output = Path(output)
     output.mkdir(parents=True, exist_ok=True)
+    from .source_snapshot import snapshot_sources
+    snapshot_sources(source, output, hybrid=True)
     np.savez_compressed(output/'image_fields.npz', **arrays)
     np.savez_compressed(output/'hybrid_far_fields.npz', theta=theta, phi=phi,
                         **terms, **{'dsc_'+key: value for key, value in components.items()})

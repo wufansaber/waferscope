@@ -1,0 +1,29 @@
+diff --git a/S4/main_lua.c b/S4/main_lua.c
+--- a/S4/main_lua.c
++++ b/S4/main_lua.c
+@@ -2186,7 +2186,7 @@
+ 	layer_name = luaL_checklstring(L, 2, NULL);
+ 	layer = S4_Simulation_GetLayerByName(S, layer_name);
+-	if(NULL == layer){
++	if(layer < 0){
+ 		S4L_error(L, "GetAmplitudes: S4_Layer named '%s' not found.", layer_name);
+ 		return 0;
+ 	}
+ 
+@@ -2206,4 +2206,4 @@
+ 	Simulation_GetAmplitudes(S,
+-		layer,
++		&S->layer[layer],
+ 		luaL_checknumber(L, 3),
+ 		amp, &amp[4*n]);
+diff --git a/S4/S4.cpp b/S4/S4.cpp
+--- a/S4/S4.cpp
++++ b/S4/S4.cpp
+@@ -351,5 +351,7 @@
+ ){
+ 	if(NULL == S){ return NULL; }
++	S4_message_handler previous = S->msg;
+ 	S->msg = handler;
+ 	S->msgdata = data;
++	return previous;
+ }

@@ -1,0 +1,13 @@
+{
+  "date": "2026-10-29",
+  "lightweight_tests_passed": 24,
+  "historical_simulation_data_included": false,
+  "electromagnetic_solves_started": false,
+  "matlab_executed": false,
+  "checks": [
+    "source package exclusion rules",
+    "DLL hash acceptance and rejection",
+    "finite geometry and source weights",
+    "portable runtime paths"
+  ]
+}

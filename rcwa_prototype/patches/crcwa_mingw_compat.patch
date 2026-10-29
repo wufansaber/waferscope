@@ -1,0 +1,17 @@
+--- a/src/compat.h
++++ b/src/compat.h
+@@ -24,7 +24,13 @@
+ #ifndef COMPAT_H
+ #define COMPAT_H
+ 
+-#ifdef _WIN32
++#if defined(__MINGW32__)
++#include <unistd.h>
++#include <pthread.h>
++#include <semaphore.h>
++#include <conio.h>
++#include <cmath>
++#elif defined(_WIN32)
+ #ifndef NOMINMAX
+ #define NOMINMAX
+ #endif

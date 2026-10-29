@@ -11,6 +11,8 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 HERE = Path(__file__).resolve().parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 
 def export_licenses(destination):
@@ -76,6 +78,8 @@ def build(args):
     if not (app/'WaferScope.exe').is_file() or not (engine/'WaferScope_FEM.exe').is_file():
         raise FileNotFoundError('Build both executables before assembly')
     shutil.copytree(engine, app/'fem', dirs_exist_ok=True)
+    from far_field_standalone.grating_release import assemble_grating
+    grating = assemble_grating(app, ROOT)
     for folder in ('far_field_standalone', 'fullwave_prototype'):
         target = app/'docs'/folder
         target.mkdir(parents=True, exist_ok=True)
@@ -84,6 +88,7 @@ def build(args):
     copy_release_manuals(app)
     shutil.copy2(HERE/'RELEASE_README_CN.md', app/'README_CN.md')
     shutil.copy2(HERE/'THIRD_PARTY_NOTICES.md', app/'THIRD_PARTY_NOTICES.md')
+    shutil.copy2(ROOT/'result_archive.py', app/'docs'/'result_archive.py')
     for name in ('CAMERA_MODEL_EMVA1288_CN.md', 'DETECTION_SNR_UI_CN.md'):
         if (ROOT/name).is_file():
             shutil.copy2(ROOT/name, app/'docs'/name)
@@ -113,7 +118,12 @@ def build(args):
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source, target)
     if args.verification_root:
-        for relative in ('campaign_summary.json', 'campaign_summary.png', 'pytest.txt',
+        from far_field_standalone.grating_release import copy_grating_verification
+        copy_grating_verification(app, args.verification_root)
+        for relative in ('campaign_summary.json', 'campaign_summary.png', 'pytest.txt', 'tests.xml', 'extra_tests.xml',
+                         'native_tests.xml',
+                         'contact_geometry.json', 'packaged/scatmech/raw_export_smoke.json',
+                         'packaged/fem_resources.json', 'packaged/scatmech_resources.json',
                          'packaged/package_smoke.json', 'packaged/packaged_gui.png',
                          'packaged/whole_haze_smoke.json', 'packaged/haze_ensemble_smoke.json'):
             source = args.verification_root/relative
@@ -141,7 +151,8 @@ def build(args):
         source_commit=commit, source_dirty=dirty,
         platform='Windows x64', format='onedir', fem_status='experimental',
         source='https://github.com/wufansaber/waferscope',
-        note='No local environments, credentials or computed field archives included.'), indent=2), encoding='utf-8')
+        grating=grating,
+        note='No local environments or credentials. Selected grating examples retain original computed fields.'), indent=2), encoding='utf-8')
     archive = Path(shutil.make_archive(str(output/('WaferScope-'+args.version+'-win64')),
                                      'zip', root_dir=str(output), base_dir=app.name))
     digest = hashlib.sha256()

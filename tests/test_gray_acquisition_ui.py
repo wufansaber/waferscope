@@ -57,7 +57,7 @@ def test_gemi_ui_preset_preserves_small_transmission_and_restores_settings():
     from fullwave_prototype.imaging_options import imaging_settings
     from fullwave_prototype.imaging_run import build_parser, scattering_settings
     controls = SimulationControls()
-    controls.preset.setCurrentText('266 nm low-haze camera')
+    controls.preset.setCurrentText('266 nm low-haze camera (10 nm gap)')
     args = build_parser().parse_args(controls.arguments())
     p, _ = scattering_settings(args)
     settings = imaging_settings(args, parameters=p)

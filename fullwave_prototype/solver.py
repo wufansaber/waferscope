@@ -104,9 +104,15 @@ def solve(p, mesh=None, particle_enabled=True, *, space=None):
         if p.static_condensation:
             solve_rhs.data += a.harmonic_extension_trans*rhs.vec
         factor_start = time.perf_counter()
-        inverse = a.mat.Inverse(space.FreeDofs(coupling=p.static_condensation), inverse=p.direct_solver)
-        field.vec.data = inverse*solve_rhs
-        factor_seconds = time.perf_counter()-factor_start
+        zero_rhs = not np.any(solve_rhs.FV().NumPy())
+        if zero_rhs:
+            field.vec[:] = 0
+            factor_seconds = 0.
+            print('Zero contrast RHS: exact zero scattered field; factorization skipped.', flush=True)
+        else:
+            inverse = a.mat.Inverse(space.FreeDofs(coupling=p.static_condensation), inverse=p.direct_solver)
+            field.vec.data = inverse*solve_rhs
+            factor_seconds = time.perf_counter()-factor_start
         print('Linear solve complete in {:.1f}s; recovering the full field...'.format(factor_seconds), flush=True)
         residual = rhs.vec.CreateVector()
         residual.data = a.mat*field.vec-solve_rhs
@@ -125,6 +131,7 @@ def solve(p, mesh=None, particle_enabled=True, *, space=None):
                     local_beam_quadrature_check=beam_check,
                     threads=p.threads,
                     assembly_seconds=assembly_seconds, factor_seconds=factor_seconds,
+                    zero_rhs_skipped_factorization=bool(zero_rhs),
                     factored_dofs=sum(space.FreeDofs(coupling=p.static_condensation)),
                     static_condensation=p.static_condensation,
                     direct_solver=p.direct_solver,

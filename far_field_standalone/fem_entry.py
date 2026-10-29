@@ -10,7 +10,7 @@ def main():
     if not getattr(sys, 'frozen', False):
         sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
     if len(sys.argv) < 3 or sys.argv[1] != '-m':
-        raise SystemExit('Use -m fullwave_prototype.guarded_run or a supported FEM module')
+        raise SystemExit('Use -m with a supported FEM or periodic grating module')
     module = sys.argv[2]
     sys.argv = [sys.argv[0]]+sys.argv[3:]
     os.environ.setdefault('MPLBACKEND', 'Agg')
@@ -38,6 +38,14 @@ def main():
         from fullwave_prototype.illumination_definition_audit import main as run
     elif module == 'fullwave_prototype.range_refinement':
         from fullwave_prototype.range_refinement import main as run
+    elif module == 'grating_scene.run':
+        from grating_scene.run import main as run
+    elif module == 'grating_scene.camera':
+        from grating_scene.camera import main as run
+    elif module == 'tools.grating_scene_validate':
+        from tools.grating_scene_validate import main as run
+    elif module == 'rcwa_prototype.angular_distribution':
+        from rcwa_prototype.angular_distribution import main as run
     else:
         raise SystemExit('Unsupported packaged module: '+module)
     run()

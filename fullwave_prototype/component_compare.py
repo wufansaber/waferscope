@@ -77,22 +77,28 @@ def compare(result, cache_directory=None, imaging_settings_path=None):
     quadrature_order = rough_report['metrics']['with']['source_quadrature_order']
     clean_source, clean_report = _clean_source(
         result, source, parameters, roughness, angular_step, quadrature_order)
+    output = result/'component_comparison'/datetime.now().strftime('%Y%m%d_%H%M%S_%f')
+    output.mkdir(parents=True, exist_ok=False)
+    from .source_snapshot import snapshot_sources
+    snapshot_sources(source, output/'haze_scattering')
+    snapshot_sources(clean_source, output/'particle_scattering')
     with np.load(source/'paired_fields.npz', allow_pickle=False) as saved:
         rough_data = {name: saved[name] for name in saved.files}
     rough_images, haze_report = calculate_images(
-        rough_data, parameters, settings, retain_complex_fields=False,
+        rough_data, parameters, settings, retain_complex_fields=True,
         cache_directory=cache_directory)
+    np.savez_compressed(output/'haze_image_fields.npz', **rough_images)
+    (output/'haze_imaging_report.json').write_text(json.dumps(haze_report, indent=2), encoding='utf-8')
     haze_fields = {key: rough_images[key] for index in (1, 2, 3)
                    for key in (f'ch{index}_image_axis_um', f'ch{index}_image_without_w_um2')}
     del rough_images, rough_data
     with np.load(clean_source/'paired_fields.npz', allow_pickle=False) as saved:
         clean_data = {name: saved[name] for name in saved.files}
     particle_images, particle_report = calculate_images(
-        clean_data, parameters, settings, retain_complex_fields=False,
+        clean_data, parameters, settings, retain_complex_fields=True,
         cache_directory=cache_directory)
-
-    output = result/'component_comparison'/datetime.now().strftime('%Y%m%d_%H%M%S_%f')
-    output.mkdir(parents=True, exist_ok=False)
+    np.savez_compressed(output/'particle_image_fields.npz', **particle_images)
+    (output/'particle_imaging_report.json').write_text(json.dumps(particle_report, indent=2), encoding='utf-8')
     fields = {}
     channels = []
     exposure_s = settings.detector.exposure_ms*1e-3
@@ -141,7 +147,7 @@ def compare(result, cache_directory=None, imaging_settings_path=None):
         warning='Independent experiments; their powers are not additive and do not reconstruct the sphere-on-rough-surface result.'),
         parameters=asdict(parameters), roughness=asdict(roughness),
         imaging_settings=asdict(settings),
-        source_directories=dict(particle=str(clean_source), haze=str(source)),
+        source_directories=dict(particle='particle_scattering', haze='haze_scattering'),
         far_hemisphere=dict(particle_dsc_um2=float(particle_integral),
                             haze_dsc_um2=float(haze_integral),
                             particle_equivalent_power_w=float(particle_integral*settings.irradiance_w_um2),

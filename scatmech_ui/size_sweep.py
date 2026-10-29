@@ -27,6 +27,8 @@ def calculate_particle_size_sweep(
     hemisphere_values = np.zeros(len(diameters), dtype=float)
     thickness_note = ""
     model_note = ""
+    far_field_samples = []
+    collection_samples = []
 
     for index, diameter_nm in enumerate(diameters):
         parameters = replace(
@@ -47,6 +49,8 @@ def calculate_particle_size_sweep(
             sampling["ky"],
             sampling["kz"],
         )["intensity"]
+        far_field_samples.append(far_field)
+        collection_samples.append(sampled_intensity)
         channel_values[index, :] = [
             _integrate_dsc(sampled_intensity, mask, sampling)
             for mask in sampling["channel_masks"]
@@ -78,6 +82,9 @@ def calculate_particle_size_sweep(
         "channel_collected_dsc_um2": channel_values,
         "hemisphere_dsc_um2": hemisphere_values,
         "channel_energy_fractions": energy_fractions,
+        "far_field_samples": far_field_samples,
+        "collection_sampling": sampling,
+        "sampled_dsc_um2_sr": np.asarray(collection_samples),
         "thickness_note": thickness_note,
         "model_note": model_note,
     }
@@ -129,13 +136,10 @@ def export_particle_size_sweep(result, directory, figure):
         dpi=180,
         facecolor="white",
     )
-    np.savez_compressed(
-        str(directory / "particle_size_sweep_data.npz"),
-        diameters_nm=result["diameters_nm"],
-        channel_collected_dsc_um2=result["channel_collected_dsc_um2"],
-        hemisphere_dsc_um2=result["hemisphere_dsc_um2"],
-        channel_energy_fractions=result["channel_energy_fractions"],
-    )
+    from result_archive import save_result_archive
+    arrays = {name: result[name] for name in ('diameters_nm', 'channel_collected_dsc_um2',
+        'hemisphere_dsc_um2', 'channel_energy_fractions')}
+    save_result_archive(directory / "particle_size_sweep_data.npz", result, legacy_arrays=arrays)
     _export_sweep_csv(result, directory / "particle_size_sweep.csv")
     payload = {
         "simulation": asdict(result["simulation_parameters"]),

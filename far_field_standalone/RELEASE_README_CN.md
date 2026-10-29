@@ -5,11 +5,12 @@
 ## 启动
 
 完整解压 ZIP 后，双击 `WaferScope.exe`。不要从压缩包内部运行，
-也不要单独移动 EXE；请保留 `_internal` 和 `fem` 文件夹。
-本版附带两个独立运行时，不需要安装 Anaconda、Python 或 SCATMECH/NGSolve。
+也不要单独移动 EXE；请保留 `_internal`、`fem`、`s4` 和 `examples` 文件夹。
+本版附带独立运行时和 S4 原生程序，不需要安装 Anaconda、Python 或 SCATMECH/NGSolve/S4。
 
 - `SCATMECH`：颗粒远场、三路收集、独立像面和探测器。
 - `Full-wave FEM (experimental)`：近场、远场、三路独立像面和相干分解。
+- `S4 Grating (periodic)`：接触颗粒加光栅的周期混合场景，三平面近场、离散远场、理想像面及模拟相机灰度。
 - `fem/WaferScope_FEM.exe`：主界面自动调用的求解器，通常不用手动启动。
 
 FEM 结果默认保存在 `%LOCALAPPDATA%\FarField_Simulation\results`。
@@ -17,6 +18,15 @@ FEM 结果默认保存在 `%LOCALAPPDATA%\FarField_Simulation\results`。
 并保留足够空闲内存。界面保留内存、时间限制和取消按钮；触发保护不是有效计算结果。
 
 ## 示例与说明
+
+在 `S4 Grating (periodic)` 页顶部选择光栅示例，点击 **Open example** 即可查看已计算结果；
+**Apply parameters** 只填写参数，之后可 Calculate 重算。包括快速预览、三平面近/远/像面、40 倍相机三个例子。
+示例为 266 nm、100 nm 接触球（间隙 0）、500 nm 周期/250 nm 脊宽/100 nm 刻深，三路 NA=0.6。
+光栅示例包含原始 Lua、stdout、复场 NPZ 和文件哈希，不只是图片；相机例子还保留原始灰度。
+这些是周期超胞，不是孤立缺陷或有限光栅；材料输入未按 266 nm 标定，联合复场收敛仍未全部通过。
+裸光栅基准不能替代颗粒加光栅验收。操作与限定见 `docs/GRATING_SCENE_GUIDE_CN.md`。
+本次混合场景的同参数原生对照、复场/功率/镜像结果与未通过项目见
+`verification/grating_hybrid_validation/HYBRID_VALIDATION.md`；其 `raw` 子目录保留原始计算记录。
 
 在 FEM 页选择 `Load result`，载入 `examples/validated_355nm_100nm`，可以直接查看
 已计算的近场、远场和三路像面。示例是 355 nm、100 nm 球、三路 NA=0.5、
@@ -36,6 +46,22 @@ FEM 仍是实验模型，不是完备解析解：有限粗糙区域、几何尖�
 第三方依赖的许可和版本见 `THIRD_PARTY_NOTICES.md` 与 `licenses` 文件夹。
 
 ## 本次更新
+
+2026-10-28：光栅混合场景加入 UI 示例入口；分文件包增加 S4 原生运行时、对应源码/许可、完整示例数据和原生工作进程支持。
+计算结果及相机统计的可用性，与混合模型的定量精度验收分开标记。随包验证报告保留具体条件和未通过项目。
+
+2026-10-26 接触修订版 r2：SCATMECH 相干成像增加球心到晶圆顶面的几何相位转换，
+与 FEM 统一复场参考；原生 JonesDSC 仍保留，不修改远场强度或收集功率。
+FEM 的严格零右端向量跳过矩阵分解，非零散射源照常求解。
+详见 [复场相位参考说明](docs/far_field_standalone/SCATMECH_PHASE_REFERENCE_CN.md)。
+
+2026-10-26 接触条件修正：SCATMECH 原库默认 `delta=0`，本版在模型创建时显式写入 0。
+FEM 新建默认和 10/100 nm 及图案预设改为 `gap_nm=0`、平整晶圆（RMS=0）；
+改变球直径时球心高度为 `diameter/2`，底部始终位于 z=0。界面 Geometry 显示底部与球心高度。
+历史结果不改写；载入 gap=10 nm 的旧结果仍保持其原始几何，必须重新 Calculate 才能得到接触结果。
+唯一保留非零间隙的粗糙几何预设已明确命名为 `266 nm low-haze camera (10 nm gap)`，
+它不是贴合粗糙面的接触模型；禁止交叠的检查仍保留，不会静默抬高颗粒。
+详见 [接触条件说明](docs/far_field_standalone/PARTICLE_CONTACT_CN.md)。本版未宣称全部 FEM 误差已收敛。
 
 2026-10-21 项目由 DFI Simulation 更名为 **WaferScope**，当前构建的主程序为 `WaferScope.exe`，求解器为 `fem/WaferScope_FEM.exe`。旧版 `DFI_FEM.exe` 和 `FarField_FEM.exe` 仍可被源码程序识别。
 为兼容已有结果，用户数据目录仍保留旧的 `FarField_Simulation` 名称；历史版本说明保留原名。

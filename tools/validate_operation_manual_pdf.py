@@ -63,7 +63,7 @@ def main():
         assert (root/path).is_file()
     assert len(build['figures']) == 4
     snapshots = json.loads((folder/'ui_inputs.json').read_text(encoding='utf-8'))
-    low = snapshots['266 nm low-haze camera']
+    low = snapshots.get('266 nm low-haze camera (10 nm gap)', snapshots.get('266 nm low-haze camera'))
     assert low['wavelength-nm'] == 266 and low['diameter-nm'] == 100 and low['rms-nm'] == .2
     assert low['illumination-fit']=='camera' and low['gray-snr-pairs']==5000
     assert low['detector-quantum-efficiency']==.639 and low['detector-gain-e-dn']==16
@@ -73,7 +73,8 @@ def main():
     report = dict(status='passed', pages=len(reader.pages), chapters=len(main_entries),
         content_blocks_checked=checked, toc_link_annotations=len(toc_links),
         actual_ui_screenshots=len(build['figures']), preset_inputs_checked=2,
-        visual_qa='All 21 final rendered pages inspected', pdf_bytes=pdf.stat().st_size,
+        visual_qa='Updated cover and contact-parameter table rendered and inspected; inherited pages not fully re-audited',
+        pdf_bytes=pdf.stat().st_size,
         pdf_sha256=build['pdf_sha256'])
     (folder/'validation.json').write_text(json.dumps(report,indent=2),encoding='utf-8')
     print(json.dumps(report,indent=2))

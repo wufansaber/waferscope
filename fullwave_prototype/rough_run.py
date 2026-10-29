@@ -129,7 +129,7 @@ def run(p, roughness, output, angular_step=10, quadrature_order=5, near_diagnost
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', default='build/fem_roughness/default')
-    parser.add_argument('--rms-nm', type=float, default=2)
+    parser.add_argument('--rms-nm', type=float, default=0)
     parser.add_argument('--width-um', type=float, default=.2)
     parser.add_argument('--grid-points', type=int, default=5)
     parser.add_argument('--smoothing-cells', type=float, default=.6)
@@ -137,7 +137,7 @@ def main():
     parser.add_argument('--correlation-length-um', type=float, default=.05)
     parser.add_argument('--psd-exponent', type=float, default=3.)
     parser.add_argument('--seed', type=int, default=7)
-    parser.add_argument('--gap-nm', type=float, default=10)
+    parser.add_argument('--gap-nm', type=float, default=0)
     parser.add_argument('--order', type=int)
     parser.add_argument('--accuracy', choices=('preview', 'refined'), default='preview')
     parser.add_argument('--pml-power', type=int, choices=(1, 2, 3), default=1)

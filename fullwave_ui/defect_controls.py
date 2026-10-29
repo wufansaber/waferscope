@@ -98,8 +98,12 @@ class DefectControls:
         if not error and not self._loading and not getattr(self.controls, '_applying_preset', False):
             self.fit_domain(info['required_radius_um'])
         error |= f['domain-radius-um'].value() <= info['required_radius_um']
-        self.info.setText('V = {:.4g} um^3 | domain R > {:.4g} um{}'.format(
+        placement = ' | bottom z = {:g} nm'.format(p['gap_nm'])
+        if sphere:
+            placement += ' | center z = {:g} nm'.format(p['gap_nm']+p['diameter_nm']/2)
+        self.info.setText('V = {:.4g} um^3 | domain R > {:.4g} um{}{}'.format(
             info['expected_volume_um3'], info['required_radius_um'],
+            placement,
             ' | Invalid dimensions / domain' if error else ''))
         self.info.setStyleSheet('color: #b02c30' if error else '')
         self.preview.update()

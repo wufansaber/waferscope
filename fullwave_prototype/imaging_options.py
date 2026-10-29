@@ -24,7 +24,7 @@ IMAGING_FLAGS.update('detector-'+key for key in DETECTOR_OPTIONS)
 def add_options(parser):
     parser.add_argument('--illumination-fit', choices=('manual', 'camera'), default='manual')
     parser.add_argument('--minimum-field-illumination', type=float, default=.5)
-    parser.add_argument('--archive-mode', choices=('compact', 'full'), default='compact')
+    parser.add_argument('--archive-mode', choices=('compact', 'full'), default='full')
     parser.add_argument('--pupil-cache', help='Optional content-addressed complex pupil cache directory')
     for key in ('astigmatism', 'coma', 'spherical'):
         parser.add_argument('--'+key+'-nm', type=float, default=0)

@@ -96,10 +96,23 @@ def integrate_pixels(axis, irradiance, parameters):
 
 def calculate_detector(channel, wavelength_nm, parameters, rng=None, sensor_index=0):
     parameters.validate()
-    if not np.isfinite(wavelength_nm) or wavelength_nm <= 0:
-        raise ValueError("Detector wavelength must be positive and finite.")
     x, y, power = integrate_pixels(channel["image_axis_um"],
                                    channel["irradiance_w_um2"], parameters)
+    result = calculate_pixel_detector(x, y, power, wavelength_nm, parameters, rng, sensor_index)
+    result['roi_power_fraction'] = result['roi_power_w']/channel['power_w'] if channel['power_w'] > 0 else 0.
+    return result
+
+
+def calculate_pixel_detector(x, y, power, wavelength_nm, parameters, rng=None, sensor_index=0):
+    """Shared readout for an already area-integrated, nonnegative pixel power map."""
+    parameters.validate()
+    if not np.isfinite(wavelength_nm) or wavelength_nm <= 0:
+        raise ValueError("Detector wavelength must be positive and finite.")
+    x, y, power = np.asarray(x, float), np.asarray(y, float), np.asarray(power, float)
+    if (x.shape != (parameters.pixels_x,) or y.shape != (parameters.pixels_y,)
+            or power.shape != (len(y), len(x)) or not np.isfinite(power).all()
+            or not np.isfinite(x).all() or not np.isfinite(y).all() or np.any(power < 0)):
+        raise ValueError('Finite pixel coordinates and nonnegative integrated pixel powers required')
     exposure = parameters.exposure_ms * 1e-3
     photon_energy = 6.62607015e-34 * 299792458 / (wavelength_nm * 1e-9)
     photons = power * exposure / photon_energy
@@ -123,7 +136,6 @@ def calculate_detector(channel, wavelength_nm, parameters, rng=None, sensor_inde
                 mean_photons=photons, mean_signal_e=signal, mean_total_e=total,
                 measured_e=measured, saturated=saturated, ideal_snr=snr,
                 roi_power_w=roi_power,
-                roi_power_fraction=roi_power/channel["power_w"] if channel["power_w"] > 0 else 0.0,
                 signal_e=float(signal.sum()), background_e=float(background.sum()),
                 ideal_roi_snr=float(signal.sum()/np.sqrt(variance_sum)) if variance_sum > 0 else 0.0,
                 saturated_pixels=int(saturated.sum()),

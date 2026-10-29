@@ -1,5 +1,6 @@
 """Guarded experimental periodic RCWA trial, isolated from the UI runtime."""
 import argparse
+import hashlib
 import json
 from pathlib import Path
 import sys
@@ -14,26 +15,40 @@ def main():
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--worker', action='store_true')
     parser.add_argument('--particle', action='store_true')
+    parser.add_argument('--particle-method', choices=('fft', 'analytic'), default='fft')
+    parser.add_argument('--current-z-order', type=int, default=0)
     parser.add_argument('--near', action='store_true')
     parser.add_argument('--kind', choices=('flat', 'grating'), default='grating')
     parser.add_argument('--modes', type=int, default=121)
+    parser.add_argument('--harmonics', type=int, nargs=2, metavar=('MX', 'MY'),
+                        help='Explicit rectangular +/- orders; overrides circular --modes')
     parser.add_argument('--slices', type=int, default=8)
     parser.add_argument('--lx', type=float, default=.5)
     parser.add_argument('--periods-y', type=int, default=2)
     parser.add_argument('--grid', type=int, nargs=2, default=(128, 256))
     parser.add_argument('--factorization', choices=('pol', 'laurent'), default='laurent')
+    parser.add_argument('--grating-method', choices=('fft', 'analytic_li'), default='analytic_li',
+                        help='Straight-line background only; particle layers keep --factorization')
     parser.add_argument('--max-memory-gib', type=float, default=8.)
     parser.add_argument('--timeout', type=float, default=600.)
     args = parser.parse_args()
     scene = Scene(kind=args.kind, modes=args.modes, slices=args.slices, lx_um=args.lx,
-        periods_y=args.periods_y, grid_x=args.grid[0], grid_y=args.grid[1], factorization=args.factorization)
+        periods_y=args.periods_y, grid_x=args.grid[0], grid_y=args.grid[1], factorization=args.factorization,
+        grating_method=args.grating_method,
+        harmonics_x=args.harmonics[0] if args.harmonics else None,
+        harmonics_y=args.harmonics[1] if args.harmonics else None)
     scene.validate()
     if args.worker:
         from rcwa_prototype.solver import solve
+        if args.output.exists() and any(args.output.iterdir()):
+            parser.error('Use an empty output folder to preserve previous raw results')
         args.output.mkdir(parents=True, exist_ok=True)
-        result, info = solve(scene, args.particle, args.near)
-        info['memory_planning'] = matrix_memory_estimate(scene.modes, info['patterned_layers'])
+        result, info = solve(scene, args.particle, args.near, particle_method=args.particle_method,
+                             current_z_order=args.current_z_order)
+        info['memory_planning'] = matrix_memory_estimate(scene.requested_modes, info['patterned_layers'])
         np.savez_compressed(args.output/'modes.npz', **result)
+        info['raw_npz_sha256'] = hashlib.sha256((args.output/'modes.npz').read_bytes()).hexdigest()
+        info['particle'] = args.particle
         (args.output/'report.json').write_text(json.dumps(info, indent=2), encoding='utf-8')
     else:
         import psutil
@@ -42,7 +57,7 @@ def main():
             parser.error('Memory limit must be finite and positive')
         if not np.isfinite(args.timeout) or args.timeout <= 0:
             parser.error('Timeout must be finite and positive')
-        estimate = matrix_memory_estimate(scene.modes, scene.slices+1 if args.particle else 1)
+        estimate = matrix_memory_estimate(scene.requested_modes, scene.slices+1 if args.particle else 1)
         available = psutil.virtual_memory().available/2**30
         budget = min(args.max_memory_gib, available-3.)
         if estimate['planning_gib'] > budget:

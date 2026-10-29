@@ -85,6 +85,18 @@ class NativeFullwaveTests(unittest.TestCase):
         np.testing.assert_allclose(e, ebg, atol=1e-13)
         np.testing.assert_allclose(h, hbg, atol=1e-13)
         self.assertLess(metrics['algebraic_residual'], 1e-10)
+        self.assertTrue(metrics['zero_rhs_skipped_factorization'])
+        self.assertEqual(metrics['factor_seconds'], 0.)
+
+    def test_nonzero_particle_rhs_still_runs_the_native_inverse(self):
+        from fullwave_prototype.solver import solve
+        p = Parameters(diameter_nm=10, order=1, domain_radius_um=.12,
+                       particle_mesh_um=.002, static_condensation=True,
+                       direct_solver='sparsecholesky')
+        _, field, metrics = solve(p)
+        self.assertFalse(metrics['zero_rhs_skipped_factorization'])
+        self.assertGreater(metrics['factor_seconds'], 0.)
+        self.assertGreater(np.linalg.norm(field.vec.FV().NumPy()), 0.)
 
 
 if __name__ == '__main__':

@@ -23,9 +23,12 @@ class ScatmechStandaloneWindow(QMainWindow):
         self.simulation_widget = ScatmechSimulationWidget()
         from fullwave_ui.widget import FullwaveWidget
         self.fullwave_widget = FullwaveWidget()
+        from grating_ui.widget import GratingWidget
+        self.grating_widget = GratingWidget()
         self.tabs = QTabWidget()
         self.tabs.addTab(self.simulation_widget, 'SCATMECH')
         self.tabs.addTab(self.fullwave_widget, 'Full-wave FEM (experimental)')
+        self.tabs.addTab(self.grating_widget, 'S4 Grating (periodic)')
         self.setCentralWidget(self.tabs)
         self.simulation_widget.roughness_group.match_fem_button.clicked.connect(
             self.use_fem_haze_inputs)
@@ -121,6 +124,9 @@ class ScatmechStandaloneWindow(QMainWindow):
         self.resize(width, height)
 
     def closeEvent(self, event):
+        if not self.grating_widget.wait_for_shutdown():
+            event.ignore()
+            return
         if not self.fullwave_widget.wait_for_shutdown():
             event.ignore()
             return
@@ -130,6 +136,10 @@ class ScatmechStandaloneWindow(QMainWindow):
 
 def run_headless_test(output_directory):
     parameters = SimulationParameters(angular_step_deg=12.0)
+    from .surface_model import build_scattering_model
+    sphere_gap_um = float(build_scattering_model(parameters).model.getParameters()['delta'])
+    if sphere_gap_um != 0:
+        raise RuntimeError('SCATMECH sphere must contact the top wafer interface')
     result = calculate_far_field(parameters)
     app = QApplication.instance() or QApplication([])
     window = ScatmechSimulationWidget()
@@ -137,12 +147,47 @@ def run_headless_test(output_directory):
     window.render_results(result)
     output_directory = Path(output_directory)
     output_directory.mkdir(parents=True, exist_ok=True)
+    from result_archive import save_result_archive, load_result_archive
+    from .parameters import ObjectiveCollectionParameters
+    from .objective_collection import calculate_objective_collection_example
+    native_path = output_directory/'native_far_field_data.npz'
+    save_result_archive(native_path, result, legacy_arrays={
+        key: value for key, value in result.items() if hasattr(value, 'dtype')})
+    collected = calculate_objective_collection_example(ObjectiveCollectionParameters(), result)
+    collection_path = output_directory/'far_field_data.npz'
+    save_result_archive(collection_path, collected, source=result, legacy_arrays={
+        key: value for key, value in collected.items() if hasattr(value, 'dtype')})
+    restored, source = load_result_archive(collection_path)
+    if len(restored['channel_pupils']) != 3 or 'mueller_raw' not in source:
+        raise RuntimeError('Packaged raw result export is incomplete')
+    from .imaging import ImagingParameters, calculate_imaging, export_imaging
+    from matplotlib.figure import Figure
+    image = calculate_imaging(SimulationParameters(wavelength_nm=266, particle_diameter_nm=10),
+        ObjectiveCollectionParameters(channel_numerical_apertures=(.4, .4, 0)),
+        ImagingParameters(pupil_samples=32))
+    if any(channel['field_reference'] != 'top-wafer plane z=0' for channel in image['channels']):
+        raise RuntimeError('Packaged coherent field reference is incorrect')
+    export_imaging(image, output_directory/'coherent', Figure())
+    (output_directory/'raw_export_smoke.json').write_text(json.dumps(dict(
+        status='passed', channels=3, native_mueller=True, source_snapshot=True,
+        sphere_gap_um=sphere_gap_um, coherent_wafer_reference=True)), encoding='utf-8')
     for key, canvas in window.canvases.items():
         canvas.figure.savefig(str(output_directory / (key + ".png")), dpi=120)
     print("Headless UI render test completed:", output_directory.resolve())
 
 
 def main():
+    if '--grating-package-test' in sys.argv:
+        output = Path(sys.argv[sys.argv.index('--grating-package-test')+1])
+        try:
+            from grating_ui.package_smoke import run
+            run(output)
+        except Exception:
+            import traceback
+            output.mkdir(parents=True, exist_ok=True)
+            (output/'grating_package_error.txt').write_text(traceback.format_exc(), encoding='utf-8')
+            raise SystemExit(1)
+        return
     if '--camera-package-test' in sys.argv:
         from fullwave_ui.camera_smoke import run
         index = sys.argv.index('--camera-package-test')

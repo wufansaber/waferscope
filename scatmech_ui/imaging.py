@@ -79,6 +79,12 @@ def _channel(model, simulation, objective, imaging, na, tilt, progress):
     jones = sample_jones_pupil(model, np.deg2rad(simulation.incidence_deg),
                                global_k, mask, progress)
     pupil = collimated_pupil(jones, global_k, local, rotation)
+    from .field_reference import sphere_to_wafer_phase
+    separation_um = float(model.getParameters()['delta'])
+    height_um = simulation.particle_diameter_nm/2000.+separation_um
+    phase = sphere_to_wafer_phase(global_k, simulation.wavelength_nm/1000., height_um,
+                                  simulation.incidence_deg)
+    pupil *= phase[..., None, None]
     weights = mode_weights(simulation.polarization)
     collected = float(np.sum(np.abs(pupil)**2 * weights) * du**2)
     if imaging.analyzer != "none":
@@ -103,6 +109,9 @@ def _channel(model, simulation, objective, imaging, na, tilt, progress):
                          np.cos(np.deg2rad(simulation.incidence_deg))))
     admits_specular = na > 0 and float(specular @ rotation[:, 2]) >= np.sqrt(1-na*na)
     return dict(na=na, tilt_deg=tilt, image_axis_um=axis,
+                field_reference='top-wafer plane z=0', sphere_center_height_um=height_um,
+                native_jones_reference='sphere center; raw JonesDSC retained unchanged',
+                sphere_to_wafer_phase=phase,
                 pupil_axis_mm=local[0, :, 0]*objective.focal_length_mm,
                 pupil_mask=mask, jones_dsc_um=jones, pupil_modes=pupil,
                 image_e_modes=e, image_hz0_modes=h,
@@ -163,7 +172,8 @@ def export_imaging(result, directory, figure, detector_figure=None):
         summaries.append(summary)
         arrays.update({"ch{}_{}".format(index, key): value for key, value in channel.items()
                        if isinstance(value, np.ndarray)})
-    np.savez_compressed(str(directory / "coherent_imaging.npz"), **arrays)
+    from result_archive import save_result_archive
+    save_result_archive(directory / "coherent_imaging.npz", result, legacy_arrays=arrays)
     if result['imaging_parameters'].detector.enabled:
         from camera_readout import export_raw_camera
         export_raw_camera(directory, [channel['detector'] for channel in result['channels']])
